@@ -186,6 +186,7 @@ trait Printers { self: Universe =>
   /** By default trees are printed with `show`
    *  @group Printers
    */
+
   override protected def treeToString(tree: Tree) = show(tree)
 
   /** Renders a representation of a reflection artifact
@@ -199,7 +200,12 @@ trait Printers { self: Universe =>
   /** Hook to define what `show(...)` means.
    * @group Printers
    */
+
   protected def newTreePrinter(out: PrintWriter): TreePrinter
+
+  protected def treeToCodePrinter(out: PrintWriter): TreePrinter
+
+  def toCode(tree: Tree) = render(tree, treeToCodePrinter(_))
 
   /** Renders internal structure of a reflection artifact as the
    *  visualization of a Scala syntax tree.
