@@ -187,7 +187,7 @@ trait Printers { self: Universe =>
    *  @group Printers
    */
 
-  override protected def treeToString(tree: Tree) = show(tree)
+  override protected def treeToString(tree: Tree) = "defaultString" //show(tree)
 
   /** Renders a representation of a reflection artifact
    *  as desugared Scala code.
