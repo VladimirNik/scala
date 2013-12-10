@@ -461,215 +461,231 @@ trait Printers extends api.Printers { self: SymbolTable =>
   }
 
   class ParsedTreePrinter(out: PrintWriter, printMultiline: Boolean = false, decodeNames: Boolean = true) extends TreePrinter(out) {
-      protected val ownerStack = scala.collection.mutable.Stack[Tree]()
 
-      protected def compareNames(name1: Name, name2: Name) =
-        (name1 ne null) && (name2 ne null) && name1.toString.trim == name2.toString.trim
+    protected val parentsStack = scala.collection.mutable.Stack[Tree]()
 
-      override def printModifiers(tree: Tree, mods: Modifiers): Unit = printModifiers(tree, mods, isConstr = false)
+    protected def atParent(owner: Tree)(body: =>Unit) {
+      parentsStack.push(owner)
+      body
+      parentsStack.pop()
+    }
 
-      def printModifiers(tree: Tree, mods: Modifiers, isConstr: Boolean): Unit = {
-        def modsAccepted = currentOwner map {
-          case _:ClassDef | _:ModuleDef | _:Template | _:PackageDef => true
-          case _ => false
-        } getOrElse false
+    protected def currentParent = if (!parentsStack.isEmpty) Some(parentsStack.top) else None
 
-        if (currentOwner.isEmpty || modsAccepted)
-          printFlags(mods.flags, "" + mods.privateWithin, isConstr)
-        else
-          List(IMPLICIT, CASE, LAZY).foreach{flag => if(mods.hasFlag(flag))  printFlags(flag, "", isConstr)}
+    protected def compareNames(name1: Name, name2: Name) =
+      (name1 ne null) && (name2 ne null) && name1.toString.trim == name2.toString.trim
+
+    protected def resolveName(name: Name, decoded: Boolean = decodeNames) = {
+      val encName = name.encoded
+      val decName = name.decoded
+
+      val opSym = List('~', '=', '<', '>', '!', '#', '%', '^', '&', '|', '*', '/', '+', '-', ':', '\\', '?', '@')
+      val excList = List("\\", "_*")
+
+      def modifyEncoded(s: String) = if (decoded && (encName.contains("$u") ||
+        (encName.contains("$") && decName.exists(ch => opSym.contains(ch)) &&
+          decName.exists(ch => !opSym.contains(ch)) && !excList.exists(str => decName.contains(str)))))
+        "`%s`" format s else s
+
+      if (compareNames(name, nme.CONSTRUCTOR)) "this"
+      else modifyEncoded(quotedName(name, decoded))
+    }
+
+    protected def isIntLitWithDecodedOp(qual: Tree, name: Name) = {
+      lazy val qualIsIntLit = qual match {
+        case Literal(x) => x.value.isInstanceOf[Int]
+        case _ => false
       }
+      decodeNames && qualIsIntLit && name.isOperatorName
+    }
 
-      override def printFlags(flags: Long, privateWithin: String) =
-        printFlags(flags, privateWithin, isConstr = false)
+    protected def enclInParentheses(condition: Boolean = true)(body: =>Unit) {
+      if (condition) print("(")
+      body
+      if (condition) print(")")
+    }
 
-      def printFlags(flags: Long, privateWithin: String, isConstr: Boolean) {
-        val base = AccessFlags | OVERRIDE | ABSTRACT | FINAL | SEALED | LAZY
-        val mask = if (isConstr) base else base | IMPLICIT
-
-        val s = flagsToString(flags & mask, privateWithin)
-        if (s != "") print(s"$s ")
-        //case should be after base mods
-        val caseFlag = flagsToString(flags & CASE)
-        if (!caseFlag.isEmpty) print(caseFlag + " ")
-        //abs override mod should be after base mods 
-        val absOverrideFlag = flagsToString(flags & ABSOVERRIDE)
-        if (!absOverrideFlag.isEmpty) print("abstract override ")
+    protected def inParentheses(owner: Tree)(iIf: Boolean = true, iMatch: Boolean = true,
+        iTry: Boolean = true, iAnnotated: Boolean = true, iBlock: Boolean = true, iLabelDef: Boolean = true) = {
+      owner match {
+        case _: If => iIf
+        case _: Match => iMatch
+        case _: Try => iTry
+        case _: Annotated => iAnnotated
+        case _: Block => iBlock
+        case _: LabelDef => iLabelDef
+        case _ => false
       }
+    }
 
-      override def printValueParams(ts: List[ValDef]) {
-        printValueParams(ts, isFuncTree = false)
+    protected def resolveSelect(t: Tree): String = {
+      t match {
+        case Select(qual, name) if (name.isTermName && inParentheses(qual)(iLabelDef = false)) || isIntLitWithDecodedOp(qual, name) => "(%s).%s".format(resolveSelect(qual), resolveName(name))
+        case Select(qual, name) if name.isTermName  => "%s.%s".format(resolveSelect(qual), resolveName(name))
+        case Select(qual, name) if name.isTypeName  => "%s#%s".format(resolveSelect(qual), resolveName(name))
+        case Ident(name)                            => resolveName(name)
+        case _                                      => toCode(t)
       }
+    }
 
-      def printValueParams(ts: List[ValDef], isFuncTree: Boolean) {
-        //val a: Int => Int = implicit x => x //parentheses are not allowed here
-        val printParentheses = !isFuncTree || {
-          ts match {
-            case List(vd: ValDef) => !vd.mods.hasFlag(IMPLICIT)
-            case _ => true
+    protected def removeDefaultTypesFromList(trees: List[Tree])(classesToRemove: List[String])(traitsToRemove: List[String]) = {
+      def removeDefaultTraitsFromList(trees: List[Tree], traitsToRemove: List[String]): List[Tree] =
+        trees match {
+          case Nil => trees
+          case list : List[Tree] => list.last match {
+            case Select(Ident(sc), name) if ((traitsToRemove.contains(name.toString)) && (sc.toString == "scala"))
+            => removeDefaultTraitsFromList(list.init, traitsToRemove)
+            case _ => list
           }
         }
 
-        if (printParentheses)
-          super.printValueParams(ts)
-        else {
-          if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
-          printSeq(ts) {
-            printParam
-          } { print(", ") }
-        }
-      }
+      removeDefaultTraitsFromList(removeDefaultClassesFromList(trees, classesToRemove), traitsToRemove)
+    }
 
-      def printParam(tree: Tree, isConstr: Boolean) {
-        tree match {
-          case ValDef(mods, name, tp, rhs) =>
-            printAnnotations(tree)
-            if (isConstr) {
-              printModifiers(tree, mods, isConstr)
-            }
-            print(if (mods.isMutable && isConstr) "var " else if (isConstr) "val " else "", resolveName(name));
-            if (name.endsWith("_")) print(" ");
-            printOpt(": ", tp);
-            printOpt(" = ", rhs)
-          case _ => super.printParam(tree)
-        }
-      }
+    protected def removeDefaultClassesFromList(trees: List[Tree], classesToRemove: List[String]) = trees filter {
+      case Select(Ident(sc), name) => !((classesToRemove.contains(name.toString)) && (sc.toString == "scala"))
+      case _ => true
+    }
 
-      override def printParam(tree: Tree) {
-        printParam(tree, isConstr = false)
-      }
+    override def printFlags(flags: Long, privateWithin: String) =
+      printFlags(flags, privateWithin, isConstr = false)
 
-      override def printAnnotations(tree: Tree) {
-        val annots = tree.asInstanceOf[MemberDef].mods.annotations
-        annots foreach {
-          case Apply(Select(New(tree), p), args) => val ap = Apply(tree, args)
-            print("@", ap, " ")
-          case ann => print(s"@$ann ")
-        }
-      }
+    def printFlags(flags: Long, privateWithin: String, isConstr: Boolean) {
+      val base = AccessFlags | OVERRIDE | ABSTRACT | FINAL | SEALED | LAZY
+      val mask = if (isConstr) base else base | IMPLICIT
 
-      override def printTypeParams(ts: List[TypeDef]) {
-        if (!ts.isEmpty) {
-          print("["); printSeq(ts){ t =>
-            printAnnotations(t)
-            if (t.mods.hasFlag(CONTRAVARIANT)) {
-              print("-")
-            } else if (t.mods.hasFlag(COVARIANT)) {
-              print("+")
-            }
-            printParam(t)
-          }{print(", ")}; print("]")
-        }
-      }
+      val s = flagsToString(flags & mask, privateWithin)
+      if (s != "") print(s"$s ")
+      //case should be after base mods
+      val caseFlag = flagsToString(flags & CASE)
+      if (!caseFlag.isEmpty) print(caseFlag + " ")
+      //abs override mod should be after base mods
+      val absOverrideFlag = flagsToString(flags & ABSOVERRIDE)
+      if (!absOverrideFlag.isEmpty) print("abstract override ")
+    }
 
-      protected def enclInParentheses(condition: Boolean = true)(body: =>Unit) {
-        if (condition) print("(")
-        body
-        if (condition) print(")")
-      }
+    override def printModifiers(tree: Tree, mods: Modifiers): Unit = printModifiers(tree, mods, isConstr = false)
 
-      protected def inParentheses(owner: Tree)(iIf: Boolean = true, iMatch: Boolean = true,
-          iTry: Boolean = true, iAnnotated: Boolean = true, iBlock: Boolean = true, iLabelDef: Boolean = true) = {
-        owner match {
-          case _: If => iIf
-          case _: Match => iMatch
-          case _: Try => iTry
-          case _: Annotated => iAnnotated
-          case _: Block => iBlock
-          case _: LabelDef => iLabelDef
-          case _ => false
-        }
-      }
+    def printModifiers(tree: Tree, mods: Modifiers, isConstr: Boolean): Unit = {
+      def modsAccepted = currentParent map {
+        case _:ClassDef | _:ModuleDef | _:Template | _:PackageDef => true
+        case _ => false
+      } getOrElse false
 
-      protected def isIntLitWithDecodedOp(qual: Tree, name: Name) = {
-        lazy val qualIsIntLit = qual match {
-          case Literal(x) => x.value.isInstanceOf[Int]
-          case _ => false
-        }
-        decodeNames && qualIsIntLit && name.isOperatorName
-      }
+      if (currentParent.isEmpty || modsAccepted)
+        printFlags(mods.flags, "" + mods.privateWithin, isConstr)
+      else
+        List(IMPLICIT, CASE, LAZY).foreach{flag => if(mods.hasFlag(flag))  printFlags(flag, "", isConstr)}
+    }
 
-      protected def resolveSelect(t: Tree): String = {
-        t match {
-          case Select(qual, name) if (name.isTermName && inParentheses(qual)(iLabelDef = false)) || isIntLitWithDecodedOp(qual, name) => "(%s).%s".format(resolveSelect(qual), resolveName(name))
-          case Select(qual, name) if name.isTermName  => "%s.%s".format(resolveSelect(qual), resolveName(name))
-          case Select(qual, name) if name.isTypeName  => "%s#%s".format(resolveSelect(qual), resolveName(name))
-          case Ident(name)                            => resolveName(name)
-          case _                                      => toCode(t)
-        }
-      }
-
-      protected def ownerManaged(owner: Tree)(body: =>Unit) {
-        ownerStack.push(owner)
-        body
-        ownerStack.pop()
-      }
-
-      protected def currentOwner = if (!ownerStack.isEmpty) Some(ownerStack.top) else None
-
-      protected def removeDefaultTypesFromList(trees: List[Tree])(classesToRemove: List[String])(traitsToRemove: List[String]) = {
-        def removeDefaultTraitsFromList(trees: List[Tree], traitsToRemove: List[String]): List[Tree] =
-          trees match {
-            case Nil => trees
-            case list : List[Tree] => list.last match {
-              case Select(Ident(sc), name) if ((traitsToRemove.contains(name.toString)) && (sc.toString == "scala"))
-                => removeDefaultTraitsFromList(list.init, traitsToRemove)
-              case _ => list
-            }
+    def printParam(tree: Tree, isConstr: Boolean) {
+      tree match {
+        case ValDef(mods, name, tp, rhs) =>
+          printAnnotations(tree)
+          if (isConstr) {
+            printModifiers(tree, mods, isConstr)
           }
+          print(if (mods.isMutable && isConstr) "var " else if (isConstr) "val " else "", resolveName(name));
+          if (name.endsWith("_")) print(" ");
+          printOpt(": ", tp);
+          printOpt(" = ", rhs)
+        case _ => super.printParam(tree)
+      }
+    }
 
-        removeDefaultTraitsFromList(removeDefaultClassesFromList(trees, classesToRemove), traitsToRemove)
+    override def printParam(tree: Tree) {
+      printParam(tree, isConstr = false)
+    }
+
+    override def printValueParams(ts: List[ValDef]) {
+      printValueParams(ts, isFuncTree = false)
+    }
+
+    def printValueParams(ts: List[ValDef], isFuncTree: Boolean) {
+      //val a: Int => Int = implicit x => x - parentheses are not allowed here
+      val printParentheses = !isFuncTree || {
+        ts match {
+          case List(vd: ValDef) => !vd.mods.hasFlag(IMPLICIT)
+          case _ => true
+        }
       }
 
-      protected def removeDefaultClassesFromList(trees: List[Tree], classesToRemove: List[String]) = trees filter {
-        case Select(Ident(sc), name) => !((classesToRemove.contains(name.toString)) && (sc.toString == "scala"))
-        case _ => true
+      if (printParentheses)
+        super.printValueParams(ts)
+      else {
+        if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
+        printSeq(ts) {
+          printParam
+        } { print(", ") }
       }
+    }
 
-      protected def getPrimaryConstr(methods: List[Tree]) =
+    override def printTypeParams(ts: List[TypeDef]) {
+      if (!ts.isEmpty) {
+        print("["); printSeq(ts){ t =>
+          printAnnotations(t)
+          if (t.mods.hasFlag(CONTRAVARIANT)) {
+            print("-")
+          } else if (t.mods.hasFlag(COVARIANT)) {
+            print("+")
+          }
+          printParam(t)
+        }{print(", ")}; print("]")
+      }
+    }
+
+    override def printAnnotations(tree: Tree) {
+      val annots = tree.asInstanceOf[MemberDef].mods.annotations
+      annots foreach {
+        case Apply(Select(New(tree), p), args) => val ap = Apply(tree, args)
+          print("@", ap, " ")
+        case ann => print(s"@$ann ")
+      }
+    }
+
+    override def printTree(tree: Tree) {
+      def checkBlankForDef(tree: Tree, name: Name) =
+        (if (resolveName(name) != resolveName(name, decoded = false) || resolveName(name) != resolveName(name, decoded = true)) " " else "") + ": "
+
+      def getPrimaryConstr(methods: List[Tree]) =
         methods collectFirst {
           case dd: DefDef if dd.name.toString.trim == nme.CONSTRUCTOR.toString.trim => dd
         }
 
-      protected def checkBlankForDef(tree: Tree, name: Name) = 
-        (if (resolveName(name) != resolveName(name, decoded = false) || resolveName(name) != resolveName(name, decoded = true)) " " else "") + ": "
-
-      override def printTree(tree: Tree) {
-        tree match {
-          case ClassDef(mods, name, tparams, impl) =>
-            ownerManaged(tree){
-              printAnnotations(tree)
-              val word =
-                if (mods.isTrait) {
-                  // avoid abstract modifier for traits
-                  printModifiers(tree, mods &~ ABSTRACT)
-                  "trait"
-                } else {
-                  printModifiers(tree, mods)
-                  "class"
-                }
-
-              print(word, " ", resolveName(name))
-              printTypeParams(tparams)
-
-              def printConstrParams(ts: List[ValDef]) {
-                enclInParentheses() {
-                  if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
-                    printSeq(ts)(printParam(_, isConstr = true))(print(", "))
-                }
+      tree match {
+        case ClassDef(mods, name, tparams, impl) =>
+          atParent(tree){
+            printAnnotations(tree)
+            val word =
+              if (mods.isTrait) {
+                // avoid abstract modifier for traits
+                printModifiers(tree, mods &~ ABSTRACT)
+                "trait"
+              } else {
+                printModifiers(tree, mods)
+                "class"
               }
 
-              val Template(parents @ List(_*), self, methods) = impl
-              if (!mods.isTrait) {
-                val templateVals = methods collect {
-                  case ValDef(mods, name, _, _) => (name, mods)
-                }
+            print(word, " ", resolveName(name))
+            printTypeParams(tparams)
 
-                val primaryConstrOpt = getPrimaryConstr(methods)
+            def printConstrParams(ts: List[ValDef]) {
+              enclInParentheses() {
+                if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
+                printSeq(ts)(printParam(_, isConstr = true))(print(", "))
+              }
+            }
 
-                primaryConstrOpt map {
-                  primaryConstr =>
+            val Template(parents @ List(_*), self, methods) = impl
+            if (!mods.isTrait) {
+              val templateVals = methods collect {
+                case ValDef(mods, name, _, _) => (name, mods)
+              }
 
+              val primaryConstrOpt = getPrimaryConstr(methods)
+
+              primaryConstrOpt map {
+                primaryConstr =>
                   val cstrMods = primaryConstr.mods
                   val vparamss = primaryConstr.vparamss
 
@@ -689,7 +705,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
                                   (vparam.mods.annotations ::: templateVal._2.annotations) distinct), vparam.name, vparam.tpt, vparam.rhs)
                             } getOrElse vparam
                         }
-                      }
+                    }
 
                   //constructor's modifier
                   if (cstrMods.hasFlag(AccessFlags)) {
@@ -699,7 +715,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
                   //constructor's params
                   printParamss foreach { printParams =>
-                    //don't print single empty constructor param list
+                  //don't print single empty constructor param list
                     if (!(printParams.isEmpty && printParamss.size == 1) || cstrMods.hasFlag(AccessFlags)) {
                       printConstrParams(printParams)
                       print(" ")
@@ -707,423 +723,404 @@ trait Printers extends api.Printers { self: SymbolTable =>
                   }
                   //case classes without a parameter list are not allowed
                   if ((printParamss.isEmpty || printParamss(0).isEmpty) && mods.isCase) print("() ")
-                } getOrElse (print(" "))
-              }
-
-              //get trees without default classes and traits (when they are last)
-              val printedParents = removeDefaultTypesFromList(parents)(List("AnyRef"))(if (mods.hasFlag(CASE)) List("Product", "Serializable") else Nil)
-
-              print(if (mods.isDeferred) "<: " else if (!printedParents.isEmpty) " extends "
-                else "", impl)
+              } getOrElse (print(" "))
             }
 
-          case PackageDef(packaged, stats) =>
-            ownerManaged(tree){
-              packaged match {
-                case Ident(name) if compareNames(name, nme.EMPTY_PACKAGE_NAME) =>
-                  printSeq(stats) {
-                    print(_)
-                  } {
-                    print(";");
-                    println()
-                  };
-                case _ =>
-                  printAnnotations(tree)
-                  print("package ", packaged);
-                  printColumn(stats, " {", "\n", "}")
-              }
-            }
+            //get trees without default classes and traits (when they are last)
+            val printedParents = removeDefaultTypesFromList(parents)(List("AnyRef"))(if (mods.hasFlag(CASE)) List("Product", "Serializable") else Nil)
 
-          case ModuleDef(mods, name, impl) =>
-            ownerManaged(tree){
-              printAnnotations(tree)
-              printModifiers(tree, mods);
-              val Template(parents @ List(_*), self, methods) = impl
-              val parWithoutAnyRef = removeDefaultClassesFromList(parents, List("AnyRef"))
-              print("object " + resolveName(name), if (!parWithoutAnyRef.isEmpty) " extends " else "", impl)
-            }
-
-          case vd@ValDef(mods, name, tp, rhs) =>
-            printAnnotations(tree)
-            printModifiers(tree, mods)
-            print(if (mods.isMutable) "var " else "val ", resolveName(name))
-            if (name.endsWith("_")) print(" ")
-
-            //place space after symbolic def name (val *: Unit does not compile)
-            printOpt(checkBlankForDef(tree, name), tp) 
-            ownerManaged(tree){
-              if (!mods.isDeferred)
-                print(" = ", if (rhs.isEmpty) "_" else rhs)
-            }
-
-          case dd@DefDef(mods, name, tparams, vparamss, tp, rhs) =>
-            printAnnotations(tree)
-            printModifiers(tree, mods)
-            print("def " + resolveName(name))
-            printTypeParams(tparams);
-            vparamss foreach printValueParams
-            if (tparams.isEmpty && (vparamss.isEmpty || vparamss(0).isEmpty) && name.endsWith("_"))
-              print(" ")
-            printOpt(checkBlankForDef(tree, name), tp)
-            ownerManaged(tree){
-              printOpt(" = " + (if (mods.hasFlag(MACRO)) "macro " else ""), rhs)
-            }
-
-          case td@TypeDef(mods, name, tparams, rhs) =>
-            if (mods hasFlag (PARAM | DEFERRED)) {
-              printAnnotations(tree)
-              printModifiers(tree, mods);
-              print("type ");
-              printParam(tree)
-            } else {
-              printAnnotations(tree)
-              printModifiers(tree, mods);
-              print("type " + resolveName(name))
-              printTypeParams(tparams);
-              ownerManaged(tree){
-                printOpt(" = ", rhs)
-              }
-            }
-
-          case LabelDef(name, params, rhs) =>
-            if (name.toString.contains("while$")) {
-              ownerManaged(tree){
-                val If(cond, thenp, elsep) = rhs
-                print("while (", cond, ") ")
-                val Block(list, wh) = thenp
-                printColumn(list, "", ";", "")
-              }
-            } else if (name.toString.contains("doWhile$")) {
-              ownerManaged(tree){
-                val Block(bodyList: List[Tree], ifCond @ If(cond, thenp, elsep)) = rhs
-                print("do ")
-                printColumn(bodyList, "", ";", "")
-                print(" while (", cond, ") ")
-              }
-            } else {
-              print(resolveName(name)); printLabelParams(params);
-              ownerManaged(tree){
-                printBlock(rhs)
-              }
-            }
-
-          case Import(expr, selectors) =>
-            // Is this selector remapping a name (i.e, {name1 => name2})
-            def isNotRemap(s: ImportSelector): Boolean =
-              (compareNames(s.name, nme.WILDCARD) || compareNames(s.name, s.rename))
-
-            def selectorToString(s: ImportSelector): String = {
-              val from = quotedName(s.name)
-              if (isNotRemap(s)) from else from + "=>" + quotedName(s.rename)
-            }
-
-            print("import ", resolveSelect(expr), ".")
-            selectors match {
-              case List(s) =>
-                // If there is just one selector and it is not remapping a name, no braces are needed
-                if (isNotRemap(s)) print(selectorToString(s))
-                else print("{", selectorToString(s), "}")
-              // If there are more than one selector braces are always needed
-              case many =>
-                print(many.map(selectorToString).mkString("{", ", ", "}"))
-            }
-
-          case Template(parents, self, body) =>
-
-            val printedParents =
-              currentOwner map {
-                //val example: Option[AnyRef => Product1[Any] with AnyRef] = ... - CompoundTypeTree with template
-                case _: CompoundTypeTree => parents
-                case ClassDef(mods, name, _, _) if mods.hasFlag(CASE) => removeDefaultTypesFromList(parents)(List("AnyRef"))(List("Product", "Serializable"))
-                case _ => removeDefaultClassesFromList(parents, List("AnyRef"))
-              } getOrElse(parents)
-
-            val primaryCtrOpt = getPrimaryConstr(body)
-            var ap: Option[Apply] = None
-
-            for (primaryCtr <- primaryCtrOpt) {
-              primaryCtr match {
-                case DefDef(_, _, _, _, _, Block(ctBody @ List(_*), _)) =>
-                  ap = ctBody collectFirst {
-                    case apply: Apply => apply
-                  }
-
-                  //vals in preinit blocks
-                  val presuperVals = ctBody filter {
-                    case vd:ValDef => vd.mods.hasFlag(PRESUPER)
-                    case _ => false
-                  }
-
-                  if (!presuperVals.isEmpty) {
-                    print("{")
-                    printColumn(presuperVals, "", ";", "")
-                    print("} " + (if (!printedParents.isEmpty) "with " else ""))
-                  }
-
-                case _ =>
-              }
-            }
-
-            if (!printedParents.isEmpty) {
-              val (clParent :: traits) = printedParents
-              print(clParent)
-
-              def constrParams(tree: Tree, cargs: List[List[Tree]]): List[List[Tree]] = {
-                tree match {
-                  case Apply(inTree, args) =>
-                    constrParams(inTree, cargs):+args
-                  case _ => cargs
-                }
-              }
-
-              val applyParamsList = ap map {constrParams(_, Nil)} getOrElse Nil
-              applyParamsList foreach {x: List[Tree] => if (!(x.isEmpty && applyParamsList.size == 1)) printRow(x, "(", ", ", ")")}
-
-              if (!traits.isEmpty) {
-                printRow(traits, " with ", " with ", "")
-              }
-            }
-            /* Remove primary constr def and constr val and var defs
-             * right contains all constructors 
-             */
-            val (left, right) = body.filter {
-              //remove valdefs defined in constructor and pre-init block
-              case vd: ValDef => !vd.mods.hasFlag(PARAMACCESSOR) && !vd.mods.hasFlag(PRESUPER)
-              //remove $this$ from traits
-              case dd: DefDef => !compareNames(dd.name, nme.MIXIN_CONSTRUCTOR) 
-              case EmptyTree => false
-              case _ => true
-            } span {
-              case dd: DefDef => !compareNames(dd.name, nme.CONSTRUCTOR)
-              case _ => true
-            }
-
-            val modBody = left ::: right.drop(1)
-            val showBody = !(modBody.isEmpty &&
-              (self match {
-                // workaround for superfluous ValDef when parsing class without body using quasi quotes
-                case ValDef(mods, name, TypeTree(), rhs) if (mods & PRIVATE) != 0 && name.decoded == "_" && rhs.isEmpty => true
-                case _ => self.isEmpty
-              }))
-            if (showBody) {
-              if (!compareNames(self.name, nme.WILDCARD)) {
-                print(" { ", self.name);
-                printOpt(": ", self.tpt);
-                print(" =>")
-              } else if (!self.tpt.isEmpty) {
-                print(" { _ : ", self.tpt, " =>")
-              } else {
-                print(" {")
-              }
-              ownerManaged(tree) {
-                printColumn(modBody, "", ";", "}")
-              }
-            }
-
-          case Block(stats, expr) =>
-            ownerManaged(tree){
-              printColumn(stats ::: List(expr), "{", ";", "}")
-            }
-
-          case Match(selector, cases) =>
-            /* Insert braces if match is inner
-             * make this function available for other casses
-             * passing required type for checking
-             */
-            def insertBraces(body: =>Unit) {
-              if (ownerStack.exists{
-                _.isInstanceOf[Match]
-              }) {
-                  print("(")
-                  body
-                  print(")")
-              } else body
-            }
-
-            val printParentheses = inParentheses(selector)(iLabelDef = false)
-            tree match {
-              case Match(EmptyTree, cs) =>
-                printColumn(cases, "{", "", "}")
-              case _ =>
-                insertBraces {
-                  ownerManaged(tree){
-                    enclInParentheses(printParentheses) {
-                      print(selector);
-                    }
-                  }
-                  printColumn(cases, " match {", "", "}")
-                }
-            }
-
-          case CaseDef(pat, guard, body) =>
-            print("case ")
-            def patConstr(pat: Tree): Tree = pat match {
-              case Apply(fn, args) => patConstr(fn)
-              case _ => pat
-            }
-
-            print(pat);
-            printOpt(" if ", guard)
-            ownerManaged(tree) {
-              print(" => ", body)
-            }
-
-          case Star(elem) =>
-            print(elem, "*")
-
-          case Bind(name, t) =>
-            if (t == EmptyTree) print("(", resolveName(name), ")")
-            else if (t.exists{
-              case _:Star => true
-              case _ => false
-            }) print(resolveName(name), " @ ", t)
-            else print("(", resolveName(name), " @ ", t, ")")
-
-          case Function(vparams, body) =>
-            print("(");
-            printValueParams(vparams, true);
-            print(" => ", body, ")")
-
-          case Typed(expr, tp) =>
-            tp match {
-              case Function(List(), EmptyTree) => print("(", expr, " _)") //func _
-              //parenteses required when (a match {}) : Type
-              case _ => print("((", expr, "): ", tp, ")")
-            }
-
-          case Apply(fun, vargs) =>
-            tree match {
-              //processing methods ending on colons (x \: list)
-              case Apply(Block(l1 @ List(sVD :ValDef), a1 @ Apply(Select(_, methodName), l2 @ List(Ident(iVDName)))), l3 @ List(_*))
-                if sVD.mods.hasFlag(SYNTHETIC) && methodName.toString.endsWith("$colon") && compareNames(sVD.name, iVDName) =>
-                val printBlock = Block(l1, Apply(a1, l3))
-                print(printBlock)
-              case Apply(tree1, _) if (inParentheses(tree1)(iAnnotated = false)) => enclInParentheses(){print(fun)}; printRow(vargs, "(", ", ", ")")
-              case _ => print(fun); printRow(vargs, "(", ", ", ")")
-            }
-
-          case Super(This(qual), mix) =>
-            if (!qual.isEmpty || tree.symbol != NoSymbol) print(resolveName(qual) + ".")
-            print("super")
-            if (!mix.isEmpty)
-              print(s"[$mix]")
-
-          case This(qual) =>
-            if (!qual.isEmpty) print(resolveName(qual) + ".")
-            print("this")
-
-          case Select(qual@New(tpe), name) =>
-            print(qual)
-
-          case Select(qualifier, name) => {
-            val printParentheses = inParentheses(qualifier)(iAnnotated = false) || isIntLitWithDecodedOp(qualifier, name)
-            if (printParentheses) print("(", resolveSelect(qualifier), ").", resolveName(name))
-            else print(resolveSelect(qualifier), ".", resolveName(name))
+            print(if (mods.isDeferred) "<: " else if (!printedParents.isEmpty) " extends "
+            else "", impl)
           }
 
-          case id@Ident(name) =>
-            if (!name.isEmpty) {
-              val str = resolveName(name)
-
-              val strIsBackquoted = str.startsWith("`") && str.endsWith("`")
-
-              print(if (id.isBackquoted && !strIsBackquoted) "`" + str + "`" else str)
+        case PackageDef(packaged, stats) =>
+          atParent(tree){
+            packaged match {
+              case Ident(name) if compareNames(name, nme.EMPTY_PACKAGE_NAME) =>
+                printSeq(stats) {
+                  print(_)
+                } {
+                  print(";");
+                  println()
+                };
+              case _ =>
+                printAnnotations(tree)
+                print("package ", packaged);
+                printColumn(stats, " {", "\n", "}")
             }
-            else {
-              print("")
+          }
+
+        case ModuleDef(mods, name, impl) =>
+          atParent(tree){
+            printAnnotations(tree)
+            printModifiers(tree, mods);
+            val Template(parents @ List(_*), self, methods) = impl
+            val parWithoutAnyRef = removeDefaultClassesFromList(parents, List("AnyRef"))
+            print("object " + resolveName(name), if (!parWithoutAnyRef.isEmpty) " extends " else "", impl)
+          }
+
+        case vd@ValDef(mods, name, tp, rhs) =>
+          printAnnotations(tree)
+          printModifiers(tree, mods)
+          print(if (mods.isMutable) "var " else "val ", resolveName(name))
+          if (name.endsWith("_")) print(" ")
+          //place space after symbolic def name (val *: Unit does not compile)
+          printOpt(checkBlankForDef(tree, name), tp)
+          atParent(tree){
+            if (!mods.isDeferred)
+              print(" = ", if (rhs.isEmpty) "_" else rhs)
+          }
+
+        case dd@DefDef(mods, name, tparams, vparamss, tp, rhs) =>
+          printAnnotations(tree)
+          printModifiers(tree, mods)
+          print("def " + resolveName(name))
+          printTypeParams(tparams);
+          vparamss foreach printValueParams
+          if (tparams.isEmpty && (vparamss.isEmpty || vparamss(0).isEmpty) && name.endsWith("_"))
+            print(" ")
+          printOpt(checkBlankForDef(tree, name), tp)
+          atParent(tree){
+            printOpt(" = " + (if (mods.hasFlag(MACRO)) "macro " else ""), rhs)
+          }
+
+        case td@TypeDef(mods, name, tparams, rhs) =>
+          if (mods hasFlag (PARAM | DEFERRED)) {
+            printAnnotations(tree)
+            printModifiers(tree, mods);
+            print("type ");
+            printParam(tree)
+          } else {
+            printAnnotations(tree)
+            printModifiers(tree, mods);
+            print("type " + resolveName(name))
+            printTypeParams(tparams);
+            atParent(tree){
+              printOpt(" = ", rhs)
             }
+          }
 
-          case l@Literal(x) =>
-            if (x.value.isInstanceOf[String] && printMultiline && x.stringValue.contains("\n") && !x.stringValue.contains("\"\"\"") && x.stringValue.size > 1) {
-              val splitValue = x.stringValue.split('\n'.toString).toList
-              val multilineStringValue = if (x.stringValue.endsWith("\n")) splitValue :+ "" else splitValue
-              val trQuotes = "\"\"\""
-              print(trQuotes); printSeq(multilineStringValue){print(_)}{print("\n")}; print(trQuotes)
-            } else {
-              //processing Float constants
-              val printValue = x.escapedStringValue + (if (x.value.isInstanceOf[Float]) "F" else "")
-              print(printValue)
+        case LabelDef(name, params, rhs) =>
+          if (name.toString.contains("while$")) {
+            atParent(tree){
+              val If(cond, thenp, elsep) = rhs
+              print("while (", cond, ") ")
+              val Block(list, wh) = thenp
+              printColumn(list, "", ";", "")
             }
-
-          case Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), tree) =>
-            def printAnnot() {
-              print("@", tpt)
-              if (!args.isEmpty)
-                printRow(args, "(", ",", ")")
+          } else if (name.toString.contains("doWhile$")) {
+            atParent(tree){
+              val Block(bodyList: List[Tree], ifCond @ If(cond, thenp, elsep)) = rhs
+              print("do ")
+              printColumn(bodyList, "", ";", "")
+              print(" while (", cond, ") ")
             }
-
-            val printParentheses = inParentheses(tree)()
-            enclInParentheses(printParentheses){print(tree)}; print(if (tree.isType) " " else ": ")
-            printAnnot()
-
-          case SelectFromTypeTree(qualifier, selector) =>
-            print("(", qualifier, ")#", resolveName(selector))
-
-          case CompoundTypeTree(templ) =>
-            ownerManaged(tree){
-              print(templ)
+          } else {
+            print(resolveName(name)); printLabelParams(params);
+            atParent(tree){
+              printBlock(rhs)
             }
+          }
 
-          case AppliedTypeTree(tp, args) =>
-            //it's possible to have (=> String) => String type but Function1[=> String, String] is not correct
-            def containsByNameTypeParam =
-              args exists {
-                  case AppliedTypeTree(Select(qual, name), _) => name.toString.trim.equals("<byname>")
+        case Import(expr, selectors) =>
+          // Is this selector remapping a name (i.e, {name1 => name2})
+          def isNotRemap(s: ImportSelector): Boolean =
+            (compareNames(s.name, nme.WILDCARD) || compareNames(s.name, s.rename))
+
+          def selectorToString(s: ImportSelector): String = {
+            val from = quotedName(s.name)
+            if (isNotRemap(s)) from else from + "=>" + quotedName(s.rename)
+          }
+
+          print("import ", resolveSelect(expr), ".")
+          selectors match {
+            case List(s) =>
+              // If there is just one selector and it is not remapping a name, no braces are needed
+              if (isNotRemap(s)) print(selectorToString(s))
+              else print("{", selectorToString(s), "}")
+            // If there are more than one selector braces are always needed
+            case many =>
+              print(many.map(selectorToString).mkString("{", ", ", "}"))
+          }
+
+        case Template(parents, self, body) =>
+
+          val printedParents =
+            currentParent map {
+              //val example: Option[AnyRef => Product1[Any] with AnyRef] = ... - CompoundTypeTree with template
+              case _: CompoundTypeTree => parents
+              case ClassDef(mods, name, _, _) if mods.hasFlag(CASE) => removeDefaultTypesFromList(parents)(List("AnyRef"))(List("Product", "Serializable"))
+              case _ => removeDefaultClassesFromList(parents, List("AnyRef"))
+            } getOrElse(parents)
+
+          val primaryCtrOpt = getPrimaryConstr(body)
+          var ap: Option[Apply] = None
+
+          for (primaryCtr <- primaryCtrOpt) {
+            primaryCtr match {
+              case DefDef(_, _, _, _, _, Block(ctBody @ List(_*), _)) =>
+                ap = ctBody collectFirst {
+                  case apply: Apply => apply
+                }
+                //vals in preinit blocks
+                val presuperVals = ctBody filter {
+                  case vd:ValDef => vd.mods.hasFlag(PRESUPER)
                   case _ => false
                 }
+                if (!presuperVals.isEmpty) {
+                  print("{")
+                  printColumn(presuperVals, "", ";", "")
+                  print("} " + (if (!printedParents.isEmpty) "with " else ""))
+                }
+              case _ =>
+            }
+          }
 
-            if (containsByNameTypeParam) {
-              print("(")
-              printRow(args.init, "(", ", ", ")")
-              print(" => ", args.last, ")")
-            } else {
-              if (tp.exists {
-                case Select(_, name) => compareNames(name, tpnme.REPEATED_PARAM_CLASS_NAME)
-                case _ => false
-              } && !args.isEmpty) {
-                print(args(0), "*")
-              } else if (tp match {
-                case Select(_, name) => compareNames(name, tpnme.BYNAME_PARAM_CLASS_NAME)
-                case _ => false
-              }) {
-                print("=> ", if (args.isEmpty) "()" else args(0))
-              } else {
-                print(tp);
-                printRow(args, "[", ", ", "]")
+          if (!printedParents.isEmpty) {
+            val (clParent :: traits) = printedParents
+            print(clParent)
+
+            def constrParams(tree: Tree, cargs: List[List[Tree]]): List[List[Tree]] = {
+              tree match {
+                case Apply(inTree, args) =>
+                  constrParams(inTree, cargs):+args
+                case _ => cargs
               }
             }
 
-          case ExistentialTypeTree(tpt, whereClauses) =>
-            print("(", tpt);
-            printColumn(whereClauses, " forSome { ", ";", "})")
+            val applyParamsList = ap map {constrParams(_, Nil)} getOrElse Nil
+            applyParamsList foreach {x: List[Tree] => if (!(x.isEmpty && applyParamsList.size == 1)) printRow(x, "(", ", ", ")")}
 
-          case tbt@TypeBoundsTree(lo, hi) => {
-            val loDefault = "_root_.scala.Nothing"
-            val hiDefault = "_root_.scala.Any"
-            if (loDefault != lo.toString()) printOpt(" >: ", lo); if (hiDefault != hi.toString()) printOpt(" <: ", hi)
+            if (!traits.isEmpty) {
+              printRow(traits, " with ", " with ", "")
+            }
+          }
+          /* Remove primary constr def and constr val and var defs
+           * right contains all constructors
+           */
+          val (left, right) = body.filter {
+            //remove valdefs defined in constructor and pre-init block
+            case vd: ValDef => !vd.mods.hasFlag(PARAMACCESSOR) && !vd.mods.hasFlag(PRESUPER)
+            //remove $this$ from traits
+            case dd: DefDef => !compareNames(dd.name, nme.MIXIN_CONSTRUCTOR)
+            case EmptyTree => false
+            case _ => true
+          } span {
+            case dd: DefDef => !compareNames(dd.name, nme.CONSTRUCTOR)
+            case _ => true
           }
 
-          // workaround as case EmptyTree does not work for all universes because of path depedent types
-          case emptyTree if emptyTree.toString == "<empty>" =>
+          val modBody = left ::: right.drop(1)
+          val showBody = !(modBody.isEmpty &&
+            (self match {
+              // workaround for superfluous ValDef when parsing class without body using quasi quotes
+              case ValDef(mods, name, TypeTree(), rhs) if (mods & PRIVATE) != 0 && name.decoded == "_" && rhs.isEmpty => true
+              case _ => self.isEmpty
+            }))
+          if (showBody) {
+            if (!compareNames(self.name, nme.WILDCARD)) {
+              print(" { ", self.name);
+              printOpt(": ", self.tpt);
+              print(" =>")
+            } else if (!self.tpt.isEmpty) {
+              print(" { _ : ", self.tpt, " =>")
+            } else {
+              print(" {")
+            }
+            atParent(tree) {
+              printColumn(modBody, "", ";", "}")
+            }
+          }
 
-          case tree => super.printTree(tree)
+        case Block(stats, expr) =>
+          atParent(tree){
+            printColumn(stats ::: List(expr), "{", ";", "}")
+          }
+
+        case Match(selector, cases) =>
+          /* Insert braces if match is inner
+           * make this function available for other casses
+           * passing required type for checking
+           */
+          def insertBraces(body: =>Unit) {
+            if (parentsStack.exists{
+              _.isInstanceOf[Match]
+            }) {
+              print("(")
+              body
+              print(")")
+            } else body
+          }
+
+          val printParentheses = inParentheses(selector)(iLabelDef = false)
+          tree match {
+            case Match(EmptyTree, cs) =>
+              printColumn(cases, "{", "", "}")
+            case _ =>
+              insertBraces {
+                atParent(tree){
+                  enclInParentheses(printParentheses) {
+                    print(selector);
+                  }
+                }
+                printColumn(cases, " match {", "", "}")
+              }
+          }
+
+        case CaseDef(pat, guard, body) =>
+          print("case ")
+          def patConstr(pat: Tree): Tree = pat match {
+            case Apply(fn, args) => patConstr(fn)
+            case _ => pat
+          }
+
+          print(pat);
+          printOpt(" if ", guard)
+          atParent(tree) {
+            print(" => ", body)
+          }
+
+        case Star(elem) =>
+          print(elem, "*")
+
+        case Bind(name, t) =>
+          if (t == EmptyTree) print("(", resolveName(name), ")")
+          else if (t.exists{
+            case _:Star => true
+            case _ => false
+          }) print(resolveName(name), " @ ", t)
+          else print("(", resolveName(name), " @ ", t, ")")
+
+        case Function(vparams, body) =>
+          print("(");
+          printValueParams(vparams, true);
+          print(" => ", body, ")")
+
+        case Typed(expr, tp) =>
+          tp match {
+            case Function(List(), EmptyTree) => print("(", expr, " _)") //func _
+            //parenteses required when (a match {}) : Type
+            case _ => print("((", expr, "): ", tp, ")")
+          }
+
+        case Apply(fun, vargs) =>
+          tree match {
+            //processing methods ending on colons (x \: list)
+            case Apply(Block(l1 @ List(sVD :ValDef), a1 @ Apply(Select(_, methodName), l2 @ List(Ident(iVDName)))), l3 @ List(_*))
+              if sVD.mods.hasFlag(SYNTHETIC) && methodName.toString.endsWith("$colon") && compareNames(sVD.name, iVDName) =>
+              val printBlock = Block(l1, Apply(a1, l3))
+              print(printBlock)
+            case Apply(tree1, _) if (inParentheses(tree1)(iAnnotated = false)) => enclInParentheses(){print(fun)}; printRow(vargs, "(", ", ", ")")
+            case _ => print(fun); printRow(vargs, "(", ", ", ")")
+          }
+
+        case Super(This(qual), mix) =>
+          if (!qual.isEmpty || tree.symbol != NoSymbol) print(resolveName(qual) + ".")
+          print("super")
+          if (!mix.isEmpty)
+            print(s"[$mix]")
+
+        case This(qual) =>
+          if (!qual.isEmpty) print(resolveName(qual) + ".")
+          print("this")
+
+        case Select(qual@New(tpe), name) =>
+          print(qual)
+
+        case Select(qualifier, name) => {
+          val printParentheses = inParentheses(qualifier)(iAnnotated = false) || isIntLitWithDecodedOp(qualifier, name)
+          if (printParentheses) print("(", resolveSelect(qualifier), ").", resolveName(name))
+          else print(resolveSelect(qualifier), ".", resolveName(name))
         }
+
+        case id@Ident(name) =>
+          if (!name.isEmpty) {
+            val str = resolveName(name)
+
+            val strIsBackquoted = str.startsWith("`") && str.endsWith("`")
+
+            print(if (id.isBackquoted && !strIsBackquoted) "`" + str + "`" else str)
+          }
+          else {
+            print("")
+          }
+
+        case l@Literal(x) =>
+          if (x.value.isInstanceOf[String] && printMultiline && x.stringValue.contains("\n") && !x.stringValue.contains("\"\"\"") && x.stringValue.size > 1) {
+            val splitValue = x.stringValue.split('\n'.toString).toList
+            val multilineStringValue = if (x.stringValue.endsWith("\n")) splitValue :+ "" else splitValue
+            val trQuotes = "\"\"\""
+            print(trQuotes); printSeq(multilineStringValue){print(_)}{print("\n")}; print(trQuotes)
+          } else {
+            //processing Float constants
+            val printValue = x.escapedStringValue + (if (x.value.isInstanceOf[Float]) "F" else "")
+            print(printValue)
+          }
+
+        case Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), tree) =>
+          def printAnnot() {
+            print("@", tpt)
+            if (!args.isEmpty)
+              printRow(args, "(", ",", ")")
+          }
+
+          val printParentheses = inParentheses(tree)()
+          enclInParentheses(printParentheses){print(tree)}; print(if (tree.isType) " " else ": ")
+          printAnnot()
+
+        case SelectFromTypeTree(qualifier, selector) =>
+          print("(", qualifier, ")#", resolveName(selector))
+
+        case CompoundTypeTree(templ) =>
+          atParent(tree){
+            print(templ)
+          }
+
+        case AppliedTypeTree(tp, args) =>
+          //it's possible to have (=> String) => String type but Function1[=> String, String] is not correct
+          def containsByNameTypeParam =
+            args exists {
+              case AppliedTypeTree(Select(qual, name), _) => name.toString.trim.equals("<byname>")
+              case _ => false
+            }
+
+          if (containsByNameTypeParam) {
+            print("(")
+            printRow(args.init, "(", ", ", ")")
+            print(" => ", args.last, ")")
+          } else {
+            if (tp.exists {
+              case Select(_, name) => compareNames(name, tpnme.REPEATED_PARAM_CLASS_NAME)
+              case _ => false
+            } && !args.isEmpty) {
+              print(args(0), "*")
+            } else if (tp match {
+              case Select(_, name) => compareNames(name, tpnme.BYNAME_PARAM_CLASS_NAME)
+              case _ => false
+            }) {
+              print("=> ", if (args.isEmpty) "()" else args(0))
+            } else {
+              print(tp);
+              printRow(args, "[", ", ", "]")
+            }
+          }
+
+        case ExistentialTypeTree(tpt, whereClauses) =>
+          print("(", tpt);
+          printColumn(whereClauses, " forSome { ", ";", "})")
+
+        case tbt@TypeBoundsTree(lo, hi) => {
+          val loDefault = "_root_.scala.Nothing"
+          val hiDefault = "_root_.scala.Any"
+          if (loDefault != lo.toString()) printOpt(" >: ", lo); if (hiDefault != hi.toString()) printOpt(" <: ", hi)
+        }
+
+        // workaround as case EmptyTree does not work for all universes because of path depedent types
+        case emptyTree if emptyTree.toString == "<empty>" =>
+
+        case tree => super.printTree(tree)
       }
-
-      def resolveName(name: Name, decoded: Boolean = decodeNames) = {
-        val encName = name.encoded
-        val decName = name.decoded
-        def modifyEncoded(s: String) = if (decoded && (encName.contains("$u") ||
-          (encName.contains("$") && decName.exists(ch => opSym.contains(ch)) && 
-            decName.exists(ch => !opSym.contains(ch)) && !excList.exists(str => decName.contains(str)))))
-          "`%s`" format s else s
-
-        if (compareNames(name, nme.CONSTRUCTOR)) "this"
-        else modifyEncoded(quotedName(name, decoded))
-      }
-
-      protected val opSym = List('~', '=', '<', '>', '!', '#', '%', '^', '&', '|', '*', '/', '+', '-', ':', '\\', '?', '@')
-      protected val excList = List("\\", "_*")
+    }
   }
 
   /** Hook for extensions */
