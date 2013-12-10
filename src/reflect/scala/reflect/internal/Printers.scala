@@ -716,13 +716,11 @@ trait Printers extends api.Printers { self: SymbolTable =>
                   //constructor's params
                   printParamss foreach { printParams =>
                   //don't print single empty constructor param list
-                    if (!(printParams.isEmpty && printParamss.size == 1) || cstrMods.hasFlag(AccessFlags)) {
+                    if (!(printParams.isEmpty && printParamss.size == 1 && !mods.isCase) || cstrMods.hasFlag(AccessFlags)) {
                       printConstrParams(printParams)
                       print(" ")
                     }
                   }
-                  //case classes without a parameter list are not allowed
-                  if ((printParamss.isEmpty || printParamss(0).isEmpty) && mods.isCase) print("() ")
               } getOrElse (print(" "))
             }
 
