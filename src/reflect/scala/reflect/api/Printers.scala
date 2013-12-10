@@ -201,15 +201,16 @@ trait Printers { self: Universe =>
    */
   protected def newTreePrinter(out: PrintWriter): TreePrinter
 
+  //TODO reuse toCode for toString
   /** Renders the code of passed tree
    *  @group Printers
    */
-  def toCode(tree: Tree) = render(tree, newCodePrinter(_))  //TODO reuse toCode for toString
+  def toCode(tree: Tree, printMultiline: Boolean = false, decodeNames: Boolean = true) = render(tree, newCodePrinter(_, printMultiline, decodeNames))  
 
   /** Hook to define what `toCode(...)` means.
    * @group Printers
    */
-  protected def newCodePrinter(out: PrintWriter): TreePrinter
+  protected def newCodePrinter(out: PrintWriter, printMultiline: Boolean, decodeNames: Boolean): TreePrinter
 
   /** Renders internal structure of a reflection artifact as the
    *  visualization of a Scala syntax tree.

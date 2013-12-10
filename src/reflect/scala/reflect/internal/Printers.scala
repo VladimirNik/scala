@@ -460,7 +460,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     }
   }
 
-  class ParsedTreePrinter(out: PrintWriter, printMultiline: Boolean = false, decodeNames: Boolean = true) extends TreePrinter(out) {
+  class ParsedTreePrinter(out: PrintWriter, printMultiline: Boolean, decodeNames: Boolean) extends TreePrinter(out) {
 
     protected val parentsStack = scala.collection.mutable.Stack[Tree]()
 
@@ -1125,7 +1125,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
   def xprintTree(treePrinter: TreePrinter, tree: Tree) =
     treePrinter.print(tree.productPrefix+tree.productIterator.mkString("(", ", ", ")"))
 
-  def newCodePrinter(writer: PrintWriter): TreePrinter = new ParsedTreePrinter(writer)
+  def newCodePrinter(writer: PrintWriter, printMultiline: Boolean, decodeNames: Boolean): TreePrinter = new ParsedTreePrinter(writer, printMultiline, decodeNames)
   def newTreePrinter(writer: PrintWriter): TreePrinter = new TreePrinter(writer)
   def newTreePrinter(stream: OutputStream): TreePrinter = newTreePrinter(new PrintWriter(stream))
   def newTreePrinter(): TreePrinter = newTreePrinter(new PrintWriter(ConsoleWriter))
