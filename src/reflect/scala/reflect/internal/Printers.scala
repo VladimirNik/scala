@@ -1007,7 +1007,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           else print("(", resolveName(name), " @ ", t, ")")
 
         case f@Function(vparams, body) =>
-          printFunction(f, codePrinter = true)(printValueParams(vparams))
+          printFunction(f, codePrinter = true)(printValueParams(vparams), isFuncTree = true)
 
         case Typed(expr, tp) =>
           tp match {
