@@ -287,6 +287,31 @@ trait Printers extends api.Printers { self: SymbolTable =>
       if (!codePrinter && printIds && tree.symbol != null) print("#"+tree.symbol.id)
     }
 
+    protected def printSuper(tree: Super, resName: =>String) {
+      val Super(This(qual), mix) = tree
+      if (!qual.isEmpty || tree.symbol != NoSymbol) print(resName + ".")
+      print("super")
+      if (!mix.isEmpty) print(s"[$mix]")
+    }
+
+    protected def printThis(tree: This, resName: =>String) {
+      val This(qual) = tree
+      if (!qual.isEmpty) print(resName + ".") 
+      print("this")
+    }
+
+    protected def printAnnotated(tree: Annotated)(printBase: =>Unit) {
+      val Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), atree) = tree
+
+      def printAnnot() {
+        print("@", tpt)
+        if (!args.isEmpty)
+          printRow(args, "(", ",", ")")
+      }
+      printBase
+      printAnnot()
+    }
+
     def printTree(tree: Tree) {
       tree match {
         case EmptyTree =>
@@ -420,20 +445,16 @@ trait Printers extends api.Printers { self: SymbolTable =>
           print("<apply-dynamic>(", qual, "#", tree.symbol.nameString)
           printRow(vargs, ", (", ", ", "))")
 
-        case Super(This(qual), mix) =>
-          if (!qual.isEmpty || tree.symbol != NoSymbol) print(symName(tree, qual) + ".")
-          print("super")
-          if (!mix.isEmpty)
-            print("[" + mix + "]")
+        case st@Super(This(qual), mix) =>
+          printSuper(st, symName(tree, qual))
 
         case Super(qual, mix) =>
           print(qual, ".super")
           if (!mix.isEmpty)
             print("[" + mix + "]")
 
-        case This(qual) =>
-          if (!qual.isEmpty) print(symName(tree, qual) + ".")
-          print("this")
+        case th@This(qual) =>
+          printThis(th, symName(tree, qual))
 
         case Select(qual @ New(tpe), name) if !settings.debug =>
           print(qual)
@@ -458,14 +479,8 @@ trait Printers extends api.Printers { self: SymbolTable =>
             print(tree.tpe.toString)
           }
 
-        case Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), tree) =>
-          def printAnnot() {
-            print("@", tpt)
-            if (!args.isEmpty)
-              printRow(args, "(", ",", ")")
-          }
-          print(tree, if (tree.isType) " " else ": ")
-          printAnnot()
+        case an@Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), tree) =>
+          printAnnotated(an)(print(tree, if (tree.isType) " " else ": "))
 
         case SingletonTypeTree(ref) =>
           print(ref, ".type")
@@ -1009,18 +1024,14 @@ trait Printers extends api.Printers { self: SymbolTable =>
               val printBlock = Block(l1, Apply(a1, l3))
               print(printBlock)
             case Apply(tree1, _) if (inParentheses(tree1)(iAnnotated = false)) => enclInParentheses(){print(fun)}; printRow(vargs, "(", ", ", ")")
-            case _ => print(fun); printRow(vargs, "(", ", ", ")")
+            case _ => super.printTree(tree)
           }
 
-        case Super(This(qual), mix) =>
-          if (!qual.isEmpty || tree.symbol != NoSymbol) print(resolveName(qual) + ".")
-          print("super")
-          if (!mix.isEmpty)
-            print(s"[$mix]")
+        case st@Super(This(qual), mix) =>
+          printSuper(st, resolveName(qual))
 
-        case This(qual) =>
-          if (!qual.isEmpty) print(resolveName(qual) + ".")
-          print("this")
+        case th@This(qual) =>
+          printThis(th, resolveName(qual))
 
         case Select(qual@New(tpe), name) =>
           print(qual)
@@ -1055,23 +1066,18 @@ trait Printers extends api.Printers { self: SymbolTable =>
             print(printValue)
           }
 
-        case Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), tree) =>
-          def printAnnot() {
-            print("@", tpt)
-            if (!args.isEmpty)
-              printRow(args, "(", ",", ")")
+        case an@Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), tree) =>
+          printAnnotated(an){
+            val printParentheses = inParentheses(tree)()
+            enclInParentheses(printParentheses){print(tree)}; print(if (tree.isType) " " else ": ")            
           }
-
-          val printParentheses = inParentheses(tree)()
-          enclInParentheses(printParentheses){print(tree)}; print(if (tree.isType) " " else ": ")
-          printAnnot()
 
         case SelectFromTypeTree(qualifier, selector) =>
           print("(", qualifier, ")#", resolveName(selector))
 
         case CompoundTypeTree(templ) =>
           atParent(tree){
-            print(templ)
+            super.printTree(tree)
           }
 
         case AppliedTypeTree(tp, args) =>
@@ -1097,11 +1103,8 @@ trait Printers extends api.Printers { self: SymbolTable =>
               case _ => false
             }) {
               print("=> ", if (args.isEmpty) "()" else args(0))
-            } else {
-              //TODO here we can invoke function super
-              print(tp);
-              printRow(args, "[", ", ", "]")
-            }
+            } else 
+              super.printTree(tree)
           }
 
         case ExistentialTypeTree(tpt, whereClauses) =>
