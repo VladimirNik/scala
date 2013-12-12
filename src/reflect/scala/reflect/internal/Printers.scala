@@ -785,13 +785,14 @@ trait Printers extends api.Printers { self: SymbolTable =>
                   }
 
                   //constructor's params
-                  printParamss foreach { printParams =>
                   //don't print single empty constructor param list
-                    if (!(printParams.isEmpty && printParamss.size == 1 && !mods.isCase) || cstrMods.hasFlag(AccessFlags)) {
+                  if (!(printParamss.isEmpty || (printParamss(0).isEmpty && printParamss.size == 1) && !mods.isCase) || cstrMods.hasFlag(AccessFlags)) {
+                    printParamss foreach { printParams =>
                       printConstrParams(printParams)
-                      print(" ")
                     }
-                  }
+                    // print(" ")
+                  } 
+                  
               } getOrElse (print(" "))
             }
 
