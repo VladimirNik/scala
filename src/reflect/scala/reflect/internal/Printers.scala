@@ -664,7 +664,12 @@ trait Printers extends api.Printers { self: SymbolTable =>
           if (name.endsWith("_")) print(" ");
           printOpt(": ", tp);
           printOpt(" = ", rhs)
-        case _ => super.printParam(tree)
+        case TypeDef(_, name, tparams, rhs) =>
+          print(resolveName(name))
+          printTypeParams(tparams); 
+          print(rhs)
+        case _ => 
+          super.printParam(tree)
       }
     }
 
@@ -730,6 +735,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case cl@ClassDef(mods, name, tparams, impl) =>  
           atParent(tree) {
             printAnnotations(tree) 
+            //traits
             val clParents: List[Tree] = if (mods.isTrait) {
               // avoid abstract modifier for traits
               printModifiers(tree, mods &~ ABSTRACT)
@@ -738,34 +744,13 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
               val build.SyntacticTraitDef(_, _, _, earlyDefs, parents, selfType, body) = tree
               parents
+            //classes
             } else {
               printModifiers(tree, mods)
               print("class ", resolveName(name))
               printTypeParams(tparams)
 
               val build.SyntacticClassDef(_, _, _, ctorMods, vparamss, earlyDefs, parents, selfType, body) = cl
-
-              val templateVals = body collect {
-                case ValDef(mods, name, _, _) => (name, mods)
-              }
-
-              //combine modifiers
-              // val printParamss = 
-                // vparamss map {
-                //   vparams =>
-                //     if (vparams.isEmpty) vparams
-                //     else vparams map {
-                //       vparam =>
-                //         templateVals find {
-                //           tv =>
-                //             compareNames(tv._1, vparam.name)
-                //         } map {
-                //           templateVal =>
-                //             ValDef(Modifiers(vparam.mods.flags | templateVal._2.flags, templateVal._2.privateWithin,
-                //               (vparam.mods.annotations ::: templateVal._2.annotations) distinct), vparam.name, vparam.tpt, vparam.rhs)
-                //         } getOrElse vparam
-                //     }
-                // }
 
               //constructor's modifier
               if (ctorMods.hasFlag(AccessFlags)) {
@@ -779,15 +764,10 @@ trait Printers extends api.Printers { self: SymbolTable =>
                   printSeq(ts)(printParam(_, implicitInCtor = true))(print(", "))
                 }
               }
-
-              //constructor's params
-              vparamss foreach { printParams =>
-              //don't print single empty constructor param list
-                if (!(printParams.isEmpty && vparamss.size == 1 && !mods.isCase) || ctorMods.hasFlag(AccessFlags)) {
-                  printConstrParams(printParams)
-                  print(" ")
-                }
-              }             
+              //constructor's params processing (don't print single empty constructor param list)
+              if (!(vparamss.isEmpty || (vparamss(0).isEmpty && vparamss.size == 1) && !mods.isCase) || ctorMods.hasFlag(AccessFlags)) {
+                vparamss foreach printConstrParams     
+              }        
               parents
             }
 
@@ -1116,7 +1096,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
         case tree => super.printTree(tree)
       }
-    }
+    }  
   }
 
   /** Hook for extensions */
