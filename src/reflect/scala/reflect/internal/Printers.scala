@@ -623,11 +623,11 @@ trait Printers extends api.Printers { self: SymbolTable =>
     }
 
     override def printFlags(flags: Long, privateWithin: String) =
-      printFlags(flags, privateWithin, isConstr = false)
+      printFlags(flags, privateWithin, implicitInCtor = false)
 
-    def printFlags(flags: Long, privateWithin: String, isConstr: Boolean) {
+    def printFlags(flags: Long, privateWithin: String, implicitInCtor: Boolean) {
       val base = AccessFlags | OVERRIDE | ABSTRACT | FINAL | SEALED | LAZY
-      val mask = if (isConstr) base else base | IMPLICIT
+      val mask = if (implicitInCtor) base else base | IMPLICIT
 
       val s = flagsToString(flags & mask, privateWithin)
       if (s != "") print(s"$s ")
@@ -639,28 +639,28 @@ trait Printers extends api.Printers { self: SymbolTable =>
       if (!absOverrideFlag.isEmpty) print("abstract override ")
     }
 
-    override def printModifiers(tree: Tree, mods: Modifiers): Unit = printModifiers(tree, mods, isConstr = false)
+    override def printModifiers(tree: Tree, mods: Modifiers): Unit = printModifiers(mods, implicitInCtor = false)
 
-    def printModifiers(tree: Tree, mods: Modifiers, isConstr: Boolean): Unit = {
+    def printModifiers(mods: Modifiers, implicitInCtor: Boolean): Unit = {
       def modsAccepted = currentParent map {
         case _:ClassDef | _:ModuleDef | _:Template | _:PackageDef => true
         case _ => false
       } getOrElse false
 
       if (currentParent.isEmpty || modsAccepted)
-        printFlags(mods.flags, "" + mods.privateWithin, isConstr)
+        printFlags(mods.flags, "" + mods.privateWithin, implicitInCtor)
       else
-        List(IMPLICIT, CASE, LAZY).foreach{flag => if(mods.hasFlag(flag))  printFlags(flag, "", isConstr)}
+        List(IMPLICIT, CASE, LAZY).foreach{flag => if(mods.hasFlag(flag))  printFlags(flag, "", implicitInCtor)}
     }
 
-    def printParam(tree: Tree, isConstr: Boolean) {
+    def printParam(tree: Tree, implicitInCtor: Boolean) {
       tree match {
         case ValDef(mods, name, tp, rhs) =>
           printAnnotations(tree)
-          if (isConstr) {
-            printModifiers(tree, mods, isConstr)
+          if (implicitInCtor) {
+            printModifiers(mods, implicitInCtor)
           }
-          print(if (mods.isMutable && isConstr) "var " else if (isConstr) "val " else "", resolveName(name));
+          print(if (mods.isMutable && implicitInCtor) "var " else if (implicitInCtor) "val " else "", resolveName(name));
           if (name.endsWith("_")) print(" ");
           printOpt(": ", tp);
           printOpt(" = ", rhs)
@@ -669,7 +669,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     }
 
     override def printParam(tree: Tree) {
-      printParam(tree, isConstr = false)
+      printParam(tree, implicitInCtor = false)
     }
 
     override def printValueParams(ts: List[ValDef]) {
@@ -727,82 +727,76 @@ trait Printers extends api.Printers { self: SymbolTable =>
         }
 
       tree match {
-        case ClassDef(mods, name, tparams, impl) =>
-          atParent(tree){
-            printAnnotations(tree)
-            val word =
-              if (mods.isTrait) {
-                // avoid abstract modifier for traits
-                printModifiers(tree, mods &~ ABSTRACT)
-                "trait"
-              } else {
-                printModifiers(tree, mods)
-                "class"
-              }
+        case cl@ClassDef(mods, name, tparams, impl) =>  
+          atParent(tree) {
+            printAnnotations(tree) 
+            val clParents: List[Tree] = if (mods.isTrait) {
+              // avoid abstract modifier for traits
+              printModifiers(tree, mods &~ ABSTRACT)
+              print("trait ", resolveName(name))
+              printTypeParams(tparams) 
 
-            print(word, " ", resolveName(name))
-            printTypeParams(tparams)
+              val build.SyntacticTraitDef(_, _, _, earlyDefs, parents, selfType, body) = tree
+              parents
+            } else {
+              printModifiers(tree, mods)
+              print("class ", resolveName(name))
+              printTypeParams(tparams)
 
-            def printConstrParams(ts: List[ValDef]) {
-              enclInParentheses() {
-                if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
-                printSeq(ts)(printParam(_, isConstr = true))(print(", "))
-              }
-            }
+              val build.SyntacticClassDef(_, _, _, ctorMods, vparamss, earlyDefs, parents, selfType, body) = cl
 
-            val Template(parents @ List(_*), self, methods) = impl
-            if (!mods.isTrait) {
-              val templateVals = methods collect {
+              val templateVals = body collect {
                 case ValDef(mods, name, _, _) => (name, mods)
               }
 
-              val primaryConstrOpt = getPrimaryConstr(methods)
+              //combine modifiers
+              // val printParamss = 
+                // vparamss map {
+                //   vparams =>
+                //     if (vparams.isEmpty) vparams
+                //     else vparams map {
+                //       vparam =>
+                //         templateVals find {
+                //           tv =>
+                //             compareNames(tv._1, vparam.name)
+                //         } map {
+                //           templateVal =>
+                //             ValDef(Modifiers(vparam.mods.flags | templateVal._2.flags, templateVal._2.privateWithin,
+                //               (vparam.mods.annotations ::: templateVal._2.annotations) distinct), vparam.name, vparam.tpt, vparam.rhs)
+                //         } getOrElse vparam
+                //     }
+                // }
 
-              primaryConstrOpt map {
-                primaryConstr =>
-                  val cstrMods = primaryConstr.mods
-                  val vparamss = primaryConstr.vparamss
-                  //combine modifiers
-                  val printParamss =
-                    vparamss map {
-                      vparams =>
-                        if (vparams.isEmpty) vparams
-                        else vparams map {
-                          vparam =>
-                            templateVals find {
-                              tv =>
-                                compareNames(tv._1, vparam.name)
-                            } map {
-                              templateVal =>
-                                ValDef(Modifiers(vparam.mods.flags | templateVal._2.flags, templateVal._2.privateWithin,
-                                  (vparam.mods.annotations ::: templateVal._2.annotations) distinct), vparam.name, vparam.tpt, vparam.rhs)
-                            } getOrElse vparam
-                        }
-                    }
+              //constructor's modifier
+              if (ctorMods.hasFlag(AccessFlags)) {
+                print(" ")
+                printModifiers(ctorMods, implicitInCtor = false)
+              }  
 
-                  //constructor's modifier
-                  if (cstrMods.hasFlag(AccessFlags)) {
-                    print(" ")
-                    printModifiers(primaryConstr, cstrMods)
-                  }
+              def printConstrParams(ts: List[ValDef]) {
+                enclInParentheses() {
+                  if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
+                  printSeq(ts)(printParam(_, implicitInCtor = true))(print(", "))
+                }
+              }
 
-                  //constructor's params
-                  printParamss foreach { printParams =>
-                  //don't print single empty constructor param list
-                    if (!(printParams.isEmpty && printParamss.size == 1 && !mods.isCase) || cstrMods.hasFlag(AccessFlags)) {
-                      printConstrParams(printParams)
-                      print(" ")
-                    }
-                  }
-              } getOrElse (print(" "))
+              //constructor's params
+              vparamss foreach { printParams =>
+              //don't print single empty constructor param list
+                if (!(printParams.isEmpty && vparamss.size == 1 && !mods.isCase) || ctorMods.hasFlag(AccessFlags)) {
+                  printConstrParams(printParams)
+                  print(" ")
+                }
+              }             
+              parents
             }
 
             //get trees without default classes and traits (when they are last)
-            val printedParents = removeDefaultTypesFromList(parents)(List("AnyRef"))(if (mods.hasFlag(CASE)) List("Product", "Serializable") else Nil)
+            val printedParents = removeDefaultTypesFromList(clParents)(List("AnyRef"))(if (mods.hasFlag(CASE)) List("Product", "Serializable") else Nil)
 
             print(if (mods.isDeferred) "<: " else if (!printedParents.isEmpty) " extends "
             else "", impl)
-          }
+        }
 
         case pd@PackageDef(packaged, stats) =>
           atParent(tree){
@@ -1007,7 +1001,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           else print("(", resolveName(name), " @ ", t, ")")
 
         case f@Function(vparams, body) =>
-          printFunction(f, codePrinter = true)(printValueParams(vparams), isFuncTree = true)
+          printFunction(f, codePrinter = true)(printValueParams(vparams, isFuncTree = true))
 
         case Typed(expr, tp) =>
           tp match {
