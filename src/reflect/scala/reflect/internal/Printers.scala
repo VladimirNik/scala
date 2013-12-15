@@ -110,11 +110,16 @@ trait Printers extends api.Printers { self: SymbolTable =>
       if (!ts.isEmpty) {
         print("["); printSeq(ts){ t =>
           printAnnotations(t)
+          if (t.mods.hasFlag(CONTRAVARIANT)) {
+            print("-")
+          } else if (t.mods.hasFlag(COVARIANT)) {
+            print("+")
+          }
           printParam(t)
         }{print(", ")}; print("]")
       }
     }
-
+    
     def printLabelParams(ps: List[Ident]) {
       print("(")
       printSeq(ps){printLabelParam}{print(", ")}
@@ -127,16 +132,16 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     def printValueParams(ts: List[ValDef]) {
       print("(")
-      if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
+      if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT)
       printSeq(ts){printParam}{print(", ")}
       print(")")
     }
 
     def printParam(tree: Tree) {
       tree match {
-        case ValDef(mods, name, tp, rhs) =>
+        case vd@ValDef(mods, name, tp, rhs) =>
           printPosition(tree)
-          printAnnotations(tree)
+          printAnnotations(vd)
           print(symName(tree, name)); printOpt(": ", tp); printOpt(" = ", rhs)
         case TypeDef(mods, name, tparams, rhs) =>
           printPosition(tree)
@@ -172,16 +177,16 @@ trait Printers extends api.Printers { self: SymbolTable =>
         )
     )
 
-    def printFlags(flags: Long, privateWithin: String) {
+    def printFlags(flags: Long, privateWithin: String = "") {
       val mask: Long = if (settings.debug) -1L else PrintableFlags
       val s = flagsToString(flags & mask, privateWithin)
       if (s != "") print(s + " ")
     }
 
-    def printAnnotations(tree: Tree) {
+    def printAnnotations(tree: MemberDef) {
       // SI-5885: by default this won't print annotations of not yet initialized symbols
       val annots = tree.symbol.annotations match {
-        case Nil  => tree.asInstanceOf[MemberDef].mods.annotations
+        case Nil  => tree.mods.annotations
         case anns => anns
       }
       annots foreach (annot => print("@"+annot+" "))
@@ -317,8 +322,8 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case EmptyTree =>
           print("<empty>")
 
-        case ClassDef(mods, name, tparams, impl) =>
-          printAnnotations(tree)
+        case cd@ClassDef(mods, name, tparams, impl) =>
+          printAnnotations(cd)
           printModifiers(tree, mods)
           val word =
             if (mods.isTrait) "trait"
@@ -332,8 +337,8 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case pd@PackageDef(packaged, stats) =>
           printPackageDef(pd, ";")
 
-        case ModuleDef(mods, name, impl) =>
-          printAnnotations(tree)
+        case md@ModuleDef(mods, name, impl) =>
+          printAnnotations(md)
           printModifiers(tree, mods)
           print("object " + symName(tree, name), " extends ", impl)
 
@@ -559,7 +564,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     protected def currentParent = if (!parentsStack.isEmpty) Some(parentsStack.top) else None
 
-    protected def resolveName(name: Name, decoded: Boolean = decodeNames) = {
+    protected def printedName(name: Name, decoded: Boolean = decodeNames) = {
       val encName = name.encoded
       val decName = name.decoded
 
@@ -583,7 +588,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
       decodeNames && qualIsIntLit && name.isOperatorName
     }
 
-    protected def enclInParentheses(condition: Boolean = true)(body: => Unit) {
+    protected def parenthesize(condition: Boolean = true)(body: => Unit) {
       if (condition) print("(")
       body
       if (condition) print(")")
@@ -604,10 +609,10 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     protected def resolveSelect(t: Tree): String = {
       t match {
-        case Select(qual, name) if (name.isTermName && inParentheses(qual)(iLabelDef = false)) || isIntLitWithDecodedOp(qual, name) => "(%s).%s".format(resolveSelect(qual), resolveName(name))
-        case Select(qual, name) if name.isTermName  => "%s.%s".format(resolveSelect(qual), resolveName(name))
-        case Select(qual, name) if name.isTypeName  => "%s#%s".format(resolveSelect(qual), resolveName(name))
-        case Ident(name)                            => resolveName(name)
+        case Select(qual, name) if (name.isTermName && inParentheses(qual)(iLabelDef = false)) || isIntLitWithDecodedOp(qual, name) => "(%s).%s".format(resolveSelect(qual), printedName(name))
+        case Select(qual, name) if name.isTermName  => "%s.%s".format(resolveSelect(qual), printedName(name))
+        case Select(qual, name) if name.isTypeName  => "%s#%s".format(resolveSelect(qual), printedName(name))
+        case Ident(name)                            => printedName(name)
         case _                                      => toCode(t)
       }
     }
@@ -616,10 +621,10 @@ trait Printers extends api.Printers { self: SymbolTable =>
       def removeDefaultTraitsFromList(trees: List[Tree], traitsToRemove: List[String]): List[Tree] =
         trees match {
           case Nil => trees
-          case list : List[Tree] => list.last match {
-            case Select(Ident(sc), name) if ((traitsToRemove.contains(name.toString)) && (sc.toString == "scala"))
-            => removeDefaultTraitsFromList(list.init, traitsToRemove)
-            case _ => list
+          case init :+ last => last match {
+            case Select(Ident(sc), name) if ((traitsToRemove.contains(name.toString)) && compareNames(sc, nme.scala_ ))
+            => removeDefaultTraitsFromList(init, traitsToRemove)
+            case _ => trees
           }
         }
 
@@ -631,7 +636,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
       case _ => true
     }
 
-    override def printFlags(flags: Long, privateWithin: String) =
+    override def printFlags(flags: Long, privateWithin: String = "") =
       printFlags(flags, privateWithin, implicitInCtor = false)
 
     def printFlags(flags: Long, privateWithin: String, implicitInCtor: Boolean) {
@@ -652,7 +657,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     def printModifiers(mods: Modifiers, implicitInCtor: Boolean): Unit = {
       def modsAccepted = currentParent map {
-        case _:ClassDef | _:ModuleDef | _:Template | _:PackageDef => true
+        case _: ClassDef | _: ModuleDef | _: Template | _: PackageDef => true
         case _ => false
       } getOrElse false
 
@@ -664,17 +669,17 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     def printParam(tree: Tree, implicitInCtor: Boolean) {
       tree match {
-        case ValDef(mods, name, tp, rhs) =>
-          printAnnotations(tree)
+        case vd@ValDef(mods, name, tp, rhs) =>
+          printAnnotations(vd)
           if (implicitInCtor) {
             printModifiers(mods, implicitInCtor)
           }
-          print(if (mods.isMutable && implicitInCtor) "var " else if (implicitInCtor) "val " else "", resolveName(name));
+          print(if (mods.isMutable && implicitInCtor) "var " else if (implicitInCtor) "val " else "", printedName(name));
           if (name.endsWith("_")) print(" ");
           printOpt(": ", tp);
           printOpt(" = ", rhs)
         case TypeDef(_, name, tparams, rhs) =>
-          print(resolveName(name))
+          print(printedName(name))
           printTypeParams(tparams);
           print(rhs)
         case _ =>
@@ -691,49 +696,33 @@ trait Printers extends api.Printers { self: SymbolTable =>
     }
 
     def printValueParams(ts: List[ValDef], isFuncTree: Boolean) {
-      //val a: Int => Int = implicit x => x - parentheses are not allowed here
+      //parentheses are not allowed for val a: Int => Int = implicit x => x
       val printParentheses = !isFuncTree || {
         ts match {
-          case List(vd: ValDef) => !vd.mods.hasFlag(IMPLICIT)
+          case List(vd) => !vd.mods.hasFlag(IMPLICIT)
           case _ => true
         }
       }
       if (printParentheses)
         super.printValueParams(ts)
       else {
-        if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
-        printSeq(ts) {
-          printParam
-        } { print(", ") }
+        if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT)
+        printSeq(ts)(printParam)(print(", "))
       }
     }
 
-    override def printTypeParams(ts: List[TypeDef]) {
-      if (!ts.isEmpty) {
-        print("["); printSeq(ts){ t =>
-          printAnnotations(t)
-          if (t.mods.hasFlag(CONTRAVARIANT)) {
-            print("-")
-          } else if (t.mods.hasFlag(COVARIANT)) {
-            print("+")
-          }
-          printParam(t)
-        }{print(", ")}; print("]")
-      }
-    }
-
-    override def printAnnotations(tree: Tree) {
-      val annots = tree.asInstanceOf[MemberDef].mods.annotations
+    override def printAnnotations(tree: MemberDef) {
+      val annots = tree.mods.annotations
       annots foreach {
-        case Apply(Select(New(tree), p), args) => val ap = Apply(tree, args)
-          print("@", ap, " ")
+        case Apply(Select(New(tree), p), args) => 
+          print("@", Apply(tree, args), " ")
         case ann => print(s"@$ann ")
       }
     }
 
     override def printTree(tree: Tree) {
       def checkBlankForDef(tree: Tree, name: Name) =
-        (if (resolveName(name) != resolveName(name, decoded = false) || resolveName(name) != resolveName(name, decoded = true)) " " else "") + ": "
+        (if (printedName(name) != printedName(name, decoded = false) || printedName(name) != printedName(name, decoded = true)) " " else "") + ": "
 
       def getPrimaryConstr(methods: List[Tree]) =
         methods collectFirst {
@@ -743,12 +732,12 @@ trait Printers extends api.Printers { self: SymbolTable =>
       tree match {
         case cl@ClassDef(mods, name, tparams, impl) =>
           atParent(tree) {
-            printAnnotations(tree)
+            printAnnotations(cl)
             //traits
             val clParents: List[Tree] = if (mods.isTrait) {
               // avoid abstract modifier for traits
               printModifiers(tree, mods &~ ABSTRACT)
-              print("trait ", resolveName(name))
+              print("trait ", printedName(name))
               printTypeParams(tparams)
 
               val build.SyntacticTraitDef(_, _, _, earlyDefs, parents, selfType, body) = tree
@@ -756,7 +745,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
               //classes
             } else {
               printModifiers(tree, mods)
-              print("class ", resolveName(name))
+              print("class ", printedName(name))
               printTypeParams(tparams)
 
               val build.SyntacticClassDef(_, _, _, ctorMods, vparamss, earlyDefs, parents, selfType, body) = cl
@@ -768,8 +757,8 @@ trait Printers extends api.Printers { self: SymbolTable =>
               }
 
               def printConstrParams(ts: List[ValDef]) {
-                enclInParentheses() {
-                  if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
+                parenthesize() {
+                  if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT)
                   printSeq(ts)(printParam(_, implicitInCtor = true))(print(", "))
                 }
               }
@@ -802,17 +791,17 @@ trait Printers extends api.Printers { self: SymbolTable =>
             }
           }
 
-        case ModuleDef(mods, name, impl) =>
+        case md@ModuleDef(mods, name, impl) =>
           atParent(tree) {
-            printAnnotations(tree)
+            printAnnotations(md)
             printModifiers(tree, mods)
             val Template(parents @ List(_*), self, methods) = impl
             val parWithoutAnyRef = removeDefaultClassesFromList(parents, List("AnyRef"))
-            print("object " + resolveName(name), if (!parWithoutAnyRef.isEmpty) " extends " else "", impl)
+            print("object " + printedName(name), if (!parWithoutAnyRef.isEmpty) " extends " else "", impl)
           }
 
         case vd@ValDef(mods, name, tp, rhs) =>
-          printValDef(vd, resolveName(name)) {
+          printValDef(vd, printedName(name)) {
             if (name.endsWith("_")) print(" ")
             //place space after symbolic def name (val *: Unit does not compile)
             printOpt(checkBlankForDef(tree, name), tp)
@@ -821,7 +810,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           }
 
         case dd@DefDef(mods, name, tparams, vparamss, tp, rhs) =>
-          printDefDef(dd, resolveName(name)) {
+          printDefDef(dd, printedName(name)) {
             if (tparams.isEmpty && (vparamss.isEmpty || vparamss(0).isEmpty) && name.endsWith("_")) print(" ")
             printOpt(checkBlankForDef(tree, name), tp)
           }{
@@ -829,7 +818,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           }
 
         case td@TypeDef(mods, name, tparams, rhs) =>
-          printTypeDef(td, resolveName(name))
+          printTypeDef(td, printedName(name))
 
         case LabelDef(name, params, rhs) =>
           if (name.toString.contains("while$")) {
@@ -847,7 +836,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
               print(" while (", cond, ") ")
             }
           } else {
-            print(resolveName(name)); printLabelParams(params);
+            print(printedName(name)); printLabelParams(params);
             atParent(tree) {
               printBlock(rhs)
             }
@@ -967,7 +956,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
             case _ =>
               insertBraces {
                 atParent(tree) {
-                  enclInParentheses(printParentheses) {
+                  parenthesize(printParentheses) {
                     print(selector);
                   }
                 }
@@ -982,12 +971,12 @@ trait Printers extends api.Printers { self: SymbolTable =>
           print(elem, "*")
 
         case Bind(name, t) =>
-          if (t == EmptyTree) print("(", resolveName(name), ")")
+          if (t == EmptyTree) print("(", printedName(name), ")")
           else if (t.exists{
-            case _:Star => true
+            case _: Star => true
             case _ => false
-          }) print(resolveName(name), " @ ", t)
-          else print("(", resolveName(name), " @ ", t, ")")
+          }) print(printedName(name), " @ ", t)
+          else print("(", printedName(name), " @ ", t, ")")
 
         case f@Function(vparams, body) =>
           printFunction(f)(printValueParams(vparams, isFuncTree = true))
@@ -1006,28 +995,28 @@ trait Printers extends api.Printers { self: SymbolTable =>
               if sVD.mods.hasFlag(SYNTHETIC) && methodName.toString.endsWith("$colon") && compareNames(sVD.name, iVDName) =>
               val printBlock = Block(l1, Apply(a1, l3))
               print(printBlock)
-            case Apply(tree1, _) if (inParentheses(tree1)(iAnnotated = false)) => enclInParentheses(){print(fun)}; printRow(vargs, "(", ", ", ")")
+            case Apply(tree1, _) if (inParentheses(tree1)(iAnnotated = false)) => parenthesize(){print(fun)}; printRow(vargs, "(", ", ", ")")
             case _ => super.printTree(tree)
           }
 
         case st@Super(This(qual), mix) =>
-          printSuper(st, resolveName(qual))
+          printSuper(st, printedName(qual))
 
         case th@This(qual) =>
-          printThis(th, resolveName(qual))
+          printThis(th, printedName(qual))
 
         case Select(qual@New(tpe), name) =>
           print(qual)
 
         case Select(qualifier, name) => {
           val printParentheses = inParentheses(qualifier)(iAnnotated = false) || isIntLitWithDecodedOp(qualifier, name)
-          if (printParentheses) print("(", resolveSelect(qualifier), ").", resolveName(name))
-          else print(resolveSelect(qualifier), ".", resolveName(name))
+          if (printParentheses) print("(", resolveSelect(qualifier), ").", printedName(name))
+          else print(resolveSelect(qualifier), ".", printedName(name))
         }
 
         case id@Ident(name) =>
           if (!name.isEmpty) {
-            val str = resolveName(name)
+            val str = printedName(name)
 
             val strIsBackquoted = str.startsWith("`") && str.endsWith("`")
 
@@ -1052,11 +1041,11 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case an@Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), tree) =>
           printAnnotated(an) {
             val printParentheses = inParentheses(tree)()
-            enclInParentheses(printParentheses){print(tree)}; print(if (tree.isType) " " else ": ")
+            parenthesize(printParentheses){print(tree)}; print(if (tree.isType) " " else ": ")
           }
 
         case SelectFromTypeTree(qualifier, selector) =>
-          print("(", qualifier, ")#", resolveName(selector))
+          print("(", qualifier, ")#", printedName(selector))
 
         case CompoundTypeTree(templ) =>
           atParent(tree) {
