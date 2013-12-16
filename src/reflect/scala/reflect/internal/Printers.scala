@@ -617,12 +617,12 @@ trait Printers extends api.Printers { self: SymbolTable =>
       }
     }
 
-    protected def removeDefaultTypesFromList(trees: List[Tree])(classesToRemove: List[String])(traitsToRemove: List[String]) = {
-      def removeDefaultTraitsFromList(trees: List[Tree], traitsToRemove: List[String]): List[Tree] =
+    protected def removeDefaultTypesFromList(trees: List[Tree])(classesToRemove: List[Name])(traitsToRemove: List[Name]) = {
+      def removeDefaultTraitsFromList(trees: List[Tree], traitsToRemove: List[Name]): List[Tree] =
         trees match {
           case Nil => trees
           case init :+ last => last match {
-            case Select(Ident(sc), name) if ((traitsToRemove.contains(name.toString)) && compareNames(sc, nme.scala_ ))
+            case Select(Ident(sc), name) if ((traitsToRemove.contains(name)) && compareNames(sc, nme.scala_))
             => removeDefaultTraitsFromList(init, traitsToRemove)
             case _ => trees
           }
@@ -631,8 +631,8 @@ trait Printers extends api.Printers { self: SymbolTable =>
       removeDefaultTraitsFromList(removeDefaultClassesFromList(trees, classesToRemove), traitsToRemove)
     }
 
-    protected def removeDefaultClassesFromList(trees: List[Tree], classesToRemove: List[String]) = trees filter {
-      case Select(Ident(sc), name) => !((classesToRemove.contains(name.toString)) && (sc.toString == "scala"))
+    protected def removeDefaultClassesFromList(trees: List[Tree], classesToRemove: List[Name]) = trees filter {
+      case Select(Ident(sc), name) => !((classesToRemove.contains(name)) && compareNames(sc, nme.scala_ ))
       case _ => true
     }
 
@@ -724,11 +724,6 @@ trait Printers extends api.Printers { self: SymbolTable =>
       def checkBlankForDef(tree: Tree, name: Name) =
         (if (printedName(name) != printedName(name, decoded = false) || printedName(name) != printedName(name, decoded = true)) " " else "") + ": "
 
-      def getPrimaryConstr(methods: List[Tree]) =
-        methods collectFirst {
-          case dd: DefDef if dd.name.toString.trim == nme.CONSTRUCTOR.toString.trim => dd
-        }
-
       tree match {
         case cl@ClassDef(mods, name, tparams, impl) =>
           atParent(tree) {
@@ -763,14 +758,15 @@ trait Printers extends api.Printers { self: SymbolTable =>
                 }
               }
               //constructor's params processing (don't print single empty constructor param list)
-              if (!(vparamss.isEmpty || (vparamss(0).isEmpty && vparamss.size == 1) && !mods.isCase) || ctorMods.hasFlag(AccessFlags)) {
-                vparamss foreach printConstrParams
+              vparamss match {
+                case Nil | List(Nil) if (!mods.isCase && !ctorMods.hasFlag(AccessFlags)) =>
+                case _ => vparamss foreach printConstrParams
               }
               parents
             }
 
             //get trees without default classes and traits (when they are last)
-            val printedParents = removeDefaultTypesFromList(clParents)(List("AnyRef"))(if (mods.hasFlag(CASE)) List("Product", "Serializable") else Nil)
+            val printedParents = removeDefaultTypesFromList(clParents)(List(tpnme.AnyRef))(if (mods.hasFlag(CASE)) List(tpnme.Product , tpnme.Serializable) else Nil)
 
             print(if (mods.isDeferred) "<: " else if (!printedParents.isEmpty) " extends "
             else "", impl)
@@ -796,7 +792,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
             printAnnotations(md)
             printModifiers(tree, mods)
             val Template(parents @ List(_*), self, methods) = impl
-            val parWithoutAnyRef = removeDefaultClassesFromList(parents, List("AnyRef"))
+            val parWithoutAnyRef = removeDefaultClassesFromList(parents, List(tpnme.AnyRef))
             print("object " + printedName(name), if (!parWithoutAnyRef.isEmpty) " extends " else "", impl)
           }
 
@@ -821,16 +817,16 @@ trait Printers extends api.Printers { self: SymbolTable =>
           printTypeDef(td, printedName(name))
 
         case LabelDef(name, params, rhs) =>
-          if (name.toString.contains("while$")) {
+          if (name.startsWith(nme.WHILE_PREFIX)) {
             atParent(tree) {
               val If(cond, thenp, elsep) = rhs
               print("while (", cond, ") ")
               val Block(list, wh) = thenp
               printColumn(list, "", ";", "")
             }
-          } else if (name.toString.contains("doWhile$")) {
+          } else if (name.startsWith(nme.DO_WHILE_PREFIX)) {
             atParent(tree) {
-              val Block(bodyList: List[Tree], ifCond @ If(cond, thenp, elsep)) = rhs
+              val Block(bodyList, ifCond @ If(cond, thenp, elsep)) = rhs
               print("do ")
               printColumn(bodyList, "", ";", "")
               print(" while (", cond, ") ")
@@ -850,26 +846,22 @@ trait Printers extends api.Printers { self: SymbolTable =>
             currentParent map {
               //val example: Option[AnyRef => Product1[Any] with AnyRef] = ... - CompoundTypeTree with template
               case _: CompoundTypeTree => parents
-              case ClassDef(mods, name, _, _) if mods.hasFlag(CASE) => removeDefaultTypesFromList(parents)(List("AnyRef"))(List("Product", "Serializable"))
-              case _ => removeDefaultClassesFromList(parents, List("AnyRef"))
+              case ClassDef(mods, name, _, _) if mods.hasFlag(CASE) => removeDefaultTypesFromList(parents)(List(tpnme.AnyRef))(List(tpnme.Product, tpnme.Serializable))
+              case _ => removeDefaultClassesFromList(parents, List(tpnme.AnyRef))
             } getOrElse(parents)
 
-          val primaryCtrOpt = getPrimaryConstr(body)
+          val primaryCtr = treeInfo.firstConstructor(body)
           var ap: Option[Apply] = None
-          for (primaryCtr <- primaryCtrOpt) {
+          if (!primaryCtr.isEmpty) {
             primaryCtr match {
               case DefDef(_, _, _, _, _, Block(ctBody @ List(_*), _)) =>
                 ap = ctBody collectFirst {
                   case apply: Apply => apply
                 }
-                //vals in preinit blocks
-                val presuperVals = ctBody filter {
-                  case vd:ValDef => vd.mods.hasFlag(PRESUPER)
-                  case _ => false
-                }
-                if (!presuperVals.isEmpty) {
+                val preSuperVals = treeInfo.preSuperFields(ctBody) 
+                if (!preSuperVals.isEmpty) {
                   print("{")
-                  printColumn(presuperVals, "", ";", "")
+                  printColumn(preSuperVals, "", ";", "")
                   print("} " + (if (!printedParents.isEmpty) "with " else ""))
                 }
               case _ =>
@@ -897,7 +889,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
            * right contains all constructors
            */
           val (left, right) = body.filter {
-            //remove valdefs defined in constructor and pre-init block
+            //remove valdefs defined in constructor and presuper vals
             case vd: ValDef => !vd.mods.hasFlag(PARAMACCESSOR) && !vd.mods.hasFlag(PRESUPER)
             //remove $this$ from traits
             case dd: DefDef => !compareNames(dd.name, nme.MIXIN_CONSTRUCTOR)
@@ -956,9 +948,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
             case _ =>
               insertBraces {
                 atParent(tree) {
-                  parenthesize(printParentheses) {
-                    print(selector);
-                  }
+                  parenthesize(printParentheses)(print(selector))
                 }
                 printColumn(cases, " match {", "", "}")
               }
@@ -1027,15 +1017,19 @@ trait Printers extends api.Printers { self: SymbolTable =>
           }
 
         case l@Literal(x) =>
-          if (x.value.isInstanceOf[String] && printMultiline && x.stringValue.contains("\n") && !x.stringValue.contains("\"\"\"") && x.stringValue.size > 1) {
-            val splitValue = x.stringValue.split('\n'.toString).toList
-            val multilineStringValue = if (x.stringValue.endsWith("\n")) splitValue :+ "" else splitValue
-            val trQuotes = "\"\"\""
-            print(trQuotes); printSeq(multilineStringValue){print(_)}{print("\n")}; print(trQuotes)
-          } else {
-            //processing Float constants
-            val printValue = x.escapedStringValue + (if (x.value.isInstanceOf[Float]) "F" else "")
-            print(printValue)
+          x match {
+            case Constant(v: String) if {
+                val strValue = x.stringValue
+                printMultiline && strValue.contains("\n") && strValue.contains("\"\"\"") && strValue.size > 1
+              } =>
+              val splitValue = x.stringValue.split('\n'.toString).toList
+              val multilineStringValue = if (x.stringValue.endsWith("\n")) splitValue :+ "" else splitValue
+              val trQuotes = "\"\"\""
+              print(trQuotes); printSeq(multilineStringValue){print(_)}{print("\n")}; print(trQuotes)
+            case _ =>
+              //processing Float constants
+              val printValue = x.escapedStringValue + (if (x.value.isInstanceOf[Float]) "F" else "")
+              print(printValue)
           }
 
         case an@Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), tree) =>
