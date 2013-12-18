@@ -17,8 +17,6 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
   //nsc import treeInfo.{ IsTrue, IsFalse }
 
-  final val showOuterTests = false
-
   /** Adds backticks if the name is a scala keyword. */
   def quotedName(name: Name, decode: Boolean): String = {
     val s = if (decode) name.decode else name.toString
@@ -258,17 +256,15 @@ trait Printers extends api.Printers { self: SymbolTable =>
       }
     }
 
-    protected def printCaseDef(tree: CaseDef, codePrinter: Boolean = false) {
+    protected def printCaseDef(tree: CaseDef) {
       val CaseDef(pat, guard, body) = tree
       print("case ")
       def patConstr(pat: Tree): Tree = pat match {
         case Apply(fn, args) => patConstr(fn)
         case _ => pat
       }
-      if (!codePrinter && showOuterTests &&
-        needsOuterTest(
-          patConstr(pat).tpe.finalResultType, selectorType, currentOwner))
-        print("???")
+      //if (needsOuterTest(patConstr(pat).tpe.finalResultType, selectorType, currentOwner))
+      //  print("???")
       print(pat); printOpt(" if ", guard)
       print(" => ", body)
     }
@@ -571,22 +567,23 @@ trait Printers extends api.Printers { self: SymbolTable =>
       if (condition) print(")")
     }
 
-    protected def inParentheses(owner: Tree)(iIf: Boolean = true, iMatch: Boolean = true,
-      iTry: Boolean = true, iAnnotated: Boolean = true, iBlock: Boolean = true, iLabelDef: Boolean = true) = {
+    protected def needsParentheses(owner: Tree)(insideIf: Boolean = true, insideMatch: Boolean = true, 
+      insideTry: Boolean = true, insideAnnotated: Boolean = true, insideBlock: Boolean = true, insideLabelDef: Boolean = true) = {
       owner match {
-        case _: If => iIf
-        case _: Match => iMatch
-        case _: Try => iTry
-        case _: Annotated => iAnnotated
-        case _: Block => iBlock
-        case _: LabelDef => iLabelDef
+        case _: If => insideIf
+        case _: Match => insideMatch
+        case _: Try => insideTry
+        case _: Annotated => insideAnnotated
+        case _: Block => insideBlock
+        case _: LabelDef => insideLabelDef
         case _ => false
       }
     }
 
     protected def resolveSelect(t: Tree): String = {
       t match {
-        case Select(qual, name) if (name.isTermName && inParentheses(qual)(iLabelDef = false)) || isIntLitWithDecodedOp(qual, name) => "(%s).%s".format(resolveSelect(qual), printedName(name))
+        //case for: 1) (if (a) b else c).meth1.meth2 or 2) 1 + 5 should be represented as (1).+(5) 
+        case Select(qual, name) if (name.isTermName && needsParentheses(qual)(insideLabelDef = false)) || isIntLitWithDecodedOp(qual, name) => "(%s).%s".format(resolveSelect(qual), printedName(name))
         case Select(qual, name) if name.isTermName => "%s.%s".format(resolveSelect(qual), printedName(name))
         case Select(qual, name) if name.isTypeName => "%s#%s".format(resolveSelect(qual), printedName(name))
         case Ident(name) => printedName(name)
@@ -801,7 +798,6 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case Template(parents, self, body) =>
           val printedParents =
             currentParent map {
-              //val example: Option[AnyRef => Product1[Any] with AnyRef] = ... - CompoundTypeTree with template
               case _: CompoundTypeTree => parents
               case ClassDef(mods, name, _, _) if mods.hasFlag(CASE) => removeDefaultTypesFromList(parents)(List(tpnme.AnyRef))(List(tpnme.Product, tpnme.Serializable))
               case _ => removeDefaultClassesFromList(parents, List(tpnme.AnyRef))
@@ -891,7 +887,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
             } else body
           }
 
-          val printParentheses = inParentheses(selector)(iLabelDef = false)
+          val printParentheses = needsParentheses(selector)(insideLabelDef = false)
           tree match {
             case Match(EmptyTree, cs) =>
               printColumn(cases, "{", "", "}")
@@ -903,7 +899,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           }
 
         case cd @ CaseDef(pat, guard, body) =>
-          printCaseDef(cd, codePrinter = true)
+          printCaseDef(cd)
 
         case Star(elem) =>
           print(elem, "*")
@@ -933,7 +929,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
               if sVD.mods.hasFlag(SYNTHETIC) && methodName.toString.endsWith("$colon") && compareNames(sVD.name, iVDName) =>
               val printBlock = Block(l1, Apply(a1, l3))
               print(printBlock)
-            case Apply(tree1, _) if (inParentheses(tree1)(iAnnotated = false)) =>
+            case Apply(tree1, _) if (needsParentheses(tree1)(insideAnnotated = false)) =>
               parenthesize()(print(fun)); printRow(vargs, "(", ", ", ")")
             case _ => super.printTree(tree)
           }
@@ -948,7 +944,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           print(qual)
 
         case Select(qualifier, name) => {
-          val printParentheses = inParentheses(qualifier)(iAnnotated = false) || isIntLitWithDecodedOp(qualifier, name)
+          val printParentheses = needsParentheses(qualifier)(insideAnnotated = false) || isIntLitWithDecodedOp(qualifier, name)
           if (printParentheses) print("(", resolveSelect(qualifier), ").", printedName(name))
           else print(resolveSelect(qualifier), ".", printedName(name))
         }
@@ -980,14 +976,12 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
         case an @ Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), tree) =>
           printAnnotated(an) {
-            val printParentheses = inParentheses(tree)()
+            val printParentheses = needsParentheses(tree)()
             parenthesize(printParentheses) { print(tree) }; print(if (tree.isType) " " else ": ")
           }
 
         case SelectFromTypeTree(qualifier, selector) =>
           print("(", qualifier, ")#", printedName(selector))
-
-        case CompoundTypeTree(templ) => super.printTree(tree)
 
         case AppliedTypeTree(tp, args) =>
           //it's possible to have (=> String) => String type but Function1[=> String, String] is not correct
@@ -1026,8 +1020,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           if (loDefault != lo.toString()) printOpt(" >: ", lo); if (hiDefault != hi.toString()) printOpt(" <: ", hi)
         }
 
-        // workaround as case EmptyTree does not work for all universes because of path depedent types
-        case emptyTree if emptyTree.toString == "<empty>" =>
+        case EmptyTree =>
 
         case tree => super.printTree(tree)
       }
