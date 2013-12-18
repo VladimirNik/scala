@@ -132,7 +132,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     def printValueParams(ts: List[ValDef]) {
       print("(")
-      if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT)
+      if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
       printSeq(ts){printParam}{print(", ")}
       print(")")
     }
@@ -177,7 +177,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         )
     )
 
-    def printFlags(flags: Long, privateWithin: String = "") {
+    def printFlags(flags: Long, privateWithin: String) {
       val mask: Long = if (settings.debug) -1L else PrintableFlags
       val s = flagsToString(flags & mask, privateWithin)
       if (s != "") print(s + " ")
@@ -635,22 +635,16 @@ trait Printers extends api.Printers { self: SymbolTable =>
       case Select(Ident(sc), name) => !((classesToRemove.contains(name)) && compareNames(sc, nme.scala_ ))
       case _ => true
     }
-
-    override def printFlags(flags: Long, privateWithin: String = "") =
-      printFlags(flags, privateWithin, implicitInCtor = false)
-
-    def printFlags(flags: Long, privateWithin: String, implicitInCtor: Boolean) {
+    
+    def printFlags(mods: Modifiers, implicitInCtor: Boolean = false) {
       val base = AccessFlags | OVERRIDE | ABSTRACT | FINAL | SEALED | LAZY
       val mask = if (implicitInCtor) base else base | IMPLICIT
 
-      val s = flagsToString(flags & mask, privateWithin)
+      val s = mods.flagString(mask)
       if (s != "") print(s"$s ")
-      //case should be after base mods
-      val caseFlag = flagsToString(flags & CASE)
-      if (!caseFlag.isEmpty) print(caseFlag + " ")
-      //abs override mod should be after base mods
-      val absOverrideFlag = flagsToString(flags & ABSOVERRIDE)
-      if (!absOverrideFlag.isEmpty) print("abstract override ")
+      //case flag should be the last
+      if (mods.isCase) print(mods.flagBitsToString(CASE) + " ")
+      if (mods.isAbstractOverride) print("abstract override ")
     }
 
     override def printModifiers(tree: Tree, mods: Modifiers): Unit = printModifiers(mods, implicitInCtor = false)
@@ -662,9 +656,9 @@ trait Printers extends api.Printers { self: SymbolTable =>
       } getOrElse false
 
       if (currentParent.isEmpty || modsAccepted)
-        printFlags(mods.flags, "" + mods.privateWithin, implicitInCtor)
+        printFlags(mods, implicitInCtor)
       else
-        List(IMPLICIT, CASE, LAZY).foreach{flag => if(mods.hasFlag(flag))  printFlags(flag, "", implicitInCtor)}
+        List(IMPLICIT, CASE, LAZY, SEALED).foreach{flag => if(mods.hasFlag(flag)) print(s"${mods.flagBitsToString(flag)} ")}
     }
 
     def printParam(tree: Tree, implicitInCtor: Boolean) {
@@ -699,14 +693,14 @@ trait Printers extends api.Printers { self: SymbolTable =>
       //parentheses are not allowed for val a: Int => Int = implicit x => x
       val printParentheses = !isFuncTree || {
         ts match {
-          case List(vd) => !vd.mods.hasFlag(IMPLICIT)
+          case List(vd) => !vd.mods.isImplicit
           case _ => true
         }
       }
       if (printParentheses)
         super.printValueParams(ts)
       else {
-        if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT)
+        if (!ts.isEmpty && ts.head.mods.isImplicit) print(s"${ts.head.mods.flagBitsToString(IMPLICIT)} ")
         printSeq(ts)(printParam)(print(", "))
       }
     }
@@ -753,7 +747,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
               def printConstrParams(ts: List[ValDef]) {
                 parenthesize() {
-                  if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT)
+                  if (!ts.isEmpty && ts.head.mods.isImplicit) print(s"${ts.head.mods.flagBitsToString(IMPLICIT)} ")
                   printSeq(ts)(printParam(_, implicitInCtor = true))(print(", "))
                 }
               }
