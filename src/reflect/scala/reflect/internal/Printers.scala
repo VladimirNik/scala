@@ -580,12 +580,15 @@ trait Printers extends api.Printers { self: SymbolTable =>
       }
     }
 
+    protected def blankForOperatorName(name: Name) = 
+      if (name.isOperatorName) " " else ""
+    
     protected def resolveSelect(t: Tree): String = {
       t match {
         //case for: 1) (if (a) b else c).meth1.meth2 or 2) 1 + 5 should be represented as (1).+(5) 
         case Select(qual, name) if (name.isTermName && needsParentheses(qual)(insideLabelDef = false)) || isIntLitWithDecodedOp(qual, name) => "(%s).%s".format(resolveSelect(qual), printedName(name))
         case Select(qual, name) if name.isTermName => "%s.%s".format(resolveSelect(qual), printedName(name))
-        case Select(qual, name) if name.isTypeName => "%s#%s".format(resolveSelect(qual), printedName(name))
+        case Select(qual, name) if name.isTypeName => s"%s#${blankForOperatorName(name)}%s".format(resolveSelect(qual), printedName(name))
         case Ident(name) => printedName(name)
         case _ => toCode(t)
       }
@@ -691,6 +694,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     override def printTree(tree: Tree) {
       def checkBlankForDef(tree: Tree, name: Name) =
         (if (printedName(name) != printedName(name, decoded = false) || printedName(name) != printedName(name, decoded = true)) " " else "") + ": "
+        
       parentsStack.push(tree)
       tree match {
         case cl @ ClassDef(mods, name, tparams, impl) =>
@@ -981,7 +985,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           }
 
         case SelectFromTypeTree(qualifier, selector) =>
-          print("(", qualifier, ")#", printedName(selector))
+          print("(", qualifier, ")#", blankForOperatorName(selector), printedName(selector))
 
         case AppliedTypeTree(tp, args) =>
           //it's possible to have (=> String) => String type but Function1[=> String, String] is not correct
