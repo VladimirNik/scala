@@ -15,6 +15,7 @@ class PrintersTest extends BasePrintTests
   with TraitPrintTests
   with ValAndDefPrintTests
   with QuasiTreesPrintTests
+  with PackagePrintTests
 
 object PrinterHelper {
   val toolbox = cm.mkToolBox()
@@ -34,6 +35,73 @@ trait BasePrintTests {
   @Test def testIdent = assertPrintedCode("*", Ident("*"))
   
   @Test def testConstant = assertPrintedCode("\"*\"", Literal(Constant("*")))
+  
+  //new foo
+  @Test def testNewExpr1 = assertPrintedCode("new foo()")
+  
+  //new foo { test }
+  @Test def testNewExpr2 = assertPrintedCode("""
+{
+  final class $anon extends foo {
+    test
+  };
+  new $anon()
+}""")
+    
+  //new foo[t]
+  @Test def testNewExpr3 = assertPrintedCode("new foo[t]()")
+  
+  //new foo(x)
+  @Test def testNewExpr4 = assertPrintedCode("new foo(x)")
+    
+  //new foo[t](x)
+  @Test def testNewExpr5 = assertPrintedCode("new foo[t](x)")
+    
+  //new foo[t](x) { (); () }
+  @Test def testNewExpr6 = assertPrintedCode("""
+{
+  final class $anon extends foo[t](x) {
+    ();
+    ()
+  };
+  new $anon()
+}""")
+    
+  //new foo with bar
+  @Test def testNewExpr7 = assertPrintedCode("""
+{
+  final class $anon extends foo with bar;
+  new $anon()
+}""")
+    
+  //new { anonymous }
+  @Test def testNewExpr8 = assertPrintedCode("""
+{
+  final class $anon {
+    anonymous
+  };
+  new $anon()
+}""")
+    
+  //new { val early = 1 } with Parent[Int] { body }
+  @Test def testNewExpr9 = assertPrintedCode("""
+{
+  final class $anon extends {
+    val early = 1
+  } with Parent[Int] {
+    body
+  };
+  new $anon()
+}""")
+    
+  //new Foo { self => }
+  @Test def testNewExpr10 = assertPrintedCode("""
+{
+  final class $anon extends Foo { self =>
+    
+  };
+  new $anon()
+}""")
 }
 
 trait ClassPrintTests {
@@ -45,10 +113,12 @@ class X {
 }
 """)
   
-  @Test def testClassWithPublicParams = assertPrintedCode("class xXx(val x: Int, val s: String)")
+  @Test def testClassWithPublicParams = assertPrintedCode("class X(val x: Int, val s: String)")
   
-  //TODO don't print private[this] val for classes arguments
-  @Test def testClassWithParams = assertPrintedCode("class xXx(private[this] val x: Int, private[this] val s: String)")
+  //remove private[this] val for classes arguments
+  @Test def testClassWithParams = assertPrintedCode("class X(private[this] val x: Int, private[this] val s: String)")
+  
+  @Test def testCaseClassWithParams = assertPrintedCode("case class X(val x: Int, val s: String)")
   
   @Test def testCaseClassWithBody = assertPrintedCode("""
 case class X() {
@@ -56,7 +126,7 @@ case class X() {
 }
 """)
 
-  //TODO don't print val for case classes arguments
+  //remove val for case classes arguments
   @Test def testCaseClassWithParamsAndBody = assertPrintedCode("""
 case class X(val x: Int, val s: String) {
   def y = "test"
@@ -70,6 +140,20 @@ object X {
   def y = "test"
 }
 """)
+
+  @Test def testObjectWithEarly = assertPrintedCode("""
+object X extends {
+  val early: T = v
+} with Bar
+""")
+
+  @Test def testObjectWithSelf = assertPrintedCode("""
+object Foo extends Foo { self =>
+  body
+}
+""")
+
+  @Test def testObjectInh = assertPrintedCode("private[Y] object X extends Bar with Baz")
 }
 
 trait TraitPrintTests {
@@ -92,12 +176,86 @@ trait X { self =>
   def y = "test"
 }
 """)
+
+  @Test def testTraitTypeParams = assertPrintedCode("trait X[A, B]")
+
+  //trait Foo { def foo; val bar: Baz }
+  @Test def testTraitWithBody2 = assertPrintedCode("""
+trait X {
+  def foo: scala.Unit;
+  val bar: Baz
+}
+""")
+  
+  @Test def testTraitWithInh = assertPrintedCode("trait X extends A with B")
+
+  @Test def testTraitWithEarly1 = assertPrintedCode("""
+trait X extends {
+  val x: Int = 1
+} with Any""")
+
+  //fix early typeDef
+  //@Test def testTraitWithEarly2 = assertPrintedCode("trait X extends { val x: Int = 0; type Foo = Bar} with Bippy")
+
+  @Test def testTraitWithEarly3 = assertPrintedCode("""
+trait X { self: Foo =>
+  val x: Int = 1
+}""")
 }
 
 trait ValAndDefPrintTests {
   @Test def testVal = assertPrintedCode("val * : Unit = null")
   
   @Test def testDef = assertPrintedCode("def * : Unit = null")
+  
+  @Test def testDefWithParams = assertPrintedCode("def foo(x: Int)(y: Int = 1) = null")
+  
+  @Test def testDefWithTypeParams = assertPrintedCode("def foo[A, B <: Bar] = null")
+
+  @Test def testDefWithAnn1 = assertPrintedCode("@a(x) def foo = null")
+
+  //@Foo[A,B] def foo
+  @Test def testDefWithAnn2 = assertPrintedCode("@Foo[A, B]() def foo = null")
+  
+  //fix @Foo(a)(b) def foo
+  //@Test def testDefWithAnn3 = assertPrintedCode("@Foo(a)(b) def foo")
+}
+
+trait PackagePrintTests {
+  //package foo.bar { }
+  @Test def testPackage1 = assertPrintedCode("""
+package foo.bar {
+  
+}
+""")
+  
+  @Test def testPackage2 = assertPrintedCode("""
+package foo {
+  class C
+
+  object D
+}
+""")
+
+  //package object foo extends a with b
+  @Test def testPackage3 = assertPrintedCode("""
+package foo {
+  object `package` extends a with b
+}
+""")
+
+  //package object foo { def foo; val x = 1 }
+  @Test def testPackage4 = assertPrintedCode("""
+package foo {
+  object `package` {
+    def foo: scala.Unit;
+    val x = 1
+  }
+}
+""")
+
+  //fix type - package object foo extends { val x = 1; type I = Int } with Any
+  //@Test def testPackage5 = assertPrintedCode("package object foo extends { val x = 1; type I = Int } with Any")
 }
 
 trait QuasiTreesPrintTests {  
