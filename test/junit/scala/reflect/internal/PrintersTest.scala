@@ -113,10 +113,40 @@ class X {
 }
 """)
   
+  //fix - remove ();
+  //@Test def testClassWithConstr1 = assertPrintedCode("""
+  //class X(val z: Int) {
+  //  def this() = {
+  //    this(5);
+  //    ()
+  //  }
+  //}
+  //""")
+
   @Test def testClassWithPublicParams = assertPrintedCode("class X(val x: Int, val s: String)")
   
   //remove private[this] val for classes arguments
-  @Test def testClassWithParams = assertPrintedCode("class X(private[this] val x: Int, private[this] val s: String)")
+  @Test def testClassWithParams1 = assertPrintedCode("class X(private[this] val x: Int, private[this] val s: String)")
+  
+  @Test def testClassWithParams2 = assertPrintedCode("class X protected (val x: Int, val s: String)")
+  
+  @Test def testClassWithParams3 = assertPrintedCode("class X(var x: Int)")
+  
+  @Test def testClassWithParams4 = assertPrintedCode("class X(var x: Int*)")
+  
+  @Test def testClassWithByNameParam = assertPrintedCode("class X(private[this] val x: => Int)")
+  
+  @Test def testClassWithDefault = assertPrintedCode("class X(var x: Int = 5)")
+  
+  @Test def testClassWithParams5 = assertPrintedCode("class X(protected[zzz] var x: Int)")
+  
+  @Test def testClassWithParams6 = assertPrintedCode("class X(override var x: Int) extends F(x) with E(x)")
+  
+  @Test def testClassWithParams7 = assertPrintedCode("class X(val y: Int)()(var z: Double)")
+  
+  @Test def testClassWithImplicitParams = assertPrintedCode("class X(var i: Int)(implicit val d: Double, var f: Float)")
+  
+  @Test def testAbstractClass = assertPrintedCode("abstract class X(protected[zzz] var x: Int)")
   
   @Test def testCaseClassWithParams = assertPrintedCode("case class X(val x: Int, val s: String)")
   
@@ -124,6 +154,24 @@ class X {
 case class X() {
   def y = "test"
 }
+""")
+
+  @Test def testLocalClass = assertPrintedCode("""
+def test = {
+  class X(var a: Int) {
+    def y = "test"
+  };
+  new X(5)
+}      
+""")
+
+  @Test def testLocalCaseClass = assertPrintedCode("""
+def test = {
+  case class X(var a: Int) {
+    def y = "test"
+  };
+  new X(5)
+}      
 """)
 
   //remove val for case classes arguments
@@ -208,7 +256,9 @@ trait ValAndDefPrintTests {
   
   @Test def testDef = assertPrintedCode("def * : Unit = null")
   
-  @Test def testDefWithParams = assertPrintedCode("def foo(x: Int)(y: Int = 1) = null")
+  @Test def testDefWithParams1 = assertPrintedCode("def foo(x: Int*) = null")
+  
+  @Test def testDefWithParams2 = assertPrintedCode("def foo(x: Int)(y: Int = 1) = null")
   
   @Test def testDefWithTypeParams = assertPrintedCode("def foo[A, B <: Bar] = null")
 
