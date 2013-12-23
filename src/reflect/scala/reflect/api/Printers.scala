@@ -205,7 +205,7 @@ trait Printers { self: Universe =>
   /** Renders the code of passed tree
     *  @group Printers
     */
-  def toCode(tree: Tree, printMultiline: Boolean = false, decodeNames: Boolean = true) = render(tree, newCodePrinter(_, printMultiline, decodeNames))
+  def toCode(tree: Tree, printMultiline: Boolean = true, decodeNames: Boolean = true) = render(tree, newCodePrinter(_, printMultiline, decodeNames))
 
   /** Hook to define what `toCode(...)` means.
     * @group Printers
