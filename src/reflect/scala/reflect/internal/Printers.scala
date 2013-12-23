@@ -263,8 +263,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case Apply(fn, args) => patConstr(fn)
         case _ => pat
       }
-      //if (needsOuterTest(patConstr(pat).tpe.finalResultType, selectorType, currentOwner))
-      //  print("???")
+
       print(pat); printOpt(" if ", guard)
       print(" => ", body)
     }
@@ -855,12 +854,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
             case _ => true
           }
           val modBody = left ::: right.drop(1)
-          val showBody = !(modBody.isEmpty &&
-            (self match {
-              // workaround for superfluous ValDef when parsing class without body using quasi quotes
-              case ValDef(mods, name, TypeTree(), rhs) if (mods & PRIVATE) != 0 && name.decoded == "_" && rhs.isEmpty => true
-              case _ => self.isEmpty
-            }))
+          val showBody = !(modBody.isEmpty && (self == noSelfType || self.isEmpty))
           if (showBody) {
             if (!compareNames(self.name, nme.WILDCARD)) {
               print(" { ", self.name);
