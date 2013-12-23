@@ -692,8 +692,6 @@ trait Printers extends api.Printers { self: SymbolTable =>
     }
 
     override def printTree(tree: Tree) {
-      def checkBlankForDef(tree: Tree, name: Name) =
-        (if (printedName(name) != printedName(name, decoded = false) || printedName(name) != printedName(name, decoded = true)) " " else "") + ": "
         
       parentsStack.push(tree)
       tree match {
@@ -764,7 +762,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           printValDef(vd, printedName(name)) {
             if (name.endsWith("_")) print(" ")
             //place space after symbolic def name (val *: Unit does not compile)
-            printOpt(checkBlankForDef(tree, name), tp)
+            printOpt(s"${blankForOperatorName(name)}: ", tp)
           } {
             if (!mods.isDeferred) print(" = ", if (rhs.isEmpty) "_" else rhs)
           }
@@ -772,7 +770,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case dd @ DefDef(mods, name, tparams, vparamss, tp, rhs) =>
           printDefDef(dd, printedName(name)) {
             if (tparams.isEmpty && (vparamss.isEmpty || vparamss(0).isEmpty) && name.endsWith("_")) print(" ")
-            printOpt(checkBlankForDef(tree, name), tp)
+            printOpt(s"${blankForOperatorName(name)}: ", tp)
           } {
             printOpt(" = " + (if (mods.hasFlag(MACRO)) "macro " else ""), rhs)
           }
