@@ -72,8 +72,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     def indent() = indentMargin += indentStep
     def undent() = indentMargin -= indentStep
 
-    protected def compareNames(name1: Name, name2: Name) =
-      (name1 ne null) && (name2 ne null) && name1.toString.trim == name2.toString.trim
+    protected def compareNames(name1: Name, name2: Name) = name1 == name2
 
     def printPosition(tree: Tree) = if (printPositions) print(tree.pos.show)
 
@@ -519,6 +518,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     }
   }
 
+  //printer for trees after parser and before typer phases
   class ParsedTreePrinter(out: PrintWriter, printMultiline: Boolean, decodeNames: Boolean) extends TreePrinter(out) {
     override def withTypes = this
     override def withIds = this

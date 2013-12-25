@@ -36,7 +36,38 @@ trait BasePrintTests {
   
   @Test def testConstant = assertPrintedCode("\"*\"", Literal(Constant("*")))
   
-  //new foo
+  @Test def testOpExpr = assertPrintedCode("(5).+(4)")
+  
+  @Test def testIfExpr1 = assertPrintedCode("""
+if (a)
+  ((expr1): Int)
+else
+  ((expr2): Int)""")
+  
+  @Test def testIfExpr2 = assertPrintedCode("""
+(if (a)
+  {
+    expr1;
+    ()
+  }
+else
+  {
+    expr2;
+    ()
+  }).toString""")
+  
+  @Test def testIfExpr3 = assertPrintedCode("""
+(if (a)
+  {
+    expr1;
+    ()
+  }
+else
+  {
+    expr2;
+    ()
+  }).method1().method2()""")
+  
   @Test def testNewExpr1 = assertPrintedCode("new foo()")
   
   //new foo { test }
