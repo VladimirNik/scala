@@ -95,18 +95,18 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     def printColumn(ts: List[Tree], start: String, sep: String, end: String) {
       print(start); indent(); println()
-      printSeq(ts)(print(_)){print(sep); println()}; undent(); println(); print(end)
+      printSeq(ts){print(_)}{print(sep); println()}; undent(); println(); print(end)
     }
 
     def printRow(ts: List[Tree], start: String, sep: String, end: String) {
-      print(start); printSeq(ts)(print(_))(print(sep)); print(end)
+      print(start); printSeq(ts){print(_)}{print(sep)}; print(end)
     }
 
     def printRow(ts: List[Tree], sep: String) { printRow(ts, "", sep, "") }
 
     def printTypeParams(ts: List[TypeDef]) {
       if (!ts.isEmpty) {
-        print("["); printSeq(ts) { t =>
+        print("["); printSeq(ts){ t =>
           printAnnotations(t)
           if (t.mods.hasFlag(CONTRAVARIANT)) {
             print("-")
@@ -114,13 +114,13 @@ trait Printers extends api.Printers { self: SymbolTable =>
             print("+")
           }
           printParam(t)
-        }(print(", ")); print("]")
+        }{print(", ")}; print("]")
       }
     }
 
     def printLabelParams(ps: List[Ident]) {
       print("(")
-      printSeq(ps)(printLabelParam)(print(", "))
+      printSeq(ps){printLabelParam}{print(", ")}
       print(")")
     }
 
@@ -131,7 +131,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     def printValueParams(ts: List[ValDef]) {
       print("(")
       if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
-      printSeq(ts)(printParam)(print(", "))
+      printSeq(ts){printParam}{print(", ")}
       print(")")
     }
 
@@ -159,7 +159,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     private def symFn[T](tree: Tree, f: Symbol => T, orElse: => T): T = tree.symbol match {
       case null | NoSymbol => orElse
-      case sym => f(sym)
+      case sym             => f(sym)
     }
     private def ifSym(tree: Tree, p: Symbol => Boolean) = symFn(tree, p, false)
 
@@ -171,7 +171,9 @@ trait Printers extends api.Printers { self: SymbolTable =>
       if (tree.symbol == NoSymbol) mods.flags else tree.symbol.flags, "" + (
         if (tree.symbol == NoSymbol) mods.privateWithin
         else if (tree.symbol.hasAccessBoundary) tree.symbol.privateWithin.name
-        else ""))
+        else ""
+      )
+    )
 
     def printFlags(flags: Long, privateWithin: String) {
       val mask: Long = if (settings.debug) -1L else PrintableFlags
@@ -182,7 +184,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     def printAnnotations(tree: MemberDef) {
       // SI-5885: by default this won't print annotations of not yet initialized symbols
       val annots = tree.symbol.annotations match {
-        case Nil => tree.mods.annotations
+        case Nil  => tree.mods.annotations
         case anns => anns
       }
       annots foreach (annot => print("@" + annot + " "))
@@ -191,10 +193,10 @@ trait Printers extends api.Printers { self: SymbolTable =>
     private var currentOwner: Symbol = NoSymbol
     private var selectorType: Type = NoType
 
-    protected def printPackageDef(tree: PackageDef, delimiter: String) {
+    protected def printPackageDef(tree: PackageDef, separator: String) {
       val PackageDef(packaged, stats) = tree
       printAnnotations(tree)
-      print("package ", packaged); printColumn(stats, " {", delimiter, "}")
+      print("package ", packaged); printColumn(stats, " {", separator, "}")
     }
 
     protected def printValDef(tree: ValDef, resName: => String)(printTypeSignature: => Unit)(printRhs: => Unit) {
@@ -235,20 +237,20 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     protected def printImport(tree: Import, resSelect: => String) {
       val Import(expr, selectors) = tree
-      // Is this selector remapping a name (i.e, {name1 => name2})
-      def isNotRemap(s: ImportSelector): Boolean =
+      // Is this selector renaming a name (i.e, {name1 => name2})
+      def isNotRename(s: ImportSelector): Boolean =
         (compareNames(s.name, nme.WILDCARD) || compareNames(s.name, s.rename))
 
       def selectorToString(s: ImportSelector): String = {
         val from = quotedName(s.name)
-        if (isNotRemap(s)) from
+        if (isNotRename(s)) from
         else from + "=>" + quotedName(s.rename)
       }
       print("import ", resSelect, ".")
       selectors match {
         case List(s) =>
-          // If there is just one selector and it is not remapping a name, no braces are needed
-          if (isNotRemap(s)) print(selectorToString(s))
+          // If there is just one selector and it is not renaming a name, no braces are needed
+          if (isNotRename(s)) print(selectorToString(s))
           else print("{", selectorToString(s), "}")
         // If there is more than one selector braces are always needed
         case many =>
@@ -289,7 +291,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
       print("this")
     }
 
-    protected def printAnnotated(tree: Annotated)(printBase: => Unit) {
+    protected def printAnnotated(tree: Annotated)(printArg: => Unit) {
       val Annotated(Apply(Select(New(tpt), nme.CONSTRUCTOR), args), atree) = tree
 
       def printAnnot() {
@@ -297,7 +299,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         if (!args.isEmpty)
           printRow(args, "(", ",", ")")
       }
-      printBase
+      printArg
       printAnnot()
     }
 
@@ -448,7 +450,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
         case id @ Ident(name) =>
           val str = symName(tree, name)
-          print(if (id.isBackquoted) "`" + str + "`" else str)
+          print( if (id.isBackquoted) "`" + str + "`" else str )
 
         case Literal(x) =>
           print(x.escapedStringValue)
