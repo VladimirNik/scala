@@ -19,14 +19,14 @@ class PrintersTest extends BasePrintTests
 
 object PrinterHelper {
   val toolbox = cm.mkToolBox()
-  def assertPrintedCode(code: String, tree: Tree = null) = {
+  def assertPrintedCode(code: String, tree: Tree = EmptyTree) = {
     val toolboxTree = 
       try{
         toolbox.parse(code)
       } catch {
         case e:scala.tools.reflect.ToolBoxError => throw new Exception(e.getMessage + ": " + code)
       }
-    if (tree ne null) assertEquals("using quasiquote or given tree"+"\n", code.trim, toCode(tree))
+    if (tree ne EmptyTree) assertEquals("using quasiquote or given tree"+"\n", code.trim, toCode(tree))
     assertEquals("using toolbox parser", code.trim, toCode(toolboxTree))
   }
 }
@@ -79,20 +79,16 @@ else
   new $anon()
 }""")
     
-  //new foo[t]
   @Test def testNewExpr3 = assertPrintedCode("new foo[t]()")
   
-  //new foo(x)
   @Test def testNewExpr4 = assertPrintedCode("new foo(x)")
     
-  //new foo[t](x)
   @Test def testNewExpr5 = assertPrintedCode("new foo[t](x)")
     
-  //new foo[t](x) { (); () }
+  //new foo[t](x) { () }
   @Test def testNewExpr6 = assertPrintedCode("""
 {
   final class $anon extends foo[t](x) {
-    ();
     ()
   };
   new $anon()
@@ -291,7 +287,9 @@ trait ValAndDefPrintTests {
   
   @Test def testDefWithParams2 = assertPrintedCode("def foo(x: Int)(y: Int = 1) = null")
   
-  @Test def testDefWithTypeParams = assertPrintedCode("def foo[A, B <: Bar] = null")
+  @Test def testDefWithTypeParams1 = assertPrintedCode("def foo[A, B, C](x: A)(y: Int = 1): C = null")
+  
+  @Test def testDefWithTypeParams2 = assertPrintedCode("def foo[A, B <: Bar] = null")
 
   @Test def testDefWithAnn1 = assertPrintedCode("@a(x) def foo = null")
 
@@ -303,7 +301,6 @@ trait ValAndDefPrintTests {
 }
 
 trait PackagePrintTests {
-  //package foo.bar { }
   @Test def testPackage1 = assertPrintedCode("""
 package foo.bar {
   
