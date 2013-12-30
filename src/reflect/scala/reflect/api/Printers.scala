@@ -130,7 +130,7 @@ import java.io.{ PrintWriter, StringWriter }
  *      newTermName("y")#2541#GET))
  * }}}
  *
- * For more details about `Printer`s and other aspects of Scala reflection, see the
+ * For more details about `Printer`s and other aspects of Scala reflection, see the
  * [[http://docs.scala-lang.org/overviews/reflection/overview.html Reflection Guide]]
  *
  *  @group ReflectionAPI
@@ -200,6 +200,17 @@ trait Printers { self: Universe =>
    * @group Printers
    */
   protected def newTreePrinter(out: PrintWriter): TreePrinter
+
+  //TODO reuse toCode for toString
+  /** Renders the code of passed tree
+    *  @group Printers
+    */
+  def toCode(tree: Tree) = render(tree, newCodePrinter)
+
+  /** Hook to define what `toCode(...)` means.
+    * @group Printers
+    */
+  protected def newCodePrinter(out: PrintWriter): TreePrinter
 
   /** Renders internal structure of a reflection artifact as the
    *  visualization of a Scala syntax tree.
