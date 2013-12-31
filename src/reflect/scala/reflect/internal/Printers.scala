@@ -72,8 +72,6 @@ trait Printers extends api.Printers { self: SymbolTable =>
     def indent() = indentMargin += indentStep
     def undent() = indentMargin -= indentStep
 
-    protected def compareNames(name1: Name, name2: Name) = name1 == name2
-
     def printPosition(tree: Tree) = if (printPositions) print(tree.pos.show)
 
     def println() {
@@ -238,7 +236,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
       val Import(expr, selectors) = tree
       // Is this selector renaming a name (i.e, {name1 => name2})
       def isNotRename(s: ImportSelector): Boolean =
-        (compareNames(s.name, nme.WILDCARD) || compareNames(s.name, s.rename))
+        s.name == nme.WILDCARD || s.name == s.rename
 
       def selectorToString(s: ImportSelector): String = {
         val from = quotedName(s.name)
@@ -549,7 +547,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           (name.isOperatorName && decName.exists(isOperatorPart) && decName.exists(isScalaLetter) && !decName.contains(bslash))))
           s"`$s`" else s
           
-      if (compareNames(name, nme.CONSTRUCTOR)) "this"
+      if (name == nme.CONSTRUCTOR) "this"
       else addBackquotes(quotedName(name, decoded))
     }
 
@@ -602,7 +600,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         trees match {
           case Nil => trees
           case init :+ last => last match {
-            case Select(Ident(sc), name) if (traitsToRemove.contains(name)) && compareNames(sc, nme.scala_) => 
+            case Select(Ident(sc), name) if traitsToRemove.contains(name) && sc == nme.scala_ => 
               removeDefaultTraitsFromList(init, traitsToRemove)
             case _ => trees
           }
@@ -612,7 +610,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     }
 
     protected def removeDefaultClassesFromList(trees: List[Tree], classesToRemove: List[Name] = defaultClasses) = trees filter {
-      case Select(Ident(sc), name) => !(classesToRemove.contains(name) && compareNames(sc, nme.scala_))
+      case Select(Ident(sc), name) => !(classesToRemove.contains(name) && sc == nme.scala_)
       case _ => true
     }
 
@@ -763,7 +761,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
         case pd @ PackageDef(packaged, stats) =>
           packaged match {
-            case Ident(name) if compareNames(name, nme.EMPTY_PACKAGE_NAME) =>
+            case Ident(name) if name == nme.EMPTY_PACKAGE_NAME =>
               printSeq(stats) {
                 print(_)
               } {
@@ -865,18 +863,18 @@ trait Printers extends api.Printers { self: SymbolTable =>
             //remove valdefs defined in constructor and presuper vals
             case vd: ValDef => !vd.mods.isParamAccessor && !treeInfo.isEarlyValDef(vd)
             //remove $this$ from traits
-            case dd: DefDef => !compareNames(dd.name, nme.MIXIN_CONSTRUCTOR)
+            case dd: DefDef => dd.name != nme.MIXIN_CONSTRUCTOR
             case td: TypeDef => !treeInfo.isEarlyDef(td)
             case EmptyTree => false
             case _ => true
           } span {
-            case dd: DefDef => !compareNames(dd.name, nme.CONSTRUCTOR)
+            case dd: DefDef => dd.name != nme.CONSTRUCTOR
             case _ => true
           }
           val modBody = left ::: right.drop(1)
           val showBody = !(modBody.isEmpty && (self == noSelfType || self.isEmpty))
           if (showBody) {
-            if (!compareNames(self.name, nme.WILDCARD)) {
+            if (self.name != nme.WILDCARD) {
               print(" { ", self.name);
               printOpt(": ", self.tpt);
               print(" =>")
@@ -939,7 +937,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           tree match {
             //processing methods ending on colons (x \: list)
             case Apply(Block(l1 @ List(sVD: ValDef), a1 @ Apply(Select(_, methodName), l2 @ List(Ident(iVDName)))), l3 @ List(_*)) 
-              if sVD.mods.isSynthetic && treeInfo.isLeftAssoc(methodName) && compareNames(sVD.name, iVDName) =>
+              if sVD.mods.isSynthetic && treeInfo.isLeftAssoc(methodName) && sVD.name == iVDName =>
               val printBlock = Block(l1, Apply(a1, l3))
               print(printBlock)
             case Apply(tree1, _) if (needsParentheses(tree1)(insideAnnotated = false)) =>
@@ -964,7 +962,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
         case id @ Ident(name) =>
           if (name.nonEmpty) {
-            if (compareNames(name, nme.dollarScope)) {
+            if (name == nme.dollarScope) {
               print(s"scala.xml.${nme.TopScope}")
             } else {
               val str = printedName(name)

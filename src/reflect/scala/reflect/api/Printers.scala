@@ -201,10 +201,16 @@ trait Printers { self: Universe =>
    */
   protected def newTreePrinter(out: PrintWriter): TreePrinter
 
-  //TODO reuse toCode for toString
-  /** Renders the code of passed tree
-    *  @group Printers
-    */
+  /** Renders the code of the passed tree, so that:
+   *  1) it can be later compiled by scalac retaining the same meaning,
+   *  2) it looks pretty.
+   *  At the moment we have handled #1 for unattributed trees and
+   *  later on plan to account for typical idiosyncrasies of the typechecker.
+   *  #2 is more or less okay indentation-wise, but at the moment there's a lot of desugaring
+   *  left in place, and that's what we also plan to improve in the future.
+   *  
+   *  @group Printers
+   */
   def toCode(tree: Tree) = render(tree, newCodePrinter)
 
   /** Hook to define what `toCode(...)` means.
