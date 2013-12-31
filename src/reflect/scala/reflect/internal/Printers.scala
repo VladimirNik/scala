@@ -51,8 +51,8 @@ trait Printers extends api.Printers { self: SymbolTable =>
    */
   def backquotedPath(t: Tree): String = {
     t match {
-      case Select(qual, name) if name.isTermName  => "%s.%s".format(backquotedPath(qual), symName(t, name))
-      case Select(qual, name) if name.isTypeName  => "%s#%s".format(backquotedPath(qual), symName(t, name))
+      case Select(qual, name) if name.isTermName  => s"${backquotedPath(qual)}.${symName(t, name)}"
+      case Select(qual, name) if name.isTypeName  => s"${backquotedPath(qual)}#${symName(t, name)}"
       case Ident(name)                            => symName(t, name)
       case _                                      => t.toString
     }
@@ -102,7 +102,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     def printRow(ts: List[Tree], sep: String) { printRow(ts, "", sep, "") }
 
     def printTypeParams(ts: List[TypeDef]) {
-      if (!ts.isEmpty) {
+      if (ts.nonEmpty) {
         print("["); printSeq(ts){ t =>
           printAnnotations(t)
           if (t.mods.hasFlag(CONTRAVARIANT)) {
@@ -127,7 +127,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     def printValueParams(ts: List[ValDef]) {
       print("(")
-      if (!ts.isEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
+      if (ts.nonEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
       printSeq(ts){printParam}{print(", ")}
       print(")")
     }
@@ -155,20 +155,20 @@ trait Printers extends api.Printers { self: SymbolTable =>
     }
 
     private def symFn[T](tree: Tree, f: Symbol => T, orElse: => T): T = tree.symbol match {
-      case null | NoSymbol  => orElse
-      case sym              => f(sym)
+      case null | NoSymbol => orElse
+      case sym             => f(sym)
     }
     private def ifSym(tree: Tree, p: Symbol => Boolean) = symFn(tree, p, false)
 
     def printOpt(prefix: String, tree: Tree) {
-      if (!tree.isEmpty) { print(prefix, tree) }
+      if (tree.nonEmpty) { print(prefix, tree) }
     }
 
     def printModifiers(tree: Tree, mods: Modifiers): Unit = printFlags(
-       if (tree.symbol == NoSymbol) mods.flags else tree.symbol.flags, "" + (
-         if (tree.symbol == NoSymbol) mods.privateWithin
-         else if (tree.symbol.hasAccessBoundary) tree.symbol.privateWithin.name
-         else ""
+      if (tree.symbol == NoSymbol) mods.flags else tree.symbol.flags, "" + (
+        if (tree.symbol == NoSymbol) mods.privateWithin
+        else if (tree.symbol.hasAccessBoundary) tree.symbol.privateWithin.name
+        else ""
       )
     )
 
@@ -184,7 +184,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case Nil  => tree.mods.annotations
         case anns => anns
       }
-      annots foreach (annot => print("@"+annot+" "))
+      annots foreach (annot => print("@" + annot + " "))
     }
 
     private var currentOwner: Symbol = NoSymbol
@@ -346,22 +346,17 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case Template(parents, self, body) =>
           val currentOwner1 = currentOwner
           if (tree.symbol != NoSymbol) currentOwner = tree.symbol.owner
-//          if (parents exists isReferenceToAnyVal) {
-//            print("AnyVal")
-//          }
-//          else {
           printRow(parents, " with ")
-          if (!body.isEmpty) {
+          if (body.nonEmpty) {
             if (self.name != nme.WILDCARD) {
               print(" { ", self.name); printOpt(": ", self.tpt); print(" => ")
-            } else if (!self.tpt.isEmpty) {
+            } else if (self.tpt.nonEmpty) {
               print(" { _ : ", self.tpt, " => ")
             } else {
               print(" {")
             }
             printColumn(body, "", ";", "}")
           }
-//          }
           currentOwner = currentOwner1
 
         case Block(stats, expr) =>
@@ -403,7 +398,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case If(cond, thenp, elsep) =>
           print("if (", cond, ")"); indent(); println()
           print(thenp); undent()
-          if (!elsep.isEmpty) {
+          if (elsep.nonEmpty) {
             println(); print("else"); indent(); println(); print(elsep); undent()
           }
 
@@ -412,7 +407,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
         case Try(block, catches, finalizer) =>
           print("try "); printBlock(block)
-          if (!catches.isEmpty) printColumn(catches, " catch {", "", "}")
+          if (catches.nonEmpty) printColumn(catches, " catch {", "", "}")
           printOpt(" finally ", finalizer)
 
         case Throw(expr) =>
@@ -439,7 +434,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
         case Super(qual, mix) =>
           print(qual, ".super")
-          if (!mix.isEmpty)
+          if (mix.nonEmpty)
             print("[" + mix + "]")
 
         case th @ This(qual) =>
@@ -497,11 +492,11 @@ trait Printers extends api.Printers { self: SymbolTable =>
           print(tpt)
           printColumn(whereClauses, " forSome { ", ";", "}")
 
-// SelectFromArray is no longer visible in scala.reflect.internal.
-// eliminated until we figure out what we will do with both Printers and
-// SelectFromArray.
-//          case SelectFromArray(qualifier, name, _) =>
-//          print(qualifier); print(".<arr>"); print(symName(tree, name))
+                // SelectFromArray is no longer visible in scala.reflect.internal.
+                // eliminated until we figure out what we will do with both Printers and
+                // SelectFromArray.
+                // case SelectFromArray(qualifier, name, _) =>
+                //   print(qualifier); print(".<arr>"); print(symName(tree, name))
 
         case tree =>
           xprintTree(this, tree)
