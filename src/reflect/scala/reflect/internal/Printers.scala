@@ -125,11 +125,20 @@ trait Printers extends api.Printers { self: SymbolTable =>
       print(symName(p, p.name)); printOpt(": ", TypeTree() setType p.tpe)
     }
 
-    def printValueParams(ts: List[ValDef]) {
-      print("(")
-      if (ts.nonEmpty) printFlags(ts.head.mods.flags & IMPLICIT, "")
-      printSeq(ts){printParam}{print(", ")}
-      print(")")
+    protected def parenthesize(condition: Boolean = true)(body: => Unit) {
+      if (condition) print("(")
+      body
+      if (condition) print(")")
+    }
+    
+    protected def printImplicitInParamsList(vds: List[ValDef]) =
+      if (vds.nonEmpty) printFlags(vds.head.mods.flags & IMPLICIT, "")
+    
+    def printValueParams(ts: List[ValDef], inParentheses: Boolean = true) {
+      parenthesize(inParentheses){
+        printImplicitInParamsList(ts)
+        printSeq(ts){printParam}{print(", ")}
+      }
     }
 
     def printParam(tree: Tree) {
@@ -211,7 +220,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
       printModifiers(tree, mods)
       print("def " + resultName)
       printTypeParams(tparams);
-      vparamss foreach printValueParams
+      vparamss foreach {printValueParams(_)}
       printTypeSignature
       printRhs
     }
@@ -560,12 +569,6 @@ trait Printers extends api.Printers { self: SymbolTable =>
       qualIsIntLit && name.isOperatorName
     }
 
-    protected def parenthesize(condition: Boolean = true)(body: => Unit) {
-      if (condition) print("(")
-      body
-      if (condition) print(")")
-    }
-
     protected def needsParentheses(parent: Tree)(insideIf: Boolean = true, insideMatch: Boolean = true, 
       insideTry: Boolean = true, insideAnnotated: Boolean = true, insideBlock: Boolean = true, insideLabelDef: Boolean = true) = {
       parent match {
@@ -668,29 +671,6 @@ trait Printers extends api.Printers { self: SymbolTable =>
       printParam(tree, primaryCtorParam = false)
     }
 
-    override def printValueParams(ts: List[ValDef]) {
-      printValueParams(ts, isFuncTree = false)
-    }
-
-    def printValueParams(ts: List[ValDef], isFuncTree: Boolean) {
-      //parentheses are not allowed for val a: Int => Int = implicit x => x
-      val printParentheses = !isFuncTree || {
-        ts match {
-          case List(vd) => !vd.mods.isImplicit
-          case _ => true
-        }
-      }
-      if (printParentheses)
-        super.printValueParams(ts)
-      else {
-        ts match {
-          case head :: tail if head.mods.isImplicit => print(s"${head.mods.flagBitsToString(IMPLICIT)} ")
-          case _ =>
-        }
-        printSeq(ts)(printParam)(print(", "))
-      }
-    }
-
     protected def printArgss(argss: List[List[Tree]]) = 
       argss foreach {x: List[Tree] => if (!(x.isEmpty && argss.size == 1)) printRow(x, "(", ", ", ")")}
     
@@ -740,10 +720,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
             def printConstrParams(ts: List[ValDef]) {
               parenthesize() {
-                ts match {
-                  case head :: tail if head.mods.isImplicit => print(s"${head.mods.flagBitsToString(IMPLICIT)} ")
-                  case _ => 
-                }
+                printImplicitInParamsList(ts)
                 printSeq(ts)(printParam(_, primaryCtorParam = true))(print(", "))
               }
             }
@@ -924,7 +901,12 @@ trait Printers extends api.Printers { self: SymbolTable =>
           else print("(", printedName(name), " @ ", t, ")")
 
         case f @ Function(vparams, body) =>
-          printFunction(f)(printValueParams(vparams, isFuncTree = true))
+          //parentheses are not allowed for val a: Int => Int = implicit x => x
+          val printParentheses = vparams match {
+              case head :: _ => !head.mods.isImplicit
+              case _ => true
+            }
+          printFunction(f)(printValueParams(vparams, inParentheses = printParentheses))
 
         case Typed(expr, tp) =>
           tp match {
