@@ -553,7 +553,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     }
 
     protected def isIntLitWithDecodedOp(qual: Tree, name: Name) = {
-      lazy val qualIsIntLit = qual match {
+      val qualIsIntLit = qual match {
         case Literal(Constant(x: Int)) => true
         case _ => false
       }
@@ -645,8 +645,8 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case vd @ ValDef(mods, name, tp, rhs) =>
           printAnnotations(vd)
           val mutableOrOverride = mods.isOverride || mods.isMutable
-          def hideCtorMods = mods.isParamAccessor && mods.isPrivateLocal && !mutableOrOverride
-          def hideCaseCtorMods = mods.isCaseAccessor && mods.isPublic && !mutableOrOverride
+          val hideCtorMods = mods.isParamAccessor && mods.isPrivateLocal && !mutableOrOverride
+          val hideCaseCtorMods = mods.isCaseAccessor && mods.isPublic && !mutableOrOverride
           
           if (primaryCtorParam && !(hideCtorMods || hideCaseCtorMods)) {
             printModifiers(mods, primaryCtorParam)
@@ -709,8 +709,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
       }
     }
 
-    override def printTree(tree: Tree) {
-        
+    override def printTree(tree: Tree) { 
       parentsStack.push(tree)
       tree match {
         case cl @ ClassDef(mods, name, tparams, impl) =>
@@ -776,7 +775,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case md @ ModuleDef(mods, name, impl) =>
           printAnnotations(md)
           printModifiers(tree, mods)
-          val Template(parents @ List(_*), self, methods) = impl
+          val Template(parents, self, methods) = impl
           val parWithoutAnyRef = removeDefaultClassesFromList(parents)
           print("object " + printedName(name), if (parWithoutAnyRef.nonEmpty) " extends " else "", impl)
 
@@ -828,7 +827,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
           val primaryCtr = treeInfo.firstConstructor(body)
           val ap: Option[Apply] = primaryCtr match {
-              case DefDef(_, _, _, _, _, Block(ctBody @ List(_*), _)) =>
+              case DefDef(_, _, _, _, _, Block(ctBody, _)) =>
                 val earlyDefs = treeInfo.preSuperFields(ctBody) ::: body.filter {
                   case td: TypeDef => treeInfo.isEarlyDef(td)
                   case _ => false
@@ -937,7 +936,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case Apply(fun, vargs) =>
           tree match {
             //processing methods ending on colons (x \: list)
-            case Apply(Block(l1 @ List(sVD: ValDef), a1 @ Apply(Select(_, methodName), l2 @ List(Ident(iVDName)))), l3 @ List(_*)) 
+            case Apply(Block(l1 @ List(sVD: ValDef), a1 @ Apply(Select(_, methodName), l2 @ List(Ident(iVDName)))), l3) 
               if sVD.mods.isSynthetic && treeInfo.isLeftAssoc(methodName) && sVD.name == iVDName =>
               val printBlock = Block(l1, Apply(a1, l3))
               print(printBlock)
