@@ -1145,7 +1145,7 @@ trait Implicits {
             gen.mkAttributedThis(thisSym)
           case _ =>
             // if `pre` is not a PDT, e.g. if someone wrote
-            //   implicitly[scala.reflect.macros.BlackboxContext#TypeTag[Int]]
+            //   implicitly[scala.reflect.macros.blackbox.Context#TypeTag[Int]]
             // then we need to fail, because we don't know the prefix to use during type reification
             // upd. we also need to fail silently, because this is a very common situation
             // e.g. quite often we're searching for BaseUniverse#TypeTag, e.g. for a type tag in any universe
@@ -1365,7 +1365,7 @@ trait Implicits {
           maybeInvalidConversionError("the result type of an implicit conversion must be more specific than AnyRef")
           result = SearchFailure
         }
-        else if (isInvalidConversionSource(pt)) {
+        else if (settings.isScala211 && isInvalidConversionSource(pt)) {
           maybeInvalidConversionError("an expression of type Null is ineligible for implicit conversion")
           result = SearchFailure
         }

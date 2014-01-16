@@ -7,31 +7,18 @@ import scala.language.existentials // SI-6541
 /**
  * <span class="badge badge-red" style="float: right;">EXPERIMENTAL</span>
  *
- *  A slice of [[scala.reflect.macros.BlackboxContext the Scala macros context]] that exposes
+ *  A slice of [[scala.reflect.macros.blackbox.Context the Scala macros context]] that exposes
  *  enclosing trees (method, class, compilation unit and currently compiled application),
  *  the enclosing position of the macro expansion, as well as macros and implicits
  *  that are currently in-flight.
  */
 trait Enclosures {
-  self: BlackboxContext =>
+  self: blackbox.Context =>
 
   /** The tree that undergoes macro expansion.
    *  Can be useful to get an offset or a range position of the entire tree being processed.
    */
   def macroApplication: Tree
-
-  /** The semantic role that `macroApplication` plays in the code.
-   */
-  type MacroRole
-
-  /** The role that represents an application of a term macro,
-   *  e.g. `M(2)(3)` in `val x = M(2)(3)` or `M(a, b)` in `x match { case x @ M(a, b) => }`.
-   */
-  def APPLY_ROLE: MacroRole
-
-  /** The semantic role that `macroApplication` plays in the code.
-   */
-  def macroRole: MacroRole
 
   /** Contexts that represent macros in-flight, including the current one. Very much like a stack trace, but for macros only.
    *  Can be useful for interoperating with other macros and for imposing compiler-friendly limits on macro expansion.
@@ -43,7 +30,7 @@ trait Enclosures {
    *  Unlike `openMacros`, this is a val, which means that it gets initialized when the context is created
    *  and always stays the same regardless of whatever happens during macro expansion.
    */
-  def enclosingMacros: List[BlackboxContext]
+  def enclosingMacros: List[blackbox.Context]
 
   /** Tries to guess a position for the enclosing application.
    *  But that is simple, right? Just dereference `pos` of `macroApplication`? Not really.

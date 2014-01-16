@@ -204,8 +204,12 @@ trait Scanners extends ScannersCommon {
         val idx = name.start - kwOffset
         if (idx >= 0 && idx < kwArray.length) {
           token = kwArray(idx)
-          if (token == IDENTIFIER && allowIdent != name && emitIdentifierDeprecationWarnings)
-            deprecationWarning(name+" is now a reserved word; usage as an identifier is deprecated")
+          if (token == IDENTIFIER && allowIdent != name) {
+            if (name == nme.MACROkw)
+              syntaxError(s"$name is now a reserved word; usage as an identifier is disallowed")
+            else if (emitIdentifierDeprecationWarnings)
+              deprecationWarning(s"$name is now a reserved word; usage as an identifier is deprecated")
+          }
         }
       }
     }
@@ -385,7 +389,7 @@ trait Scanners extends ScannersCommon {
 //              println("blank line found at "+lastOffset+":"+(lastOffset to idx).map(buf(_)).toList)
               return true
             }
-	    if (idx == end) return false
+            if (idx == end) return false
           } while (ch <= ' ')
         }
         idx += 1; ch = buf(idx)

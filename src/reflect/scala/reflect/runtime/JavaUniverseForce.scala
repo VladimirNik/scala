@@ -198,6 +198,7 @@ trait JavaUniverseForce { self: runtime.JavaUniverse  =>
     this.ErroneousCollector
     this.adaptToNewRunMap
     // inaccessible: this.commonOwnerMapObj
+    this.SubTypePair
     this.SymbolKind
     this.NoSymbol
     this.CyclicReference
@@ -273,6 +274,7 @@ trait JavaUniverseForce { self: runtime.JavaUniverse  =>
     definitions.ComparableClass
     definitions.JavaCloneableClass
     definitions.JavaNumberClass
+    definitions.JavaEnumClass
     definitions.RemoteInterfaceClass
     definitions.RemoteExceptionClass
     definitions.ByNameParamClass
@@ -319,8 +321,6 @@ trait JavaUniverseForce { self: runtime.JavaUniverse  =>
     definitions.MirrorClass
     definitions.TypeCreatorClass
     definitions.TreeCreatorClass
-    definitions.BlackboxMacroClass
-    definitions.WhiteboxMacroClass
     definitions.BlackboxContextClass
     definitions.WhiteboxContextClass
     definitions.MacroImplAnnotation
@@ -425,6 +425,7 @@ trait JavaUniverseForce { self: runtime.JavaUniverse  =>
     definitions.languageFeatureModule
     definitions.metaAnnotations
     definitions.AnnotationDefaultAttr
+    // inaccessible: definitions.erasurePhase
     definitions.isPhantomClass
     definitions.syntheticCoreClasses
     definitions.syntheticCoreMethods

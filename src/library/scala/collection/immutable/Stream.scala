@@ -955,19 +955,21 @@ self =>
    * `Stream`.
    * @example {{{
    * val sov: Stream[Vector[Int]] = Vector(0) #:: Vector(0, 0) #:: sov.zip(sov.tail).map { n => n._1 ++ n._2 }
-   * sov flatten take 10 mkString ", "
+   * sov.flatten take 10 mkString ", "
    * // produces: "0, 0, 0, 0, 0, 0, 0, 0, 0, 0"
    * }}}
    */
   override def flatten[B](implicit asTraversable: A => /*<:<!!!*/ GenTraversableOnce[B]): Stream[B] = {
-    def flatten1(t: Traversable[B]): Stream[B] =
-      if (!t.isEmpty)
-        cons(t.head, flatten1(t.tail))
-      else
-        tail.flatten
-
-    if (isEmpty) Stream.empty
-    else flatten1(asTraversable(head).seq.toTraversable)
+    var st: Stream[A] = this
+    while (st.nonEmpty) {
+      val h = asTraversable(st.head)
+      if (h.isEmpty) {
+        st = st.tail
+      } else {
+        return h.toStream #::: st.tail.flatten
+      }
+    }
+    Stream.empty
   }
 
   override def view = new StreamView[A, Stream[A]] {

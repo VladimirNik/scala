@@ -5,11 +5,11 @@ package macros
 /**
  * <span class="badge badge-red" style="float: right;">EXPERIMENTAL</span>
  *
- *  A slice of [[scala.reflect.macros.BlackboxContext the Scala macros context]] that
+ *  A slice of [[scala.reflect.macros.blackbox.Context the Scala macros context]] that
  *  partially exposes the type checker to macro writers.
  */
 trait Typers {
-  self: BlackboxContext =>
+  self: blackbox.Context =>
 
   /** Contexts that represent macros in-flight, including the current one. Very much like a stack trace, but for macros only.
    *  Can be useful for interoperating with other macros and for imposing compiler-friendly limits on macro expansion.
@@ -21,7 +21,13 @@ trait Typers {
    *  Unlike `enclosingMacros`, this is a def, which means that it gets recalculated on every invocation,
    *  so it might change depending on what is going on during macro expansion.
    */
-  def openMacros: List[BlackboxContext]
+  def openMacros: List[blackbox.Context]
+
+  /** @see `Typers.typecheck`
+   */
+  @deprecated("Use `c.typecheck` instead", "2.11.0")
+  def typeCheck(tree: Tree, pt: Type = universe.WildcardType, silent: Boolean = false, withImplicitViewsDisabled: Boolean = false, withMacrosDisabled: Boolean = false): Tree =
+    typecheck(tree, pt, silent, withImplicitViewsDisabled, withMacrosDisabled)
 
   /** Typechecks the provided tree against the expected type `pt` in the macro callsite context.
    *
@@ -36,7 +42,7 @@ trait Typers {
    *
    *  @throws [[scala.reflect.macros.TypecheckException]]
    */
-  def typeCheck(tree: Tree, pt: Type = universe.WildcardType, silent: Boolean = false, withImplicitViewsDisabled: Boolean = false, withMacrosDisabled: Boolean = false): Tree
+  def typecheck(tree: Tree, pt: Type = universe.WildcardType, silent: Boolean = false, withImplicitViewsDisabled: Boolean = false, withMacrosDisabled: Boolean = false): Tree
 
   /** Infers an implicit value of the expected type `pt` in the macro callsite context.
    *  Optional `pos` parameter provides a position that will be associated with the implicit search.
@@ -44,7 +50,7 @@ trait Typers {
    *  If `silent` is false, `TypecheckException` will be thrown in case of an inference error.
    *  If `silent` is true, the typecheck is silent and will return `EmptyTree` if an error occurs.
    *  Such errors don't vanish and can be inspected by turning on -Xlog-implicits.
-   *  Unlike in `typeCheck`, `silent` is true by default.
+   *  Unlike in `typecheck`, `silent` is true by default.
    *
    *  @throws [[scala.reflect.macros.TypecheckException]]
    */
@@ -56,7 +62,7 @@ trait Typers {
    *  If `silent` is false, `TypecheckException` will be thrown in case of an inference error.
    *  If `silent` is true, the typecheck is silent and will return `EmptyTree` if an error occurs.
    *  Such errors don't vanish and can be inspected by turning on -Xlog-implicits.
-   *  Unlike in `typeCheck`, `silent` is true by default.
+   *  Unlike in `typecheck`, `silent` is true by default.
    *
    *  @throws [[scala.reflect.macros.TypecheckException]]
    */

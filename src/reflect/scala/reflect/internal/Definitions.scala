@@ -363,6 +363,7 @@ trait Definitions extends api.StandardDefinitions {
     lazy val ComparableClass       = requiredClass[java.lang.Comparable[_]] modifyInfo fixupAsAnyTrait
     lazy val JavaCloneableClass    = requiredClass[java.lang.Cloneable]
     lazy val JavaNumberClass       = requiredClass[java.lang.Number]
+    lazy val JavaEnumClass         = requiredClass[java.lang.Enum[_]]
     lazy val RemoteInterfaceClass  = requiredClass[java.rmi.Remote]
     lazy val RemoteExceptionClass  = requiredClass[java.rmi.RemoteException]
 
@@ -482,12 +483,8 @@ trait Definitions extends api.StandardDefinitions {
     lazy val TypeCreatorClass      = getClassIfDefined("scala.reflect.api.TypeCreator") // defined in scala-reflect.jar, so we need to be careful
     lazy val TreeCreatorClass      = getClassIfDefined("scala.reflect.api.TreeCreator") // defined in scala-reflect.jar, so we need to be careful
 
-    lazy val BlackboxMacroClass           = getClassIfDefined("scala.reflect.macros.BlackboxMacro") // defined in scala-reflect.jar, so we need to be careful
-         def BlackboxMacroContextValue    = BlackboxMacroClass.map(sym => getMemberValue(sym, nme.c))
-    lazy val WhiteboxMacroClass           = getClassIfDefined("scala.reflect.macros.WhiteboxMacro") // defined in scala-reflect.jar, so we need to be careful
-         def WhiteboxMacroContextValue    = WhiteboxMacroClass.map(sym => getMemberValue(sym, nme.c))
-    lazy val BlackboxContextClass         = getClassIfDefined("scala.reflect.macros.BlackboxContext") // defined in scala-reflect.jar, so we need to be careful
-    lazy val WhiteboxContextClass         = getClassIfDefined("scala.reflect.macros.WhiteboxContext") // defined in scala-reflect.jar, so we need to be careful
+    lazy val BlackboxContextClass         = getClassIfDefined("scala.reflect.macros.blackbox.Context") // defined in scala-reflect.jar, so we need to be careful
+    lazy val WhiteboxContextClass         = getClassIfDefined("scala.reflect.macros.whitebox.Context") // defined in scala-reflect.jar, so we need to be careful
          def MacroContextPrefix           = BlackboxContextClass.map(sym => getMemberMethod(sym, nme.prefix))
          def MacroContextPrefixType       = BlackboxContextClass.map(sym => getTypeMember(sym, tpnme.PrefixType))
          def MacroContextUniverse         = BlackboxContextClass.map(sym => getMemberMethod(sym, nme.universe))
@@ -603,31 +600,30 @@ trait Definitions extends api.StandardDefinitions {
     def isWhiteboxContextType(tp: Type) =
       isMacroContextType(tp) && (tp <:< WhiteboxContextClass.tpe)
 
-    def mightBeMacroBundleType(tp: Type) =
-      tp.baseClasses.contains(WhiteboxMacroClass) ||
-      tp.baseClasses.contains(BlackboxMacroClass)
+    private def macroBundleParamInfo(tp: Type) = {
+      val ctor = tp.erasure.typeSymbol.primaryConstructor
+      ctor.paramss match {
+        case List(List(c)) =>
+          val sym = c.info.typeSymbol
+          val isContextCompatible = sym.isNonBottomSubClass(BlackboxContextClass) || sym.isNonBottomSubClass(WhiteboxContextClass)
+          if (isContextCompatible) c.info else NoType
+        case _ =>
+          NoType
+      }
+    }
 
-    def isMacroBundleType(tp: Type) = tp.baseClasses match {
-      case _ :: proto :: _ if isMacroBundleProtoType(proto.tpe) => true
-      case _ => false
+    def looksLikeMacroBundleType(tp: Type) =
+      macroBundleParamInfo(tp) != NoType
+
+    def isMacroBundleType(tp: Type) = {
+      val isContextCompatible = macroBundleParamInfo(tp) != NoType
+      val hasSingleConstructor = !tp.declaration(nme.CONSTRUCTOR).isOverloaded
+      val nonAbstract = !tp.erasure.typeSymbol.isAbstractClass
+      isContextCompatible && hasSingleConstructor && nonAbstract
     }
 
     def isBlackboxMacroBundleType(tp: Type) =
-      isMacroBundleType(tp) && (tp <:< BlackboxMacroClass.tpe) && !(tp <:< WhiteboxMacroClass.tpe)
-
-    def isMacroBundleProtoType(tp: Type) = {
-      val sym = tp.typeSymbol
-      val isNonTrivial = tp != ErrorType && tp != NothingTpe && tp != NullTpe
-      def subclasses(sym: Symbol) = sym != NoSymbol && tp.baseClasses.contains(sym)
-      val isMacroCompatible = subclasses(BlackboxMacroClass) ^ subclasses(WhiteboxMacroClass)
-      val isBundlePrototype = sym != BlackboxMacroClass && sym != WhiteboxMacroClass && sym.isTrait && {
-        val c = sym.info.member(nme.c)
-        def overrides(sym: Symbol) = c.overrideChain.contains(sym)
-        val cIsOk = (overrides(BlackboxMacroContextValue) || overrides(WhiteboxMacroContextValue)) && c.isDeferred
-        cIsOk && sym.isMonomorphicType
-      }
-      isNonTrivial && isMacroCompatible && isBundlePrototype
-    }
+      isMacroBundleType(tp) && (macroBundleParamInfo(tp) <:< BlackboxContextClass.tpe)
 
     def isIterableType(tp: Type) = tp <:< classExistentialType(IterableClass)
 
@@ -812,45 +808,31 @@ trait Definitions extends api.StandardDefinitions {
     def byNameType(arg: Type)        = appliedType(ByNameParamClass, arg)
     def iteratorOfType(tp: Type)     = appliedType(IteratorClass, tp)
     def javaRepeatedType(arg: Type)  = appliedType(JavaRepeatedParamClass, arg)
+    def optionType(tp: Type)         = appliedType(OptionClass, tp)
     def scalaRepeatedType(arg: Type) = appliedType(RepeatedParamClass, arg)
     def seqType(arg: Type)           = appliedType(SeqClass, arg)
 
     // FYI the long clunky name is because it's really hard to put "get" into the
     // name of a method without it sounding like the method "get"s something, whereas
     // this method is about a type member which just happens to be named get.
-    def typeOfMemberNamedGet(tp: Type)       = resultOfMatchingMethod(tp, nme.get)()
-    def typeOfMemberNamedHead(tp: Type)      = resultOfMatchingMethod(tp, nme.head)()
-    def typeOfMemberNamedApply(tp: Type)     = resultOfMatchingMethod(tp, nme.apply)(IntTpe)
-    def typeOfMemberNamedDrop(tp: Type)      = resultOfMatchingMethod(tp, nme.drop)(IntTpe)
-    def typeOfMemberNamedGetOrSelf(tp: Type) = typeOfMemberNamedGet(tp) orElse tp
-    def typesOfSelectors(tp: Type)           = getterMemberTypes(tp, productSelectors(tp))
-    def typesOfCaseAccessors(tp: Type)       = getterMemberTypes(tp, tp.typeSymbol.caseFieldAccessors)
-
-    /** If this is a case class, the case field accessors (which may be an empty list.)
-     *  Otherwise, if there are any product selectors, that list.
-     *  Otherwise, a list containing only the type itself.
-     */
-    def typesOfSelectorsOrSelf(tp: Type): List[Type] = (
-      if (tp.typeSymbol.isCase)
-        typesOfCaseAccessors(tp)
-      else typesOfSelectors(tp) match {
-        case Nil => tp :: Nil
-        case tps => tps
-      }
-    )
-
-    /** If the given type has one or more product selectors, the type of the last one.
-     *  Otherwise, the type itself.
-     */
-    def typeOfLastSelectorOrSelf(tp: Type) = typesOfSelectorsOrSelf(tp).last
-
-    def elementTypeOfLastSelectorOrSelf(tp: Type) = {
-      val last = typeOfLastSelectorOrSelf(tp)
-      ( typeOfMemberNamedHead(last)
-          orElse typeOfMemberNamedApply(last)
-          orElse elementType(ArrayClass, last)
-      )
+    def typeOfMemberNamedGet(tp: Type)   = typeArgOfBaseTypeOr(tp, OptionClass)(resultOfMatchingMethod(tp, nme.get)())
+    def typeOfMemberNamedHead(tp: Type)  = typeArgOfBaseTypeOr(tp, SeqClass)(resultOfMatchingMethod(tp, nme.head)())
+    def typeOfMemberNamedApply(tp: Type) = typeArgOfBaseTypeOr(tp, SeqClass)(resultOfMatchingMethod(tp, nme.apply)(IntTpe))
+    def typeOfMemberNamedDrop(tp: Type)  = typeArgOfBaseTypeOr(tp, SeqClass)(resultOfMatchingMethod(tp, nme.drop)(IntTpe))
+    def typesOfSelectors(tp: Type)       = getterMemberTypes(tp, productSelectors(tp))
+    // SI-8128 Still using the type argument of the base type at Seq/Option if this is an old-style (2.10 compatible)
+    //         extractor to limit exposure to regressions like the reported problem with existentials.
+    //         TODO fix the existential problem in the general case, see test/pending/pos/t8128.scala
+    private def typeArgOfBaseTypeOr(tp: Type, baseClass: Symbol)(or: => Type): Type = (tp baseType baseClass).typeArgs match {
+      case x :: Nil => x
+      case _        => or
     }
+
+    // Can't only check for _1 thanks to pos/t796.
+    def hasSelectors(tp: Type) = (
+         (tp.members containsName nme._1)
+      && (tp.members containsName nme._2)
+    )
 
     /** Returns the method symbols for members _1, _2, ..., _N
      *  which exist in the given type.
@@ -861,7 +843,9 @@ trait Definitions extends api.StandardDefinitions {
         case m if m.paramss.nonEmpty => Nil
         case m                       => m :: loop(n + 1)
       }
-      loop(1)
+      // Since ErrorType always returns a symbol from a call to member, we
+      // had better not start looking for _1, _2, etc. expecting it to run out.
+      if (tpe.isErroneous) Nil else loop(1)
     }
 
     /** If `tp` has a term member `name`, the first parameter list of which
@@ -1207,15 +1191,21 @@ trait Definitions extends api.StandardDefinitions {
     }
     def getMemberMethod(owner: Symbol, name: Name): TermSymbol = {
       getMember(owner, name.toTermName) match {
-        // todo. member symbol becomes a term symbol in cleanup. is this a bug?
-        // case x: MethodSymbol => x
         case x: TermSymbol => x
         case _             => fatalMissingSymbol(owner, name, "method")
       }
     }
 
+    private lazy val erasurePhase = findPhaseWithName("erasure")
     def getMemberIfDefined(owner: Symbol, name: Name): Symbol =
-      owner.info.nonPrivateMember(name)
+      // findMember considered harmful after erasure; e.g.
+      //
+      // scala> exitingErasure(Symbol_apply).isOverloaded
+      // res27: Boolean = true
+      //
+      enteringPhaseNotLaterThan(erasurePhase )(
+        owner.info.nonPrivateMember(name)
+      )
 
     /** Using getDecl rather than getMember may avoid issues with
      *  OverloadedTypes turning up when you don't want them, if you

@@ -8,7 +8,6 @@ package reflect
 package internal
 
 import scala.collection.{ mutable, immutable, generic }
-import generic.Clearable
 import scala.ref.WeakReference
 import mutable.ListBuffer
 import Flags._
@@ -895,7 +894,7 @@ trait Types
         if (sym == btssym) return mid
         else if (sym isLess btssym) hi = mid - 1
         else if (btssym isLess sym) lo = mid + 1
-        else abort()
+        else abort("sym is neither `sym == btssym`, `sym isLess btssym` nor `btssym isLess sym`")
       }
       -1
     }
@@ -1999,7 +1998,9 @@ trait Types
       if (sym.typeParams.size != args.size)
         devWarning(s"$this.transform($tp), but tparams.isEmpty and args=$args")
 
-      asSeenFromOwner(tp).instantiateTypeParams(sym.typeParams, args)
+      val GenPolyType(tparams, result) = asSeenFromOwner(tp)
+      assert((tparams eq Nil) || tparams == sym.typeParams, (tparams, sym.typeParams))
+      result.instantiateTypeParams(sym.typeParams, args)
     }
 
     // note: does not go through typeRef. There's no need to because
@@ -2309,7 +2310,14 @@ trait Types
       }
       thisInfo.decls
     }
-    protected[Types] def baseTypeSeqImpl: BaseTypeSeq = sym.info.baseTypeSeq map transform
+    protected[Types] def baseTypeSeqImpl: BaseTypeSeq =
+      if (sym.info.baseTypeSeq exists (_.typeSymbolDirect.isAbstractType))
+        // SI-8046 base type sequence might have more elements in a subclass, we can't map it element wise.
+        transform(sym.info).baseTypeSeq
+      else
+        // Optimization: no abstract types, we can compute the BTS of this TypeRef as an element-wise map
+        //               of the BTS of the referenced symbol.
+        sym.info.baseTypeSeq map transform
 
     override def baseTypeSeq: BaseTypeSeq = {
       val cache = baseTypeSeqCache
@@ -3601,7 +3609,7 @@ trait Types
   }
   def genPolyType(params: List[Symbol], tpe: Type): Type = GenPolyType(params, tpe)
 
-  @deprecated("use genPolyType(...) instead", "2.10.0")
+  @deprecated("use genPolyType(...) instead", "2.10.0") // Used in reflection API
   def polyType(params: List[Symbol], tpe: Type): Type = GenPolyType(params, tpe)
 
   /** A creator for anonymous type functions, where the symbol for the type function still needs to be created.
@@ -3660,7 +3668,11 @@ trait Types
     if (Statistics.canEnable) Statistics.incCounter(rawTypeCount)
     if (uniqueRunId != currentRunId) {
       uniques = util.WeakHashSet[Type](initialUniquesCapacity)
-      perRunCaches.recordCache(uniques)
+      // JZ: We used to register this as a perRunCache so it would be cleared eagerly at
+      // the end of the compilation run. But, that facility didn't actually clear this map (SI-8129)!
+      // When i fixed that bug, run/tpeCache-tyconCache.scala started failing. Why was that?
+      // I've removed the registration for now. I don't think its particularly harmful anymore
+      // as a) this is now a weak set, and b) it is discarded completely before the next run.
       uniqueRunId = currentRunId
     }
     (uniques findEntryOrUpdate tp).asInstanceOf[T]

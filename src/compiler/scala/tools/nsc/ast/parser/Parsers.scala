@@ -623,15 +623,6 @@ self =>
         syntaxError(tpt.pos, "no * parameter type allowed here", skipIt = false)
     }
 
-    /** Check that tree is a legal clause of a forSome. */
-    def checkLegalExistential(t: Tree) = t match {
-      case TypeDef(_, _, _, TypeBoundsTree(_, _)) |
-           ValDef(_, _, _, EmptyTree) | EmptyTree =>
-             ;
-      case _ =>
-        syntaxError(t.pos, "not a legal existential clause", skipIt = false)
-    }
-
 /* -------------- TOKEN CLASSES ------------------------------------------- */
 
     def isModifier: Boolean = in.token match {
@@ -671,6 +662,7 @@ self =>
     def isRawBar  = isIdent && in.name == raw.BAR
 
     def isIdent = in.token == IDENTIFIER || in.token == BACKQUOTED_IDENT
+    def isMacro = in.token == IDENTIFIER && in.name == nme.MACROkw
 
     def isLiteralToken(token: Token) = token match {
       case CHARLIT | INTLIT | LONGLIT | FLOATLIT | DOUBLELIT |
@@ -884,9 +876,14 @@ self =>
         }
       }
       private def makeExistentialTypeTree(t: Tree) = {
-        val whereClauses = refinement()
-        whereClauses foreach checkLegalExistential
-        ExistentialTypeTree(t, whereClauses)
+        // EmptyTrees in the result of refinement() stand for parse errors
+        // so it's okay for us to filter them out here
+        ExistentialTypeTree(t, refinement() flatMap {
+          case t @ TypeDef(_, _, _, TypeBoundsTree(_, _)) => Some(t)
+          case t @ ValDef(_, _, _, EmptyTree) => Some(t)
+          case EmptyTree => None
+          case _ => syntaxError(t.pos, "not a legal existential clause", skipIt = false); None
+        })
       }
 
       /** {{{
@@ -1037,6 +1034,8 @@ self =>
     /** For when it's known already to be a type name. */
     def identForType(): TypeName = ident().toTypeName
     def identForType(skipIt: Boolean): TypeName = ident(skipIt).toTypeName
+
+    def identOrMacro(): Name = if (isMacro) rawIdent() else ident()
 
     def selector(t: Tree): Tree = {
       val point = in.offset
@@ -2551,7 +2550,7 @@ self =>
       }
       else {
         val nameOffset = in.offset
-        val name = ident()
+        val name = identOrMacro()
         funDefRest(start, nameOffset, mods, name)
       }
     }
@@ -2584,7 +2583,7 @@ self =>
           } else {
             if (in.token == EQUALS) {
               in.nextTokenAllow(nme.MACROkw)
-              if (in.token == IDENTIFIER && in.name == nme.MACROkw) {
+              if (isMacro) {
                 in.nextToken()
                 newmods |= Flags.MACRO
               }
