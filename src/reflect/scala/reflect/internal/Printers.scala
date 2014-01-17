@@ -735,8 +735,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
                 println()
               };
             case _ =>
-              val separator = scala.util.Properties.lineSeparator
-              printPackageDef(pd, separator)
+              printPackageDef(pd, scala.util.Properties.lineSeparator)
           }
 
         case md @ ModuleDef(mods, name, impl) =>
