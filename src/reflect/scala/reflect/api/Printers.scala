@@ -220,28 +220,6 @@ trait Printers { self: Universe =>
    */
   protected def newCodePrinter(out: PrintWriter, tree: Tree): TreePrinter
   
-//  //TODO remove this method
-//    /**
-//   * Renders the code of the passed tree, so that:
-//   *  1) it can be later compiled by scalac retaining the same meaning,
-//   *  2) it looks pretty.
-//   *  At the moment we have handled #1 for unattributed trees and
-//   *  later on plan to account for typical idiosyncrasies of the typechecker.
-//   *  #2 is more or less okay indentation-wise, but at the moment there's a lot of desugaring
-//   *  left in place, and that's what we also plan to improve in the future.
-//   *
-//   *  @group Printers
-//   */
-//  def showTypedCode(tree: Tree) = render(tree, newTypedPrinter)
-//
-//  //TODO remove this method
-//  
-//  /**
-//   * Hook to define what `showCode(...)` means.
-//   * @group Printers
-//   */
-//  protected def newTypedPrinter(out: PrintWriter): TreePrinter
-  
   /** Renders internal structure of a reflection artifact as the
    *  visualization of a Scala syntax tree.
    *

@@ -182,14 +182,13 @@ trait BuildUtils { self: SymbolTable =>
       }
     }
 
-    // TODO rename detect tree with typed structure 
     private[internal] def detectTypedTree(tree: Tree) =
-      tree.hasExistingSymbol || //|| (!tree.hasSymbolField &&
+      tree.hasExistingSymbol || (!tree.hasSymbolField &&
       tree.exists {
-        case dd: DefDef => dd.mods.hasAccessorFlag
+        //case dd: DefDef => dd.mods.hasAccessorFlag || dd.mods.isSynthetic // for untypechecked trees
         case md: MemberDef => md.hasExistingSymbol
         case _ => false
-      }
+      })
     
     // recover template body to parsed state
     private[internal] def untypedTemplBody(templ: Template) = {
@@ -201,7 +200,7 @@ trait BuildUtils { self: SymbolTable =>
           case vd: ValDef => dd.name == vd.name.dropLocal 
           case _ => false
         }
-//        case dd: DefDef if dd.mods.hasAccessorFlag => dd.mods.isDeferred
+        // first check to prevent null pointer
         case tree => !tree.hasExistingSymbol || !tree.symbol.isSynthetic
       }
       
@@ -227,42 +226,20 @@ trait BuildUtils { self: SymbolTable =>
         // for abstract and some lazy val/vars  
         case dd @ DefDef(mods, name, _, _, tpt, rhs) if mods.hasAccessorFlag => 
           // transform getter mods to field
-//          println(s"name: $name")
-//          println(s"dd.symbol.isPrivate: ${dd.symbol.isPrivate}, ${mods.isPrivate}, accessBoundary: ${mods.hasAccessBoundary}")
-//          println(s"dd.symbol.isProtected: ${dd.symbol.isProtected}, ${mods.isProtected}, accessBoundary: ${mods.hasAccessBoundary}")
-//          println(s"dd.symbol.isPublic: ${dd.symbol.isPublic}, ${mods.isPublic}, accessBoundary: ${mods.hasAccessBoundary}")
-//          println(s"dd.symbol.isPrivateLocal: ${dd.symbol.isPrivateLocal}, ${mods.isPrivateLocal}, accessBoundary: ${mods.hasAccessBoundary}")
-//          println(s"dd.symbol.isProtectedLocal: ${dd.symbol.isProtectedLocal}, ${mods.isProtectedLocal}, accessBoundary: ${mods.hasAccessBoundary}")
-//          println()
           val vdMods = (if (!mods.hasStableFlag) mods | Flags.MUTABLE else mods &~ Flags.STABLE) &~ Flags.ACCESSOR  
           ValDef(vdMods, name, tpt, rhs)
         case tree => tree
       }
       
-      // templ.exists is required for untyped trees
       if (detectTypedTree(templ)) { 
-        val filt = filterBody(tbody)
-//        System.out.println("=======================================")
-//        System.out.println("show (filterBody): " + show(filt))
-//        System.out.println("showRaw (filterBody): " + showRaw(filt))
-//        System.out.println("=======================================")
-        val res = recoverBody(filt)
-//        System.out.println("=======================================")
-//        System.out.println("show (recoverBody): " + show(res))
-//        System.out.println("showRaw (recoverBody): " + showRaw(res))
-//        System.out.println("=======================================")
-        res
-      } else {
-//        System.out.println(s"templ.symbol = ${templ.symbol}"); 
-//        System.out.println(s"templ.isTyped = ${templ.isTyped}"); 
-        tbody
-      } 
+        recoverBody(filterBody(tbody))
+      } else tbody
     }
     
     // undo gen.mkTemplate
     protected object UnMkTemplate {
       def unapply(templ: Template): Option[(List[Tree], ValDef, Modifiers, List[List[ValDef]], List[Tree], List[Tree])] = {
-        val Template(parents, selfType, tempBody) = templ
+        val Template(parents, selfType, _) = templ
         val tbody = untypedTemplBody(templ)
         
         def result(ctorMods: Modifiers, vparamss: List[List[ValDef]], edefs: List[Tree], body: List[Tree]) =
@@ -570,7 +547,7 @@ trait BuildUtils { self: SymbolTable =>
     }
 
     // abstract over possible alternative representations of no type in valdef
-    protected object EmptyTypTree {
+    protected[internal] object EmptyTypTree {
       def unapply(tree: Tree): Boolean = tree match {
         case EmptyTree => true
         case tt: TypeTree if (tt.original == null || tt.original.isEmpty) => true
