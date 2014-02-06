@@ -183,12 +183,11 @@ trait BuildUtils { self: SymbolTable =>
     }
 
     private[internal] def detectTypedTree(tree: Tree) =
-      tree.hasExistingSymbol || (!tree.hasSymbolField &&
-      tree.exists {
-        //case dd: DefDef => dd.mods.hasAccessorFlag || dd.mods.isSynthetic // for untypechecked trees
+      tree.hasExistingSymbol || tree.exists {
+        case dd: DefDef => dd.mods.hasAccessorFlag || dd.mods.isSynthetic // for untypechecked trees
         case md: MemberDef => md.hasExistingSymbol
         case _ => false
-      })
+      }
     
     // recover template body to parsed state
     private[internal] def untypedTemplBody(templ: Template) = {

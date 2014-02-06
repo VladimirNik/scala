@@ -1094,16 +1094,11 @@ trait Printers extends api.Printers { self: SymbolTable =>
   def xprintTree(treePrinter: TreePrinter, tree: Tree) =
     treePrinter.print(tree.productPrefix+tree.productIterator.mkString("(", ", ", ")"))
 
-  // TODO check this method for macro trees
-  // TODO remove println
   def newCodePrinter(writer: PrintWriter, tree: Tree): TreePrinter = {
-    if (build.detectTypedTree(tree)) {
-      System.out.println("===> TypedTreePrinter created!") 
+    if (build.detectTypedTree(tree))
       new TypedTreePrinter(writer)
-    } else {
-      System.out.println("===> ParsedTreePrinter created!")
+    else
       new ParsedTreePrinter(writer)
-    }
   }
   
   def newTreePrinter(writer: PrintWriter): TreePrinter = new TreePrinter(writer)
