@@ -65,7 +65,7 @@ object TypecheckedProps extends QuasiquoteProperties("typechecked") {
   }
 
   property("extract UnApply (2)") = test {
-    val q"object $_ { $_; $_; $m }" = typecheck(q"""
+    val q"object $_ { $_; $m }" = typecheck(q"""
       object Test {
         case class Cell(val x: Int)
         new Cell(0) match { case Cell(v) => v }
