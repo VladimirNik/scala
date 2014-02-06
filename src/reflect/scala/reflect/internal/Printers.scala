@@ -73,6 +73,10 @@ trait Printers extends api.Printers { self: SymbolTable =>
     def undent() = indentMargin -= indentStep
 
     def printPosition(tree: Tree) = if (printPositions) print(tree.pos.show)
+    
+    protected def printTypesInfo(tree: Tree) = 
+      if (printTypes && tree.isTerm && tree.canHaveAttrs)
+        print("{", if (tree.tpe eq null) "<null>" else tree.tpe.toString, "}")
 
     def println() = {
       out.println()
@@ -496,9 +500,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case tree =>
           xprintTree(this, tree)
       }
-      if (printTypes && tree.isTerm && tree.canHaveAttrs) {
-        print("{", if (tree.tpe eq null) "<null>" else tree.tpe.toString, "}")
-      }
+      printTypesInfo(tree)
     }
 
     def print(args: Any*): Unit = args foreach {
@@ -514,19 +516,6 @@ trait Printers extends api.Printers { self: SymbolTable =>
   
   // it's the printer for trees after parser and before typer phases
   class ParsedTreePrinter(out: PrintWriter) extends TreePrinter(out) {
-    override def withTypes = this
-    override def withIds = this
-    override def withKinds = this
-    override def withMirrors = this
-    override def withPositions = this
-
-    // TODO: add print parameters to typed trees printer
-    printTypes = false
-    printIds = false
-    printKinds = false
-    printMirrors = false
-    printPositions = false
-
     protected val parentsStack = scala.collection.mutable.Stack[Tree]()
 
     protected def currentTree = if (parentsStack.nonEmpty) Some(parentsStack.top) else None
@@ -633,6 +622,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     def printParam(tree: Tree, primaryCtorParam: Boolean): Unit =
       tree match {
         case vd @ ValDef(mods, name, tp, rhs) =>
+          printPosition(tree)
           printAnnotations(vd)
           val mutableOrOverride = mods.isOverride || mods.isMutable
           val hideCtorMods = mods.isParamAccessor && mods.isPrivateLocal && !mutableOrOverride
@@ -646,6 +636,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           printOpt(": ", tp);
           printOpt(" = ", rhs)
         case TypeDef(_, name, tparams, rhs) =>
+          printPosition(tree)
           print(printedName(name))
           printTypeParams(tparams);
           print(rhs)
@@ -681,6 +672,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     override def printTree(tree: Tree): Unit = { 
       parentsStack.push(tree)
       processTreePrinting(tree);
+      printTypesInfo(tree)
       parentsStack.pop()
     }
     
@@ -1045,7 +1037,11 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case _ if syntheticToRemove(tree) =>
           
         case tt: TypeTree =>
-          if (!emptyTypTree(tt)) print(tt.original) 
+          if (printPositions) {
+            if (tt.original != null)
+              print("<type: ", tt.original.toString(), ">")
+            else print("<type ?>")
+          } else if (!emptyTypTree(tt)) print(tt.original) 
           
         // remove [] when targs are TypeTrees with empty original
         case TypeApply(fun, targs) =>

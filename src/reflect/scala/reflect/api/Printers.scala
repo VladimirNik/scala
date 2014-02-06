@@ -212,8 +212,8 @@ trait Printers { self: Universe =>
    *
    *  @group Printers
    */
-  def showCode(tree: Tree, printTypes: BooleanFlag = None, printIds: BooleanFlag = None, printKinds: BooleanFlag = None, printMirrors: BooleanFlag = None, printPositions: BooleanFlag = None) = 
-    render(tree, newCodePrinter(_, tree), printTypes, printIds, printKinds, printMirrors, printPositions)
+  def showCode(tree: Tree, printTypes: BooleanFlag = None, printIds: BooleanFlag = None, printPositions: BooleanFlag = None) = 
+    render(tree, newCodePrinter(_, tree), printTypes, printIds, None, None, printPositions)
 
   /**
    * Hook to define what `showCode(...)` means.
