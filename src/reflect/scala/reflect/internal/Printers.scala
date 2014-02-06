@@ -789,7 +789,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           printImport(imp, resolveSelect(expr))
 
         case t @ Template(parents, self, tbody) =>
-          val body = build.untypedTemplBody(t)
+          val body = build.unattributedTemplBody(t)
           val printedParents =
             currentParent map {
               case _: CompoundTypeTree => parents
@@ -1047,7 +1047,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
         case tt: TypeTree =>
           if (!emptyTypTree(tt)) print(tt.original) 
           
-        // remove []  
+        // remove [] when targs are TypeTrees with empty original
         case TypeApply(fun, targs) =>
           if (targs.exists(emptyTypTree(_))) {
             print(fun)
@@ -1095,7 +1095,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     treePrinter.print(tree.productPrefix+tree.productIterator.mkString("(", ", ", ")"))
 
   def newCodePrinter(writer: PrintWriter, tree: Tree): TreePrinter = {
-    if (build.detectTypedTree(tree))
+    if (build.detectAttributedTree(tree))
       new TypedTreePrinter(writer)
     else
       new ParsedTreePrinter(writer)

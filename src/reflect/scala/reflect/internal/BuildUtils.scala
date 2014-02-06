@@ -182,7 +182,7 @@ trait BuildUtils { self: SymbolTable =>
       }
     }
 
-    private[internal] def detectTypedTree(tree: Tree) =
+    private[internal] def detectAttributedTree(tree: Tree) =
       tree.hasExistingSymbol || tree.exists {
         case dd: DefDef => dd.mods.hasAccessorFlag || dd.mods.isSynthetic // for untypechecked trees
         case md: MemberDef => md.hasExistingSymbol
@@ -190,17 +190,18 @@ trait BuildUtils { self: SymbolTable =>
       }
     
     // recover template body to parsed state
-    private[internal] def untypedTemplBody(templ: Template) = {
+    private[internal] def unattributedTemplBody(templ: Template) = {
       val tbody = templ.body
       
       def filterBody(body: List[Tree]) = body filter {
         case _: ValDef | _: TypeDef => true
+        // keep valdef or getter for val/var
         case dd: DefDef if dd.mods.hasAccessorFlag => !nme.isSetterName(dd.name) && !tbody.exists{
           case vd: ValDef => dd.name == vd.name.dropLocal 
           case _ => false
         }
-        // first check to prevent null pointer
-        case tree => !tree.hasExistingSymbol || !tree.symbol.isSynthetic
+        case md: MemberDef => !md.mods.isSynthetic
+        case tree => true
       }
       
       def lazyValDefRhs(body: Tree) = 
@@ -230,7 +231,7 @@ trait BuildUtils { self: SymbolTable =>
         case tree => tree
       }
       
-      if (detectTypedTree(templ)) { 
+      if (detectAttributedTree(templ)) { 
         recoverBody(filterBody(tbody))
       } else tbody
     }
@@ -239,7 +240,7 @@ trait BuildUtils { self: SymbolTable =>
     protected object UnMkTemplate {
       def unapply(templ: Template): Option[(List[Tree], ValDef, Modifiers, List[List[ValDef]], List[Tree], List[Tree])] = {
         val Template(parents, selfType, _) = templ
-        val tbody = untypedTemplBody(templ)
+        val tbody = unattributedTemplBody(templ)
         
         def result(ctorMods: Modifiers, vparamss: List[List[ValDef]], edefs: List[Tree], body: List[Tree]) =
           Some((parents, selfType, ctorMods, vparamss, edefs, body))
