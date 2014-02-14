@@ -827,7 +827,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           printImport(imp, resolveSelect(expr))
 
         case t @ Template(parents, self, tbody) =>
-          val body = build.unattributedTemplBody(t)
+          val body = treeInfo.untypecheckedTemplBody(t)
           val printedParents =
             currentParent map {
               case _: CompoundTypeTree => parents
@@ -897,7 +897,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           }
 
         case bl @ Block(stats, expr) =>
-          printBlock(build.unattributedBlockBody(bl), expr)
+          printBlock(treeInfo.untypecheckedBlockBody(bl), expr)
 
         case Match(selector, cases) =>
           /* Insert braces if match is inner
@@ -992,7 +992,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
           if (tree.hasExistingSymbol && tree.symbol.isPackage) print(tree.symbol.fullName)
           else printThis(th, printedName(qual)) 
           
-        // remove this.this from constructor invocation 
+        // remove this prefix from constructor invocation in typechecked trees: this.this -> this
         case Select(This(_), name @ nme.CONSTRUCTOR) => print(printedName(name))  
           
         case Select(qual: New, name) =>
