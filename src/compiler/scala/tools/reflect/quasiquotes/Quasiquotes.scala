@@ -43,6 +43,7 @@ abstract class Quasiquotes extends Parsers
   lazy val universeTypes = new definitions.UniverseDependentTypes(universe)
 
   def expandQuasiquote = {
+    //TODO debug it
     debug(s"macro application:\n${c.macroApplication}\n")
     debug(s"code to parse:\n$code\n")
     val tree = parse(code)
