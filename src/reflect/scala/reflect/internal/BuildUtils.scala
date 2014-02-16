@@ -204,19 +204,28 @@ trait BuildUtils { self: SymbolTable =>
     // undo gen.mkTemplate
     protected object UnMkTemplate {
       def unapply(templ: Template): Option[(List[Tree], ValDef, Modifiers, List[List[ValDef]], List[Tree], List[Tree])] = {
+        println()
+        println("--- UnMkTemplate ---")
         val Template(parents, selfType, _) = templ
         val tbody = treeInfo.untypecheckedTemplBody(templ)
+        println(show(tbody))
+        println("(1)")
         
         def result(ctorMods: Modifiers, vparamss: List[List[ValDef]], edefs: List[Tree], body: List[Tree]) =
           Some((parents, selfType, ctorMods, vparamss, edefs, body))
         def indexOfCtor(trees: List[Tree]) =
           trees.indexWhere { case UnCtor(_, _, _) => true ; case _ => false }
 
-        if (tbody forall treeInfo.isInterfaceMember)
+        if (tbody forall treeInfo.isInterfaceMember) {
+          println("(2)")
           result(NoMods | Flag.TRAIT, Nil, Nil, tbody)
-        else if (indexOfCtor(tbody) == -1)
+        }
+        else if (indexOfCtor(tbody) == -1) {
+          println("(3)")
           None
+        }
         else {
+          println("(4)")
           val (rawEdefs, rest) = tbody.span(treeInfo.isEarlyDef)
           val (gvdefs, etdefs) = rawEdefs.partition(treeInfo.isEarlyValDef)
           val (fieldDefs, UnCtor(ctorMods, ctorVparamss, lvdefs) :: body) = rest.splitAt(indexOfCtor(rest))
@@ -225,23 +234,29 @@ trait BuildUtils { self: SymbolTable =>
               copyValDef(gvdef)(tpt = tpt.original, rhs = rhs)
           }
           val edefs = evdefs ::: etdefs
-          if (ctorMods.isTrait)
+          println("(5)")
+          if (ctorMods.isTrait) {
+            println("(6)")
             result(ctorMods, Nil, edefs, body)
+          }
           else {
+            println("(7)")
             // undo conversion from (implicit ... ) to ()(implicit ... ) when its the only parameter section
             val vparamssRestoredImplicits = ctorVparamss match {
               case Nil :: (tail @ ((head :: _) :: _)) if head.mods.isImplicit => tail
               case other => other
             }
+            println("(8)")
             // undo flag modifications by merging flag info from constructor args and fieldDefs
             val modsMap = fieldDefs.map { case ValDef(mods, name, _, _) => name -> mods }.toMap
             def ctorArgsCorrespondToFields = vparamssRestoredImplicits.flatten.forall { vd => modsMap.contains(vd.name) }
-            if (!ctorArgsCorrespondToFields) None
+            if (!ctorArgsCorrespondToFields) {println("(9)"); None}
             else {
               val vparamss = mmap(vparamssRestoredImplicits) { vd =>
                 val originalMods = modsMap(vd.name) | (vd.mods.flags & DEFAULTPARAM)
                 atPos(vd.pos)(ValDef(originalMods, vd.name, vd.tpt, vd.rhs))
               }
+              println("(10)")
               result(ctorMods, vparamss, edefs, body)
             }
           }
@@ -262,6 +277,7 @@ trait BuildUtils { self: SymbolTable =>
       def apply(mods: Modifiers, name: TypeName, tparams: List[Tree],
                 constrMods: Modifiers, vparamss: List[List[Tree]],
                 earlyDefs: List[Tree], parents: List[Tree], selfType: Tree, body: List[Tree]): ClassDef = {
+        println(s"ClassDef: $name apply invocation")
         val extraFlags = PARAMACCESSOR | (if (mods.isCase) CASEACCESSOR else 0L)
         val vparamss0 = mkParam(vparamss, extraFlags)
         val tparams0 = mkTparams(tparams)
@@ -280,7 +296,12 @@ trait BuildUtils { self: SymbolTable =>
       def unapply(tree: Tree): Option[(Modifiers, TypeName, List[TypeDef], Modifiers, List[List[ValDef]],
                                        List[Tree], List[Tree], ValDef, List[Tree])] = tree match {
         case ClassDef(mods, name, tparams, UnMkTemplate(parents, selfType, ctorMods, vparamss, earlyDefs, body))
-          if !ctorMods.isTrait && !ctorMods.hasFlag(JAVA) =>
+          if {
+            println(s"=== in ClassDef: $name ===")
+            println(s"ctorMods.isTrait: ${ctorMods.isTrait}")
+            println(s"ctorMods.hasFlag(JAVA): ${ctorMods.hasFlag(JAVA)}")
+            println()
+            !ctorMods.isTrait && !ctorMods.hasFlag(JAVA)} =>
           Some((mods, name, tparams, ctorMods, vparamss, earlyDefs, parents, selfType, body))
         case _ =>
           None
@@ -432,8 +453,8 @@ trait BuildUtils { self: SymbolTable =>
         else gen.mkBlock(stats)
 
       def unapply(tree: Tree): Option[List[Tree]] = tree match {
-        case self.Block(stats, SyntheticUnit()) => Some(stats)
-        case self.Block(stats, expr)            => Some(stats :+ expr)
+        case bl @ self.Block(stats, SyntheticUnit()) => Some(treeInfo.untypecheckedBlockBody(bl))
+        case bl @ self.Block(stats, expr)            => Some(treeInfo.untypecheckedBlockBody(bl) :+ expr)
         case EmptyTree                          => Some(Nil)
         case _ if tree.isTerm                   => Some(tree :: Nil)
         case _                                  => None

@@ -144,7 +144,9 @@ trait Reifiers { self: Quasiquotes =>
       case _ => EmptyTree
     }
 
-    override def reifyTreeSyntactically(tree: Tree) = tree match {
+    override def reifyTreeSyntactically(tree: Tree) = {
+      println(s"reifyTreeSyntactically: ${showCode(tree)}")
+      tree match {
       case RefTree(qual, SymbolPlaceholder(Hole(tree, _))) if isReifyingExpressions =>
         mirrorBuildCall(nme.RefTree, reify(qual), tree)
       case This(SymbolPlaceholder(Hole(tree, _))) if isReifyingExpressions =>
@@ -214,7 +216,7 @@ trait Reifiers { self: Quasiquotes =>
         reifyBuildCall(nme.ScalaDot, name)
       case _ =>
         super.reifyTreeSyntactically(tree)
-    }
+    }}
 
     override def reifyName(name: Name): Tree = name match {
       case Placeholder(hole: ApplyHole) =>
