@@ -143,12 +143,15 @@ abstract class TreeGen extends _root_.scala.reflect.internal.TreeGen with TreeDS
    *    x.asInstanceOf[`pt`]()   if after uncurry but before erasure
    *    x.$asInstanceOf[`pt`]()  if at or after erasure
    */
+  //TODO-REFLECT this method is required for Typers
   override def mkCast(tree: Tree, pt: Type): Tree = {
     debuglog("casting " + tree + ":" + tree.tpe + " to " + pt + " at phase: " + phase)
     assert(!tree.tpe.isInstanceOf[MethodType], tree)
     assert(pt eq pt.normalize, tree +" : "+ debugString(pt) +" ~>"+ debugString(pt.normalize))
     atPos(tree.pos) {
-      mkAsInstanceOf(tree, pt, any = !phase.next.erasedTypes, wrapInApply = isAtPhaseAfter(currentRun.uncurryPhase))
+      //TODO-REFLECT maybe in reflect we could use wrapInApply = false, we shouldn't work after typechecker
+      //TODO-REFLECT could we use such change - wrapInApply = false and then override it in compiler?
+      mkAsInstanceOf(tree, pt, any = !phase.next.erasedTypes, wrapInApply = false) //isAtPhaseAfter(currentRun.uncurryPhase)) 
     }
   }
 
@@ -186,7 +189,8 @@ abstract class TreeGen extends _root_.scala.reflect.internal.TreeGen with TreeDS
    *  which refer to it.
    */
   private def mkPackedValDef(expr: Tree, owner: Symbol, name: Name): (ValDef, () => Ident) = {
-    val packedType = typer.packedType(expr, owner)
+    //TODO-REFLECT - add typer here
+    val packedType: Type = null //original (back) - val packedType = typer.packedType(expr, owner)
     val sym = owner.newValue(name.toTermName, expr.pos.makeTransparent, SYNTHETIC) setInfo packedType
 
     (ValDef(sym, expr), () => Ident(sym) setPos sym.pos.focus setType expr.tpe)
@@ -258,43 +262,44 @@ abstract class TreeGen extends _root_.scala.reflect.internal.TreeGen with TreeDS
     mkNew(Nil, noSelfType, stats1, NoPosition, NoPosition)
   }
 
-  /**
-   * Create a method based on a Function
-   *
-   * Used both to under `-Ydelambdafy:method` create a lifted function and
-   * under `-Ydelamdafy:inline` to create the apply method on the anonymous
-   * class.
-   *
-   * It creates a method definition with value params cloned from the
-   * original lambda. Then it calls a supplied function to create
-   * the body and types the result. Finally
-   * everything is wrapped up in a DefDef
-   *
-   * @param owner The owner for the new method
-   * @param name name for the new method
-   * @param additionalFlags flags to be put on the method in addition to FINAL
-   */
-  def mkMethodFromFunction(localTyper: analyzer.Typer)
-                          (fun: Function, owner: Symbol, name: TermName, additionalFlags: FlagSet = NoFlags) = {
-    val funParams = fun.vparams map (_.symbol)
-    val formals :+ restpe = fun.tpe.typeArgs
-
-    val methSym = owner.newMethod(name, fun.pos, FINAL | additionalFlags)
-
-    val paramSyms = map2(formals, fun.vparams) {
-      (tp, vparam) => methSym.newSyntheticValueParam(tp, vparam.name)
-    }
-
-    methSym setInfo MethodType(paramSyms, restpe.deconst)
-
-    fun.body.substituteSymbols(funParams, paramSyms)
-    fun.body changeOwner (fun.symbol -> methSym)
-
-    val methDef = DefDef(methSym, fun.body)
-
-    // Have to repack the type to avoid mismatches when existentials
-    // appear in the result - see SI-4869.
-    methDef.tpt setType localTyper.packedType(fun.body, methSym).deconst
-    methDef
-  }
+  //TODO-REFLECT: this method is not required in Typers, used in compiler/scala/tools/nsc/transform/UnCurry.scala
+//  /**
+//   * Create a method based on a Function
+//   *
+//   * Used both to under `-Ydelambdafy:method` create a lifted function and
+//   * under `-Ydelamdafy:inline` to create the apply method on the anonymous
+//   * class.
+//   *
+//   * It creates a method definition with value params cloned from the
+//   * original lambda. Then it calls a supplied function to create
+//   * the body and types the result. Finally
+//   * everything is wrapped up in a DefDef
+//   *
+//   * @param owner The owner for the new method
+//   * @param name name for the new method
+//   * @param additionalFlags flags to be put on the method in addition to FINAL
+//   */
+//  def mkMethodFromFunction(localTyper: analyzer.Typer)
+//                          (fun: Function, owner: Symbol, name: TermName, additionalFlags: FlagSet = NoFlags) = {
+//    val funParams = fun.vparams map (_.symbol)
+//    val formals :+ restpe = fun.tpe.typeArgs
+//
+//    val methSym = owner.newMethod(name, fun.pos, FINAL | additionalFlags)
+//
+//    val paramSyms = map2(formals, fun.vparams) {
+//      (tp, vparam) => methSym.newSyntheticValueParam(tp, vparam.name)
+//    }
+//
+//    methSym setInfo MethodType(paramSyms, restpe.deconst)
+//
+//    fun.body.substituteSymbols(funParams, paramSyms)
+//    fun.body changeOwner (fun.symbol -> methSym)
+//
+//    val methDef = DefDef(methSym, fun.body)
+//
+//    // Have to repack the type to avoid mismatches when existentials
+//    // appear in the result - see SI-4869.
+//    methDef.tpt setType localTyper.packedType(fun.body, methSym).deconst
+//    methDef
+//  }
 }

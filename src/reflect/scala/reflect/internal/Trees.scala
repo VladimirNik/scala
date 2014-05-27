@@ -1886,6 +1886,8 @@ trait Trees extends api.Trees {
   implicit val ValOrDefDefTag         = ClassTag[ValOrDefDef](classOf[ValOrDefDef])
 
   val treeNodeCount = Statistics.newView("#created tree nodes")(nodeCount)
+  
+  /////////// nsc.ast.Trees ///////////
 }
 
 object TreesStats {

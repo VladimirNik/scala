@@ -125,7 +125,7 @@ trait CompilationUnits { global: ReflectGlobal =>
     /** The icode representation of classes in this compilation unit.
      *  It is empty up to phase 'icode'.
      */
-    //TODO-FIX: icode removed
+    //TODO-FIX: icode removed (this val should be in compiler part)
 //    val icode: LinkedHashSet[icodes.IClass] = new LinkedHashSet
 
     def reporter = global.reporter
