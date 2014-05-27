@@ -14,13 +14,13 @@ trait Parsers { self: Quasiquotes =>
     def parse(code: String): Tree
   }
 
-  val TermParser: Parser
-  val TypeParser: Parser
-  val CaseParser: Parser
-  val PatternParser: Parser
-  val ForEnumeratorParser: Parser
+  val TermParser: Parser = ???
+  val TypeParser: Parser = ???
+  val CaseParser: Parser = ???
+  val PatternParser: Parser = ???
+  val ForEnumeratorParser: Parser = ???
   val Q: Parser {
     def unapply(tree: Tree): Option[Tree]
-  }
-  val FreshName: FreshNameExtractor
+  } = ???
+  val FreshName: FreshNameExtractor = ???
 }

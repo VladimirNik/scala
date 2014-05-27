@@ -26,20 +26,20 @@ trait ReflectGlobal extends ReflectMix {
     val global: ReflectGlobal.this.type
   }
   
-  var reporter: Reporter
-  var globalPhase: Phase
-  def settings: Settings
+  var reporter: Reporter = ???
+  var globalPhase: Phase = ???
+  def settings: Settings = ???
 
-  def currentRun: ReflectRun
+  def currentRun: ReflectRun = ???
   def currentUnit: CompilationUnit = if (currentRun eq null) NoCompilationUnit else currentRun.currentUnit
 
   var printTypings = settings.Ytyperdebug.value
-  def RootClass: ClassSymbol
+  def RootClass: ClassSymbol = ???
   
-  def registerContext(c: analyzer.Context): Unit
+  def registerContext(c: analyzer.Context): Unit = ???
   
   //TODO-REFLECT maybe we don't require such method and its usage
-  def enteringTyper[T](op: => T): T
+  def enteringTyper[T](op: => T): T = ???
   
   /** This is for WARNINGS which should reach the ears of scala developers
    *  whenever they occur, but are not useful for normal users. They should
@@ -68,7 +68,7 @@ trait ReflectGlobal extends ReflectMix {
   def registerTopLevelSym(sym: Symbol) {}
   
   type PlatformClassPath = ClassPath[AbstractFile]
-  def classPath: PlatformClassPath
+  def classPath: PlatformClassPath = ???
 
     /** Tree generation, usually based on existing symbols. */
 //  val gen: _root_.scala.reflect.internal.tools.nsc.ast.TreeGen {
@@ -133,7 +133,7 @@ trait ReflectGlobal extends ReflectMix {
   // phaseName = "patmat"
   val patmat: PatternMatching with ScalacPatternExpanders with TreeAndTypeAnalysis {
     val global: ReflectGlobal.this.type
-  }
+  } = ???
 
   //TODO we can make object here as in compiler Global but in compiler it uses Global
   // phaseName = "erasure"
@@ -141,7 +141,7 @@ trait ReflectGlobal extends ReflectMix {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
   } with ErasureGenericArray
   
-  val loaders: GlobalSymbolLoaders
+  val loaders: GlobalSymbolLoaders = ???
   
   //TODO: ConditionalWarning from Global
   /** Collects for certain classes of warnings during this run. */
@@ -155,7 +155,6 @@ trait ReflectGlobal extends ReflectMix {
         warning("there were %d %s warning(s); re-run with %s for details".format(warnings.size, what, option.name))
   }
   
-  def phase: Phase
   def beforeErasure = phaseId(currentPeriod) < currentRun.erasurePhase.id
   def beforeErasure(global: ReflectGlobal) = global.phase.id < global.currentRun.erasurePhase.id
 
@@ -165,22 +164,22 @@ trait ReflectGlobal extends ReflectMix {
      *  during erroneous conditions.  Moved all these vals up to the
      *  top of the file so at least they're not trivially null.
      */
-    var isDefined: Boolean
+    var isDefined: Boolean = ???
     /** The currently compiled unit; set from GlobalPhase */
-    var currentUnit: CompilationUnit
+    var currentUnit: CompilationUnit = ???
 
     /** A map from compiled top-level symbols to their source files */
-    val symSource: mutable.HashMap[Symbol, AbstractFile]
+    val symSource: mutable.HashMap[Symbol, AbstractFile] = ???
     
-    def canRedefine(sym: Symbol): Boolean
-    def compiles(sym: Symbol): Boolean
+    def canRedefine(sym: Symbol): Boolean = ???
+    def compiles(sym: Symbol): Boolean = ???
 
-    var reportedFeature: Set[Symbol]
-    val compiledFiles: mutable.HashSet[String]
-    val runDefinitions: definitions.RunDefinitions
+    var reportedFeature: Set[Symbol] = ???
+    val compiledFiles: mutable.HashSet[String] = ???
+    val runDefinitions: definitions.RunDefinitions = ???
     
-    val typerPhase: Phase
-    val erasurePhase: Phase
+    val typerPhase: Phase = ???
+    val erasurePhase: Phase = ???
 
     // This change broke sbt; I gave it the thrilling name of uncheckedWarnings0 so
     // as to recover uncheckedWarnings for its ever-fragile compiler interface.
@@ -193,7 +192,7 @@ trait ReflectGlobal extends ReflectMix {
     def uncheckedWarnings: List[(Position, String)] = uncheckedWarnings0.warnings.toList // used in sbt
     def deprecationWarnings: List[(Position, String)] = deprecationWarnings0.warnings.toList // used in sbt
     
-    var seenMacroExpansionsFallingBack: Boolean
+    var seenMacroExpansionsFallingBack: Boolean = ???
   }
 }
 
