@@ -6,16 +6,15 @@
 package scala.reflect.internal
 package tools.nsc.ast
 
-//TODO-REFLECT - remove _root_
-import _root_.scala.reflect.ClassTag
-import _root_.scala.reflect.internal.Flags.BYNAMEPARAM
-import _root_.scala.reflect.internal.Flags.DEFAULTPARAM
-import _root_.scala.reflect.internal.Flags.IMPLICIT
-import _root_.scala.reflect.internal.Flags.PARAM
-import _root_.scala.reflect.internal.Flags.PARAMACCESSOR
-import _root_.scala.reflect.internal.Flags.PRESUPER
-import _root_.scala.reflect.internal.Flags.TRAIT
-import _root_.scala.compat.Platform.EOL
+import scala.reflect.ClassTag
+import scala.reflect.internal.Flags.BYNAMEPARAM
+import scala.reflect.internal.Flags.DEFAULTPARAM
+import scala.reflect.internal.Flags.IMPLICIT
+import scala.reflect.internal.Flags.PARAM
+import scala.reflect.internal.Flags.PARAMACCESSOR
+import scala.reflect.internal.Flags.PRESUPER
+import scala.reflect.internal.Flags.TRAIT
+import scala.compat.Platform.EOL
 
 trait Trees extends _root_.scala.reflect.internal.Trees { self: SymbolTable with DocComments => //nsc.ReflectGlobal =>
   // --- additional cases --------------------------------------------------------
@@ -222,12 +221,12 @@ trait Trees extends _root_.scala.reflect.internal.Trees { self: SymbolTable with
     // this used to be based on -Ydebug, but the need for logging in this code is so situational
     // that I've reverted to a hard-coded constant here.
     val debug = false
-    //TODO-REFLECT - remove _root_
-    val trace = _root_.scala.reflect.internal.tools.nsc.util.trace when debug
+
+    val trace = scala.reflect.internal.tools.nsc.util.trace when debug
 
     val locals = util.HashSet[Symbol](8)
-    //TODO-REFLECT - remove _root_
-    val orderedLocals = _root_.scala.collection.mutable.ListBuffer[Symbol]()
+
+    val orderedLocals = scala.collection.mutable.ListBuffer[Symbol]()
     def registerLocal(sym: Symbol) {
       if (sym != null && sym != NoSymbol) {
         if (debug && !(locals contains sym)) orderedLocals append sym

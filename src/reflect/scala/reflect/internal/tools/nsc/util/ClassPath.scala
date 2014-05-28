@@ -8,16 +8,15 @@ package tools.nsc
 package util
 
 import java.net.URL
-//TODO-REFLECT remove _root_
-import _root_.scala.collection.{ mutable, immutable }
+import scala.collection.{ mutable, immutable }
 import io.{ File, Directory, Path, Jar, AbstractFile }
-import _root_.scala.reflect.internal.util.StringOps.splitWhere
+import scala.reflect.internal.util.StringOps.splitWhere
 import Jar.isJarOrZip
 import File.pathSeparator
-import _root_.scala.collection.convert.WrapAsScala.enumerationAsScalaIterator
+import scala.collection.convert.WrapAsScala.enumerationAsScalaIterator
 import java.net.MalformedURLException
 import java.util.regex.PatternSyntaxException
-import _root_.scala.reflect.runtime.ReflectionUtils
+import scala.reflect.runtime.ReflectionUtils
 
 /** <p>
  *    This module provides star expansion of '-classpath' option arguments, behaves the same as
@@ -27,7 +26,7 @@ import _root_.scala.reflect.runtime.ReflectionUtils
  *  @author Stepan Koltsov
  */
 object ClassPath {
-  import _root_.scala.language.postfixOps
+  import scala.language.postfixOps
 
   /** Expand single path entry */
   private def expandS(pattern: String): List[String] = {

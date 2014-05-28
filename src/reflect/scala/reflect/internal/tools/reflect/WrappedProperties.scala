@@ -3,10 +3,9 @@
  * @author  Paul Phillips
  */
 
-//TODO-REFLECT: remove _root_
 package scala.reflect.internal.tools.reflect
 
-import _root_.scala.util.PropertiesTrait
+import scala.util.PropertiesTrait
 import java.security.AccessControlException
 
 /** For placing a wrapper function around property functions.
@@ -28,7 +27,7 @@ trait WrappedProperties extends PropertiesTrait {
   override def envOrSome(name: String, alt: Option[String]) = wrap(super.envOrNone(name)).flatten orElse alt
 
   def systemProperties: List[(String, String)] = {
-    import _root_.scala.collection.JavaConverters._
+    import scala.collection.JavaConverters._
     wrap {
       val props = System.getProperties
       // SI-7269 Be careful to avoid `ConcurrentModificationException` if another thread modifies the properties map

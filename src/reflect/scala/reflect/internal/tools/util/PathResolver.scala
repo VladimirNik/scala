@@ -5,15 +5,14 @@
 
 package scala.reflect.internal.tools.util
 
-//TODO: remove _root_
-import _root_.scala.reflect.internal.tools.reflect.WrappedProperties.AccessControl
-import _root_.scala.reflect.internal.tools.nsc.{ Settings }
-import _root_.scala.reflect.internal.tools.nsc.util.{ ClassPath, JavaClassPath }
-import _root_.scala.reflect.io.{ File, Directory, Path, AbstractFile }
-import _root_.scala.reflect.runtime.ReflectionUtils
+import scala.reflect.internal.tools.reflect.WrappedProperties.AccessControl
+import scala.reflect.internal.tools.nsc.{ Settings }
+import scala.reflect.internal.tools.nsc.util.{ ClassPath, JavaClassPath }
+import scala.reflect.io.{ File, Directory, Path, AbstractFile }
+import scala.reflect.runtime.ReflectionUtils
 import ClassPath.{ JavaContext, DefaultJavaContext, join, split }
 import PartialFunction.condOpt
-import _root_.scala.language.postfixOps
+import scala.language.postfixOps
 
 // Loosely based on the draft specification at:
 // https://wiki.scala-lang.org/display/SIW/Classpath

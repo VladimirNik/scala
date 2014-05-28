@@ -11,7 +11,6 @@ import scala.collection.mutable
 import scala.collection.mutable.{ LinkedHashSet, ListBuffer }
 import scala.reflect.internal.tools.nsc.reporters.Reporter
 
-//TODO-FIX: currentRun
 //TODO-FIX: icode removed
 
 trait CompilationUnits { global: ReflectGlobal =>

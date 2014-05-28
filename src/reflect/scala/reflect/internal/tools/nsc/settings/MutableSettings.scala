@@ -8,11 +8,11 @@ package scala.reflect.internal.tools.nsc
 package settings
 
 import io.{ AbstractFile, Jar, Path, PlainFile, VirtualDirectory }
-import _root_.scala.collection.generic.Clearable
-import _root_.scala.io.Source
-import _root_.scala.reflect.internal.util.StringOps
-import _root_.scala.reflect.{ ClassTag, classTag }
-import _root_.scala.reflect.internal._
+import scala.collection.generic.Clearable
+import scala.io.Source
+import scala.reflect.internal.util.StringOps
+import scala.reflect.{ ClassTag, classTag }
+import scala.reflect.internal._
 
 /** A mutable Settings object.
  */
@@ -530,8 +530,7 @@ class MutableSettings(val errorFn: String => Unit)
     prependPath: StringSetting,
     appendPath: StringSetting)
   extends StringSetting(name, "path", descr, default) {
-    //TODO-REFLECT remove _root_
-    import _root_.scala.reflect.internal.tools.nsc.util.ClassPath.join
+    import scala.reflect.internal.tools.nsc.util.ClassPath.join
     def prepend(s: String) = prependPath.value = join(s, prependPath.value)
     def append(s: String) = appendPath.value = join(appendPath.value, s)
 

@@ -4,17 +4,17 @@ package tools.nsc
 import java.io.{ File, FileOutputStream, PrintWriter, IOException, FileNotFoundException }
 import java.nio.charset.{ Charset, CharsetDecoder, IllegalCharsetNameException, UnsupportedCharsetException }
 import java.util.UUID._
-import _root_.scala.compat.Platform.currentTime
-import _root_.scala.collection.{ mutable, immutable }
-import _root_.scala.reflect.io._
-import _root_.scala.reflect.internal.tools.nsc.io._
-import _root_.scala.reflect.ClassTag
-import _root_.scala.reflect.internal.util.{ OffsetPosition, SourceFile, NoSourceFile, BatchSourceFile, ScriptSourceFile }
-import _root_.scala.reflect.internal.pickling.{ PickleBuffer, PickleFormat }
-import _root_.scala.reflect.io.VirtualFile
-import _root_.scala.language.postfixOps
+import scala.compat.Platform.currentTime
+import scala.collection.{ mutable, immutable }
+import scala.reflect.io._
+import scala.reflect.internal.tools.nsc.io._
+import scala.reflect.ClassTag
+import scala.reflect.internal.util.{ OffsetPosition, SourceFile, NoSourceFile, BatchSourceFile, ScriptSourceFile }
+import scala.reflect.internal.pickling.{ PickleBuffer, PickleFormat }
+import scala.reflect.io.VirtualFile
+import scala.language.postfixOps
 import scala.reflect.internal.tools.nsc.reporters.Reporter
-import _root_.scala.reflect.internal.tools.nsc.ast.{TreeGen => AstTreeGen}
+import scala.reflect.internal.tools.nsc.ast.{TreeGen => AstTreeGen}
 import scala.reflect.internal.tools.nsc.util.ClassPath
 import scala.reflect.internal.tools.nsc.typechecker.ConstantFolder
 import scala.reflect.internal.transform.Erasure
