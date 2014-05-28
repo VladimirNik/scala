@@ -2,7 +2,7 @@ package scala.reflect.internal.tools.reflect
 package quasiquotes
 
 import java.lang.UnsupportedOperationException
-import scala.reflect.reify.{Reifier => ReflectReifier}
+import scala.reflect.moved.reify.{Reifier => ReflectReifier}
 import scala.reflect.internal.Flags._
 
 trait Reifiers { self: Quasiquotes =>

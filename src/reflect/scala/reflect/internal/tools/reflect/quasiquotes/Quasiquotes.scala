@@ -1,7 +1,7 @@
 package scala.reflect.internal.tools.reflect
 package quasiquotes
 
-import scala.reflect.macros.runtime.Context
+import scala.reflect.moved.macros.runtime.Context
 
 abstract class Quasiquotes extends Parsers
                               with Holes

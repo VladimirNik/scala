@@ -10,12 +10,15 @@ package ast
 import symtab._
 import util.DocStrings._
 import _root_.scala.collection.mutable
+//import scala.reflect.internal.tools.nsc.reporters.Reporter
 
 /*
  *  @author  Martin Odersky
  *  @version 1.0
  */
-trait DocComments { self: ReflectGlobal =>
+trait DocComments { self: SymbolTable =>
+  //TODO-REFLECT reporter (from Global) is required here
+//  val reporter: Reporter = ???
 
   val cookedDocComments = mutable.HashMap[Symbol, String]()
 
@@ -70,9 +73,10 @@ trait DocComments { self: ReflectGlobal =>
                        else DocComment(docStr).template
     superComment(sym) match {
       case None =>
-        if (ownComment.indexOf("@inheritdoc") != -1)
-          reporter.warning(sym.pos, "The comment for " + sym +
-              " contains @inheritdoc, but no parent comment is available to inherit from.")
+        if (ownComment.indexOf("@inheritdoc") != -1) ()
+          //TODO-REFLECT reporter (from Global) is required here
+//          reporter.warning(sym.pos, "The comment for " + sym +
+//              " contains @inheritdoc, but no parent comment is available to inherit from.")
         ownComment.replaceAllLiterally("@inheritdoc", "<invalid inheritdoc annotation>")
       case Some(sc) =>
         if (ownComment == "") sc
@@ -262,8 +266,9 @@ trait DocComments { self: ReflectGlobal =>
               val sectionTextBounds = extractSectionText(parent, section)
               cleanupSectionText(parent.substring(sectionTextBounds._1, sectionTextBounds._2))
             case None =>
-              reporter.info(sym.pos, "The \"" + getSectionHeader + "\" annotation of the " + sym +
-                  " comment contains @inheritdoc, but the corresponding section in the parent is not defined.", force = true)
+              //TODO-REFLECT reporter (from Global) is required here
+//              reporter.info(sym.pos, "The \"" + getSectionHeader + "\" annotation of the " + sym +
+//                  " comment contains @inheritdoc, but the corresponding section in the parent is not defined.", force = true)
               "<invalid inheritdoc annotation>"
           }
 
@@ -362,7 +367,8 @@ trait DocComments { self: ReflectGlobal =>
                 case None              =>
                   val pos = docCommentPos(sym)
                   val loc = pos withPoint (pos.start + vstart + 1)
-                  reporter.warning(loc, s"Variable $vname undefined in comment for $sym in $site")
+                  //TODO-REFLECT reporter (from Global) is required here
+//                  reporter.warning(loc, s"Variable $vname undefined in comment for $sym in $site")
               }
             }
         }
@@ -474,8 +480,9 @@ trait DocComments { self: ReflectGlobal =>
         }
         val parts = getParts(0)
         if (parts.isEmpty) {
-          reporter.error(comment.codePos, "Incorrect variable expansion for " + variable + " in use case. Does the " +
-                                          "variable expand to wiki syntax when documenting " + site + "?")
+          //TODO-REFLECT reporter (from Global) is required here
+//          reporter.error(comment.codePos, "Incorrect variable expansion for " + variable + " in use case. Does the " +
+//                                          "variable expand to wiki syntax when documenting " + site + "?")
           return ErrorType
         }
         val partnames = (parts.init map newTermName) :+ newTypeName(parts.last)
@@ -490,10 +497,11 @@ trait DocComments { self: ReflectGlobal =>
             (getSite(partnames.head), partnames.tail)
         }
         val result = (start /: rest)(select(_, _, NoType))
-        if (result == NoType)
-          reporter.warning(comment.codePos, "Could not find the type " + variable + " points to while expanding it " +
-                                            "for the usecase signature of " + sym + " in " + site + "." +
-                                            "In this context, " + variable + " = \"" + str + "\".")
+        if (result == NoType) ()
+        //TODO-REFLECT reporter (from Global) is required here
+//          reporter.warning(comment.codePos, "Could not find the type " + variable + " points to while expanding it " +
+//                                            "for the usecase signature of " + sym + " in " + site + "." +
+//                                            "In this context, " + variable + " = \"" + str + "\".")
         result
       }
 

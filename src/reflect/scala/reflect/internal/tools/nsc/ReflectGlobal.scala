@@ -30,7 +30,7 @@ trait ReflectGlobal extends ReflectMix {
   var globalPhase: Phase = ???
   def settings: Settings = ???
 
-  def currentRun: ReflectRun = ???
+  def currentRun: Run = ???
   def currentUnit: CompilationUnit = if (currentRun eq null) NoCompilationUnit else currentRun.currentUnit
 
   var printTypings = settings.Ytyperdebug.value
@@ -157,9 +157,12 @@ trait ReflectGlobal extends ReflectMix {
   
   def beforeErasure = phaseId(currentPeriod) < currentRun.erasurePhase.id
   def beforeErasure(global: ReflectGlobal) = global.phase.id < global.currentRun.erasurePhase.id
+  
+  def newSourceFile(code: String, filename: String = "<console>") =
+    new BatchSourceFile(filename, code)
 
   //TODO: Run from Global
-  trait ReflectRun extends RunContextApi {
+  trait Run extends RunContextApi {
      /** Have been running into too many init order issues with Run
      *  during erroneous conditions.  Moved all these vals up to the
      *  top of the file so at least they're not trivially null.

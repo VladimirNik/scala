@@ -12,6 +12,7 @@ import scala.collection.{ mutable, immutable }
 import util._
 import java.util.concurrent.TimeUnit
 import scala.reflect.internal.{TreeGen => InternalTreeGen}
+//import scala.reflect.internal.tools.nsc._
 
 abstract class SymbolTable extends macros.Universe
                               with Collections
@@ -33,6 +34,8 @@ abstract class SymbolTable extends macros.Universe
                               with AnnotationInfos
                               with AnnotationCheckers
                               with Trees
+//                              with ast.Trees
+//                              with ast.DocComments
                               with Printers
                               with Positions
                               with TypeDebugging

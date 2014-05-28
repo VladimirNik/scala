@@ -2,7 +2,7 @@ package scala.reflect.internal
 package tools
 package reflect
 
-import scala.reflect.reify.Taggers
+import scala.reflect.moved.reify.Taggers
 import scala.reflect.internal.tools.nsc.typechecker.{ Analyzer, Macros }
 import scala.reflect.runtime.Macros.currentMirror
 import scala.reflect.api.Universe

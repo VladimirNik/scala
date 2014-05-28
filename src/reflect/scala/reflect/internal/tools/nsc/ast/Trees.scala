@@ -143,7 +143,7 @@ trait Trees extends _root_.scala.reflect.internal.Trees { self: SymbolTable with
     }
   }
 
-//TODO (move to refact) problem with CompilationUnit
+//TODO-REFLECT (move to refact) problem with CompilationUnit
 //  class Transformer extends super.Transformer {
 //    def transformUnit(unit: CompilationUnit) {
 //      try unit.body = transform(unit.body)

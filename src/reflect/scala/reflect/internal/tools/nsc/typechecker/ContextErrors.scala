@@ -10,7 +10,7 @@ import _root_.scala.reflect.internal.util.StringOps.{ countElementsAsString, cou
 import symtab.Flags.IS_ERROR
 import _root_.scala.compat.Platform.EOL
 import _root_.scala.reflect.runtime.ReflectionUtils
-import _root_.scala.reflect.macros.runtime.AbortMacroException
+import _root_.scala.reflect.moved.macros.runtime.AbortMacroException
 import _root_.scala.util.control.NonFatal
 import _root_.scala.reflect.internal.tools.nsc.util.stackTraceString
 import _root_.scala.reflect.io.NoAbstractFile

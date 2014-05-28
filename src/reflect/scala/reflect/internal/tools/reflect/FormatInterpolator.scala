@@ -2,7 +2,7 @@ package scala.reflect.internal
 package tools
 package reflect
 
-import scala.reflect.macros.runtime.Context
+import scala.reflect.moved.macros.runtime.Context
 import scala.collection.mutable.{ ListBuffer, Stack }
 import scala.reflect.internal.util.Position
 import scala.PartialFunction.cond

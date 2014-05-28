@@ -10,11 +10,11 @@ import scala.reflect.runtime.ReflectionUtils
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.Statistics
-import scala.reflect.macros.util._
+import scala.reflect.moved.macros.util._
 import scala.util.control.ControlThrowable
-import scala.reflect.macros.runtime.{AbortMacroException, MacroRuntimes}
+import scala.reflect.moved.macros.runtime.{AbortMacroException, MacroRuntimes}
 import scala.reflect.runtime.{universe => ru}
-import scala.reflect.macros.compiler.DefaultMacroCompiler
+import scala.reflect.moved.macros.compiler.DefaultMacroCompiler
 import _root_.scala.reflect.internal.tools.reflect.FastTrack
 import scala.runtime.ScalaRunTime
 import Fingerprint._
