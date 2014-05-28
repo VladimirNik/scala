@@ -3,6 +3,7 @@ package tools
 package reflect
 
 import scala.reflect.internal.tools.cmd.CommandLineParser
+import scala.reflect.internal.tools.nsc.reporters.Reporter
 import scala.tools.nsc.Global
 import scala.tools.nsc.reporters._
 import scala.tools.nsc.CompilerCommand
