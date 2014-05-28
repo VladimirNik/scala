@@ -134,13 +134,20 @@ trait ReflectGlobal extends ReflectMix {
   val patmat: PatternMatching with ScalacPatternExpanders with TreeAndTypeAnalysis {
     val global: ReflectGlobal.this.type
   } = ???
-
-  //TODO we can make object here as in compiler Global but in compiler it uses Global
-  // phaseName = "erasure"
-  object erasureArray extends {
-    val global: ReflectGlobal.this.type = ReflectGlobal.this
-  } with ErasureGenericArray
   
+  // phaseName = "erasure"
+//  override object erasure extends {
+//    val global: ReflectGlobal.this.type = ReflectGlobal.this
+//  } with scala.reflect.internal.transform.Erasure
+  
+//  val erasure: scala.reflect.internal.transform.Erasure {
+//    val global: ReflectGlobal.this.type
+//  }
+  
+  override val erasure = new {
+    val global: ReflectGlobal.this.type = ReflectGlobal.this
+  } with scala.reflect.internal.transform.Erasure
+
   val loaders: GlobalSymbolLoaders = ???
   
   //TODO: ConditionalWarning from Global

@@ -4478,7 +4478,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         def unapply(tree: Apply) = tree match {
           case Apply(Select(New(tpt), name), arg :: Nil) if tpt.tpe != null && tpt.tpe.typeSymbol == ArrayClass =>
             Some(tpt.tpe) collect {
-              case erasureArray.GenericArray(level, componentType) =>
+              case erasure.GenericArray(level, componentType) =>
                 val tagType = (1 until level).foldLeft(componentType)((res, _) => arrayType(res))
 
                 resolveClassTag(tree.pos, tagType) match {

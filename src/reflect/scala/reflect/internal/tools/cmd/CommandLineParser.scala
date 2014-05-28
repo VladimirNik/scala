@@ -6,7 +6,7 @@
 package scala.reflect.internal.tools
 package cmd
 
-import _root_.scala.annotation.tailrec
+import scala.annotation.tailrec
 
 /** A simple (overly so) command line parser.
  *  !!! This needs a thorough test suite to make sure quoting is

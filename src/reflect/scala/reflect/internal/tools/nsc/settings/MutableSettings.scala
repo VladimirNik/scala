@@ -708,7 +708,7 @@ class MutableSettings(val errorFn: String => Unit)
     def disabling(toDisable: List[BooleanSetting]): s.type = s withPostSetHook (_ => toDisable foreach (_.value = !s.value))
     def andThen(f: s.T => Unit): s.type = s withPostSetHook (setting => f(setting.value))
   }
-  //TODO-REFLECT remove _root_
-  import _root_.scala.language.implicitConversions
+
+  import scala.language.implicitConversions
   protected implicit def installEnableSettings[T <: BooleanSetting](s: T): EnableSettings[T] = new EnableSettings(s)
 }

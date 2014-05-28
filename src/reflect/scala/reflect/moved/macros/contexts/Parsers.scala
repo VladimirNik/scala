@@ -1,6 +1,6 @@
 package scala.reflect.moved.macros.contexts
 
-import _root_.scala.reflect.internal.tools.nsc.reporters.StoreReporter
+//import _root_.scala.reflect.internal.tools.nsc.reporters.StoreReporter
 
 trait Parsers {
   self: Context =>
