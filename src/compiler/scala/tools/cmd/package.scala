@@ -6,6 +6,8 @@
 package scala
 package tools
 
+import scala.reflect.internal.tools.cmd.CommandLineParser
+
 package object cmd {
   def returning[T](x: T)(f: T => Unit): T = { f(x) ; x }
 

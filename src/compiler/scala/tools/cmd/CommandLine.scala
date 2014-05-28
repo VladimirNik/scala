@@ -7,6 +7,7 @@ package scala.tools
 package cmd
 
 import scala.collection.mutable.ListBuffer
+import scala.reflect.internal.tools.cmd.CommandLineParser
 
 trait CommandLineConfig {
   def enforceArity: Boolean = true

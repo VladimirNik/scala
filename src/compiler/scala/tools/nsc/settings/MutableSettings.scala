@@ -13,6 +13,7 @@ import scala.collection.generic.Clearable
 import scala.io.Source
 import scala.reflect.internal.util.StringOps
 import scala.reflect.{ ClassTag, classTag }
+import scala.reflect.internal.tools.cmd.CommandLineParser
 
 /** A mutable Settings object.
  */
@@ -108,7 +109,7 @@ class MutableSettings(val errorFn: String => Unit)
 
   /** Split the given line into parameters.
    */
-  def splitParams(line: String) = cmd.CommandLineParser.tokenize(line, errorFn)
+  def splitParams(line: String) = CommandLineParser.tokenize(line, errorFn)
 
   /** Returns any unprocessed arguments.
    */
