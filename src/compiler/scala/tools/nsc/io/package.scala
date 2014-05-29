@@ -6,25 +6,27 @@
 package scala.tools.nsc
 
 import scala.language.implicitConversions
+import scala.reflect.internal.tools.nsc.{io => rio}
 
 package object io {
   // Forwarders from scala.reflect.io
-  type AbstractFile = scala.reflect.io.AbstractFile
-  val AbstractFile = scala.reflect.io.AbstractFile
-  type Directory = scala.reflect.io.Directory
-  val Directory = scala.reflect.io.Directory
-  type File = scala.reflect.io.File
-  val File = scala.reflect.io.File
-  type Path = scala.reflect.io.Path
-  val Path = scala.reflect.io.Path
-  type PlainFile = scala.reflect.io.PlainFile
-  val Streamable = scala.reflect.io.Streamable
-  type VirtualDirectory = scala.reflect.io.VirtualDirectory
-  type VirtualFile = scala.reflect.io.VirtualFile
-  type ZipArchive = scala.reflect.io.ZipArchive
+  type AbstractFile = rio.AbstractFile
+  val AbstractFile = rio.AbstractFile
+  type Directory = rio.Directory
+  val Directory = rio.Directory
+  type File = rio.File
+  val File = rio.File
+  type Path = rio.Path
+  val Path = rio.Path
+  type PlainFile = rio.PlainFile
+  val Streamable = rio.Streamable
+  type VirtualDirectory = rio.VirtualDirectory
+  type VirtualFile = rio.VirtualFile
+  type ZipArchive = rio.ZipArchive
 
-  type JManifest = java.util.jar.Manifest
-  type JFile = java.io.File
+  type JManifest = rio.JManifest
+  type JFile = rio.JFile
 
-  implicit def enrichManifest(m: JManifest): Jar.WManifest = Jar.WManifest(m)
+  import scala.reflect.internal.tools.nsc.io.Jar
+  implicit def enrichManifest(m: JManifest): Jar.WManifest = rio.enrichManifest(m)
 }

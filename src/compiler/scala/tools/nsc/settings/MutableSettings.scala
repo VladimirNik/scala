@@ -8,7 +8,8 @@ package scala.tools
 package nsc
 package settings
 
-import io.{ AbstractFile, Jar, Path, PlainFile, VirtualDirectory }
+import scala.reflect.internal.tools.nsc.io.Jar
+import io.{ AbstractFile, Path, PlainFile, VirtualDirectory }
 import scala.collection.generic.Clearable
 import scala.io.Source
 import scala.reflect.internal.util.StringOps

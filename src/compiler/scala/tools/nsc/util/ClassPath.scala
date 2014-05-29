@@ -9,7 +9,8 @@ package util
 
 import java.net.URL
 import scala.collection.{ mutable, immutable }
-import io.{ File, Directory, Path, Jar, AbstractFile }
+import io.{ File, Directory, Path, AbstractFile }
+import scala.reflect.internal.tools.nsc.io.Jar
 import scala.reflect.internal.util.StringOps.splitWhere
 import Jar.isJarOrZip
 import File.pathSeparator

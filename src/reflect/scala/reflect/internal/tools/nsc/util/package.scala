@@ -2,6 +2,7 @@ package scala.reflect.internal.tools.nsc
 
 import java.io.{ OutputStream, PrintStream, ByteArrayOutputStream, PrintWriter, StringWriter, Reader }
 
+//TODO-REFLECT - REFACTOR package object in compiler
 package object util {
   // forwarder for old code that builds against 2.9 and 2.10
   val Chars = scala.reflect.internal.Chars

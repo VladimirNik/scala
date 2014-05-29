@@ -8,6 +8,7 @@ package backend.jvm
 
 import java.io.{ DataOutputStream, FileOutputStream, IOException, OutputStream, File => JFile }
 import scala.tools.nsc.io._
+import scala.reflect.internal.tools.nsc.io.Jar
 import java.util.jar.Attributes.Name
 import scala.language.postfixOps
 

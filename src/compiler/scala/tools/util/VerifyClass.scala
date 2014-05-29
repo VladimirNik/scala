@@ -1,6 +1,7 @@
 package scala.tools.util
 
 import scala.tools.nsc.io._
+import scala.reflect.internal.tools.nsc.io.Jar
 import java.net.URLClassLoader
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
