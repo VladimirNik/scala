@@ -7,7 +7,7 @@ package scala.tools.nsc
 package ast
 
 import symtab._
-import util.DocStrings._
+import scala.reflect.internal.tools.nsc.util.DocStrings._
 import scala.collection.mutable
 
 /*

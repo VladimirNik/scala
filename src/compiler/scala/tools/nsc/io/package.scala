@@ -5,6 +5,7 @@
 
 package scala.tools.nsc
 
+//TODO-REFLECT refactor (remove code duplication)
 import scala.language.implicitConversions
 import scala.reflect.internal.tools.nsc.{io => rio}
 

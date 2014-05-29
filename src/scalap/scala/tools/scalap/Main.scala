@@ -11,7 +11,7 @@ package tools.scalap
 import java.io.{ PrintStream, OutputStreamWriter, ByteArrayOutputStream }
 import scala.reflect.NameTransformer
 import scalax.rules.scalasig._
-import scala.tools.nsc.util.{ ClassPath, JavaClassPath }
+import scala.reflect.internal.tools.nsc.util.{ ClassPath, JavaClassPath }
 import scala.tools.util.PathResolver
 import ClassPath.DefaultJavaContext
 import scala.tools.nsc.io.AbstractFile

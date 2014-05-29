@@ -8,17 +8,18 @@ package tools
 package nsc
 
 import java.io.{ OutputStream, PrintStream, ByteArrayOutputStream, PrintWriter, StringWriter, Reader }
+import scala.reflect.internal.tools.nsc.{util => rutil}
 
 package object util {
   // forwarder for old code that builds against 2.9 and 2.10
   val Chars = scala.reflect.internal.Chars
 
   type Set[T <: AnyRef] = scala.reflect.internal.util.Set[T]
-  type HashSet[T >: Null <: AnyRef] = scala.reflect.internal.util.HashSet[T]
-  val HashSet = scala.reflect.internal.util.HashSet
+  type HashSet[T >: Null <: AnyRef] = rutil.HashSet[T]
+  val HashSet = rutil.HashSet
 
   /** Apply a function and return the passed value */
-  def returning[T](x: T)(f: T => Unit): T = { f(x) ; x }
+  def returning[T](x: T)(f: T => Unit): T = rutil.returning[T](x)(f)
 
   /** Execute code and then wait for all non-daemon Threads
    *  created and begun during its execution to complete.
@@ -58,13 +59,8 @@ package object util {
   }
 
   /** Generate a string using a routine that wants to write on a stream. */
-  def stringFromWriter(writer: PrintWriter => Unit): String = {
-    val stringWriter = new StringWriter()
-    val stream = new NewLinePrintWriter(stringWriter)
-    writer(stream)
-    stream.close()
-    stringWriter.toString
-  }
+  def stringFromWriter(writer: PrintWriter => Unit): String = rutil.stringFromWriter(writer)
+
   def stringFromStream(stream: OutputStream => Unit): String = {
     val bs = new ByteArrayOutputStream()
     val ps = new PrintStream(bs)
@@ -72,7 +68,7 @@ package object util {
     ps.close()
     bs.toString()
   }
-  def stackTraceString(ex: Throwable): String = stringFromWriter(ex printStackTrace _)
+  def stackTraceString(ex: Throwable): String = rutil.stackTraceString(ex)
 
   /** A one line string which contains the class of the exception, the
    *  message if any, and the first non-Predef location in the stack trace
@@ -86,7 +82,7 @@ package object util {
     s"$clazz$msg @ $frame"
   }
 
-  implicit class StackTraceOps(private val e: Throwable) extends AnyVal with StackTracing {
+  implicit class StackTraceOps(private val e: Throwable) extends AnyVal with rutil.StackTracing {
     /** Format the stack trace, returning the prefix consisting of frames that satisfy
      *  a given predicate.
      *  The format is similar to the typical case described in the JavaDoc
@@ -96,10 +92,10 @@ package object util {
      *  shared stack trace segments.
      *  @param p the predicate to select the prefix
      */
-    def stackTracePrefixString(p: StackTraceElement => Boolean): String = stackTracePrefixString(e)(p)
+    def stackTracePrefixString(p: StackTraceElement => Boolean): String = stackTracePrefixString(p)
   }
 
-  lazy val trace = new SimpleTracer(System.out)
+  lazy val trace = rutil.trace
 
   // These four deprecated since 2.10.0 are still used in (at least)
   // the sbt 0.12.4 compiler interface.
@@ -124,8 +120,8 @@ package object util {
   type AbstractFileClassLoader = scala.reflect.internal.util.AbstractFileClassLoader
 
   @deprecated("Moved to scala.reflect.internal.util.ScalaClassLoader", "2.11.0")
-  val ScalaClassLoader = scala.reflect.internal.util.ScalaClassLoader
+  val ScalaClassLoader = rutil.ScalaClassLoader
 
   @deprecated("Moved to scala.reflect.internal.util.ScalaClassLoader", "2.11.0")
-  type ScalaClassLoader = scala.reflect.internal.util.ScalaClassLoader
+  type ScalaClassLoader = rutil.ScalaClassLoader
 }

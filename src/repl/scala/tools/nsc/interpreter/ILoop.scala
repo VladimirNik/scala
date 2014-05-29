@@ -13,7 +13,8 @@ import Predef.{ println => _, _ }
 import interpreter.session._
 import StdReplTags._
 import scala.util.Properties.{ jdkHome, javaVersion, versionString, javaVmName }
-import scala.tools.nsc.util.{ ClassPath, Exceptional, stringFromWriter, stringFromStream }
+import scala.reflect.internal.tools.nsc.util.{ ClassPath, stringFromWriter }
+import scala.tools.nsc.util.{ Exceptional, stringFromStream }
 import scala.reflect.classTag
 import scala.reflect.internal.util.{ BatchSourceFile, ScalaClassLoader }
 import ScalaClassLoader._

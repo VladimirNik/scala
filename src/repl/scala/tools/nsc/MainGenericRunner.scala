@@ -7,7 +7,7 @@ package scala
 package tools.nsc
 
 import io.{ File }
-import util.{ ClassPath, ScalaClassLoader }
+import scala.reflect.internal.tools.nsc.util.{ ClassPath, ScalaClassLoader }
 import Properties.{ versionString, copyrightString }
 import GenericRunnerCommand._
 import scala.reflect.internal.tools.nsc.io.Jar

@@ -2,7 +2,7 @@
 
 package scala.reflect.internal.tools.nsc.util
 
-private[util] trait StackTracing extends Any {
+trait StackTracing extends Any {
 
   /** Format a stack trace, returning the prefix consisting of frames that satisfy
    *  a given predicate.
