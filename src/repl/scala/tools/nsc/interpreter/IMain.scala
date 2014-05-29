@@ -22,6 +22,7 @@ import scala.tools.nsc.typechecker.{ TypeStrings, StructuredTypeStrings }
 import scala.tools.nsc.util.{ ScalaClassLoader, stringFromReader, stringFromWriter, StackTraceOps }
 import scala.tools.nsc.util.Exceptional.unwrap
 import javax.script.{AbstractScriptEngine, Bindings, ScriptContext, ScriptEngine, ScriptEngineFactory, ScriptException, CompiledScript, Compilable}
+import scala.reflect.internal.tools.nsc.{ Properties, NewLinePrintWriter }
 
 /** An interpreter for Scala code.
  *

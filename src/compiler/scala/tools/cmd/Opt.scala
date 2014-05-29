@@ -6,7 +6,7 @@
 package scala.tools
 package cmd
 
-import nsc.Properties.envOrElse
+import scala.reflect.internal.tools.nsc.Properties.envOrElse
 import Spec.Info
 
 /** Machinery for what amounts to a command line specification DSL.

@@ -24,6 +24,7 @@ import scala.collection.generic.Clearable
 import scala.concurrent.{ ExecutionContext, Await, Future, future }
 import ExecutionContext.Implicits._
 import java.io.{ BufferedReader, FileReader }
+import scala.reflect.internal.tools.nsc.Properties
 
 /** The Scala interactive shell.  It provides a read-eval-print loop
  *  around the Interpreter class.

@@ -6,6 +6,7 @@
 package scala
 package tools.nsc
 
+import scala.reflect.internal.tools.nsc.Properties
 import io.{ File }
 import scala.reflect.internal.tools.nsc.util.{ ClassPath, ScalaClassLoader }
 import Properties.{ versionString, copyrightString }

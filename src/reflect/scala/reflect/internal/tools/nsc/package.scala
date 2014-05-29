@@ -1,6 +1,7 @@
 package scala.reflect.internal
 package tools
 
+//TODO-REFLECT refactor compiler's version
 package object nsc {
   def EXPRmode = Mode.EXPRmode
 

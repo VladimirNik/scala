@@ -37,6 +37,7 @@ import backend.opt.{ Inliners, InlineExceptionHandlers, ConstantOptimization, Cl
 import backend.icode.analysis._
 import scala.language.postfixOps
 import scala.tools.nsc.ast.{TreeGen => AstTreeGen}
+import scala.reflect.internal.tools.nsc.Properties
 
 class Global(var currentSettings: Settings, var reporter: Reporter)
     extends SymbolTable

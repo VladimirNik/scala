@@ -7,6 +7,7 @@ package scala.tools.nsc
 package settings
 
 import scala.tools.util.PathResolver.Defaults
+import scala.reflect.internal.tools.nsc.Properties
 
 /** Settings which aren't behind a -X, -Y, or -P option.
  *  When possible, the val and the option have identical names.
