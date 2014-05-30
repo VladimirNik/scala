@@ -87,7 +87,10 @@ trait AbsSettings extends _root_.scala.reflect.internal.settings.AbsSettings {
      *  remainder of the command line.  It consumes any applicable arguments and
      *  returns the unconsumed ones.
      */
-    protected[nsc] def tryToSet(args: List[String]): Option[ResultOfTryToSet]
+    //TODO-REFLECT protected[nsc] def tryToSet(args: List[String]): Option[ResultOfTryToSet]
+    //change package name back to scala.tools.nsc.settings
+    //change access to: protected[nsc] def tryToSet(args: List[String]): Option[ResultOfTryToSet]
+    def tryToSet(args: List[String]): Option[ResultOfTryToSet]
 
     /** Commands which can take lists of arguments in form -Xfoo:bar,baz override
      *  this method and accept them as a list.  It returns List[String] for

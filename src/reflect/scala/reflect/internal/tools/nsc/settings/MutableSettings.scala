@@ -191,8 +191,10 @@ class MutableSettings(val errorFn: String => Unit)
     getClasspath("boot", loader) foreach { bootclasspath append _ }
   }
 
+  //TODO-REFLECT change package to use nsc constructor:
+  //private[nsc] var explicitParentLoader: Option[ClassLoader] = None
   /** The parent loader to use for the interpreter.*/
-  private[nsc] var explicitParentLoader: Option[ClassLoader] = None
+  var explicitParentLoader: Option[ClassLoader] = None
 
   /** Retrieves the contents of resource "${id}.class.path" from `loader`
   * (wrapped in Some) or None if the resource does not exist.*/
@@ -543,7 +545,9 @@ class MutableSettings(val errorFn: String => Unit)
 
   /** Set the output directory. */
   class OutputSetting private[nsc](
-    private[nsc] val outputDirs: OutputDirs,
+    //TODO-REFLECT change package scala.tools.nsc - to make original access
+    //private[nsc] val outputDirs: OutputDirs,
+    val outputDirs: OutputDirs,
     default: String)
     extends StringSetting("-d", "directory|jar", "destination for generated classfiles.", default) {
       value = default
@@ -642,7 +646,9 @@ class MutableSettings(val errorFn: String => Unit)
     descr: String,
     default: String
   ) extends Setting(name, mkPhasesHelp(descr, default)) with Clearable {
-    private[nsc] def this(name: String, descr: String) = this(name, descr, "")
+	//TODO-REFLECT change package to use previous access mod:
+	//private[nsc] def this(name: String, descr: String) = this(name, descr, "")
+    def this(name: String, descr: String) = this(name, descr, "")
 
     type T = List[String]
     private[this] var _v: T = Nil
