@@ -7,7 +7,7 @@ package scala
 package tools
 package util
 
-import scala.tools.reflect.WrappedProperties.AccessControl
+import scala.reflect.internal.tools.reflect.WrappedProperties.AccessControl
 import scala.tools.nsc.{ Settings }
 import scala.reflect.internal.tools.nsc.util.{ ClassPath, JavaClassPath }
 import scala.reflect.io.{ File, Directory, Path, AbstractFile }
