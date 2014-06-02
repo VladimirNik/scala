@@ -46,7 +46,6 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
     with PhaseAssembly
     with Trees
     with Printers
-    with DocComments
     with Positions { self =>
 
   // the mirror --------------------------------------------------

@@ -16,7 +16,7 @@ import scala.reflect.internal.Flags.PRESUPER
 import scala.reflect.internal.Flags.TRAIT
 import scala.compat.Platform.EOL
 
-trait Trees extends _root_.scala.reflect.internal.Trees { self: SymbolTable with DocComments => //nsc.ReflectGlobal =>
+trait Trees extends scala.reflect.internal.Trees { self: SymbolTable =>
   // --- additional cases --------------------------------------------------------
   /** Only used during parsing */
   case class Parens(args: List[Tree]) extends Tree
@@ -55,6 +55,7 @@ trait Trees extends _root_.scala.reflect.internal.Trees { self: SymbolTable with
     case xs :: rest => rest.foldLeft(Apply(gen.mkSuperInitCall, xs): Tree)(Apply.apply)
   }
 
+  //TODO-REFLECT - renamed to remove conflict ClassDef -> mkClassDef
   /** Construct class definition with given class symbol, value parameters,
    *  supercall arguments and template body.
    *
@@ -65,7 +66,7 @@ trait Trees extends _root_.scala.reflect.internal.Trees { self: SymbolTable with
    *  @param body       the template statements without primary constructor
    *                    and value parameter fields.
    */
-  def ClassDef(sym: Symbol, constrMods: Modifiers, vparamss: List[List[ValDef]], body: List[Tree], superPos: Position): ClassDef = {
+  def mkClassDef(sym: Symbol, constrMods: Modifiers, vparamss: List[List[ValDef]], body: List[Tree], superPos: Position): ClassDef = {
     // "if they have symbols they should be owned by `sym`"
     assert(mforall(vparamss)(_.symbol.owner == sym), (mmap(vparamss)(_.symbol), sym))
 
@@ -75,11 +76,13 @@ trait Trees extends _root_.scala.reflect.internal.Trees { self: SymbolTable with
                     constrMods, vparamss, body, superPos))
   }
 
+  //TODO-REFLECT - problem to include this treeInfo in scala-reflect
+  //It's hidden by SymbolTable's val treeInfo
  // --- subcomponents --------------------------------------------------
 
-  object treeInfo extends {
-    val global: Trees.this.type = self
-  } with TreeInfo
+//  val treeInfo = new {
+//    val global: Trees.this.type = self
+//  } with TreeInfo
 
   // --- additional cases in operations ----------------------------------
 
@@ -103,7 +106,8 @@ trait Trees extends _root_.scala.reflect.internal.Trees { self: SymbolTable with
     def InjectDerivedValue(tree: Tree, arg: Tree): InjectDerivedValue
     def TypeTreeWithDeferredRefCheck(tree: Tree): TypeTreeWithDeferredRefCheck
   }
-  implicit val TreeCopierTag: ClassTag[TreeCopier] = ClassTag[TreeCopier](classOf[TreeCopier])
+  //TODO-REFLECT problem with override TreeCopierTag
+  implicit protected val TreeCopierTagImpl: ClassTag[TreeCopier] = ClassTag[TreeCopier](classOf[TreeCopier])
 
   def newStrictTreeCopier: TreeCopier = new StrictTreeCopier
   def newLazyTreeCopier: TreeCopier = new LazyTreeCopier
@@ -141,23 +145,6 @@ trait Trees extends _root_.scala.reflect.internal.Trees { self: SymbolTable with
       case _ => this.treeCopy.TypeTreeWithDeferredRefCheck(tree)
     }
   }
-
-//TODO-REFLECT (move to refact) problem with CompilationUnit
-//  class Transformer extends super.Transformer {
-//    def transformUnit(unit: CompilationUnit) {
-//      try unit.body = transform(unit.body)
-//      catch {
-//        case ex: Exception =>
-//          log(supplementErrorMessage("unhandled exception while transforming "+unit))
-//          throw ex
-//      }
-//    }
-//  }
-//
-//  // used when a phase is disabled
-//  object noopTransformer extends Transformer {
-//    override def transformUnit(unit: CompilationUnit): Unit = {}
-//  }
 
   override protected def xtransform(transformer: super.Transformer, tree: Tree): Tree = tree match {
     case DocDef(comment, definition) =>

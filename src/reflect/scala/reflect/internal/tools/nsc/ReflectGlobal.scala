@@ -207,9 +207,7 @@ trait ReflectGlobal extends ReflectMix {
 }
 
 trait ReflectMix extends SymbolTable
-    with ast.Trees
     with Printers
-    with ast.DocComments
     with Positions 
     with CompilationUnits {
   self: ReflectGlobal =>
