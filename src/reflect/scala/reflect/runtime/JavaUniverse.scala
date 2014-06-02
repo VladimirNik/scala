@@ -2,7 +2,8 @@ package scala
 package reflect
 package runtime
 
-import scala.reflect.internal.{TreeInfo, SomePhase}
+import scala.reflect.internal.SomePhase
+import scala.reflect.internal.tools.nsc.ast.TreeInfo
 import scala.reflect.internal.{SymbolTable => InternalSymbolTable}
 import scala.reflect.runtime.{SymbolTable => RuntimeSymbolTable}
 import scala.reflect.api.{TreeCreator, TypeCreator, Universe}

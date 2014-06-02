@@ -152,7 +152,7 @@ abstract class SymbolTable extends macros.Universe
     val global: SymbolTable.this.type = SymbolTable.this
   } with util.TraceSymbolActivity
 
-  val treeInfo: TreeInfo { val global: SymbolTable.this.type }
+  val treeInfo: ast.TreeInfo { val global: SymbolTable.this.type }
 
   /** Check that the executing thread is the compiler thread. No-op here,
    *  overridden in interactive.Global. */
