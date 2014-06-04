@@ -13,7 +13,7 @@ import scala.reflect.internal.tools.nsc.reporters.Reporter
 
 //TODO-FIX: icode removed
 
-trait CompilationUnits { global: ReflectGlobal =>
+trait CompilationUnits { global: Typechecker =>
 
   /** An object representing a missing compilation unit.
    */
