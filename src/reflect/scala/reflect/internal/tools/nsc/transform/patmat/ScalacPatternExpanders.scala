@@ -10,9 +10,9 @@ trait ScalacPatternExpanders {
   
   //Add to AlignedOps in compiler's ScalacPatternExpanders
   trait AlignedBase {
-    def unexpandedFormals: List[Type]
+    def unexpandedFormals: List[Type] = ???
   }
   val alignPatterns: ScalacPatternExpander {
     def apply(sel: Tree, args: List[Tree]): AlignedBase
-  }
+  } = ???
 }

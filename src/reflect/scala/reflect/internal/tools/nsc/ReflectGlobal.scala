@@ -205,23 +205,49 @@ trait ReflectGlobal extends Typechecker {
   }
 }
 
+//TODO-REFLECT this trait should be reimplemented in compiler with default behaviour from compiler
 trait QuasiquotesImpl {
   self: Typechecker =>
   //REFLECT-GLOBAL override in compiler new { val c: c0.type = c0 } with QuasiquoteImpls
   def context2quasiquoteImpl(c0: self.analyzer.MacroContext): Quasiquotes { val c: c0.type } = ???
 }
 
+trait PatternMatchingImpl extends PatternMatching {
+  import global._  
+  
+  class PureMatchTranslator(override val typer: analyzer.Typer, override val matchStrategy: Tree) extends super.PureMatchTranslator(typer, matchStrategy) {
+    override def translateMatch(match_ : Match): Tree = ???
+  }
+}
+
+trait ScalacPatternExpandersImpl extends ScalacPatternExpanders {
+  import global._
+  
+  //Add to AlignedOps in compiler's ScalacPatternExpanders
+  trait AlignedBase extends super.AlignedBase {
+    override def unexpandedFormals: List[Type] = ???
+  }
+  
+  override val alignPatterns: ScalacPatternExpander {
+    def apply(sel: Tree, args: List[Tree]): AlignedBase
+  } = ???
+}
+
 trait TypecheckerImpl extends ReflectGlobal {
+  //TODO-REFLECT required methods for implementation are in Impls classes
+  //TODO-REFLECT rewrite field in typechecker
   // phaseName = "patmat"
   val patmat: PatternMatching with ScalacPatternExpanders with TreeAndTypeAnalysis {
     val global: TypecheckerImpl.this.type
-  } = ???
+  } = new {
+    val global: TypecheckerImpl.this.type = TypecheckerImpl.this
+  } with PatternMatchingImpl with ScalacPatternExpandersImpl with TreeAndTypeAnalysis{}
 
   var reporter: Reporter = ???
   def settings: Settings = ???
 
-  var globalPhase: Phase
-  def currentRun: Run
+  var globalPhase: Phase = ???
+  def currentRun: Run = ???
 
   def RootClass: ClassSymbol = ???
   //TODO-REFLECT maybe we don't require such method and its usage
@@ -256,3 +282,28 @@ trait TypecheckerImpl extends ReflectGlobal {
     var seenMacroExpansionsFallingBack: Boolean = ???
   }
 }
+//TODO-REFLECT - field required for Typechecker instantiation
+//[locker.reflect] /** As seen from class TypecheckerImpl, the missing signatures are as follows.
+//[locker.reflect]  *  For convenience, these are usable as stub implementations.
+//[locker.reflect]  */
+//[locker.reflect]   // Members declared in scala.reflect.internal.FreshNames
+//[locker.reflect]   def currentFreshNameCreator: scala.reflect.internal.util.FreshNameCreator = ???
+//[locker.reflect] 
+//[locker.reflect]   // Members declared in scala.reflect.api.ImplicitTags
+//[locker.reflect]   implicit val MirrorTag: (=> scala.reflect.ClassTag[_1899.Mirror]) forSome { val _1899: scala.reflect.internal.tools.nsc.TypecheckerImpl } = ???
+//[locker.reflect]   implicit val RuntimeClassTag: (=> scala.reflect.ClassTag[_1900.RuntimeClass]) forSome { val _1900: scala.reflect.internal.tools.nsc.TypecheckerImpl } = ???
+//[locker.reflect]   implicit val TreeCopierTag: (=> scala.reflect.ClassTag[_1901.TreeCopier]) forSome { val _1901: scala.reflect.internal.tools.nsc.TypecheckerImpl } = ???
+//[locker.reflect] 
+//[locker.reflect]   // Members declared in scala.reflect.api.Mirrors
+//[locker.reflect]   val rootMirror: scala.reflect.internal.tools.nsc.TypecheckerImpl#Mirror = ???
+//[locker.reflect] 
+//[locker.reflect]   // Members declared in scala.reflect.internal.Required
+//[locker.reflect]   def erasurePhase: scala.reflect.internal.Phase = ???
+//[locker.reflect]   def picklerPhase: scala.reflect.internal.Phase = ???
+//[locker.reflect] 
+//[locker.reflect]   // Members declared in scala.reflect.internal.SymbolTable
+//[locker.reflect]   def currentRunId: Int = ???
+//[locker.reflect]   def log(msg: => AnyRef): Unit = ???
+//[locker.reflect]   def mirrorThatLoaded: ((sym: _1904.Symbol)_1904.Mirror) forSome { val _1904: scala.reflect.internal.tools.nsc.TypecheckerImpl } = ???
+//[locker.reflect]   val phaseWithId: Array[scala.reflect.internal.Phase] = ???
+//[locker.reflect]   val treeInfo: scala.reflect.internal.tools.nsc.ast.TreeInfo{val global: scala.reflect.internal.tools.nsc.TypecheckerImpl} = ???

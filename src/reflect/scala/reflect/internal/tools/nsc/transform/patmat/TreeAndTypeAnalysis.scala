@@ -1,7 +1,7 @@
 package scala.reflect.internal.tools.nsc
 package transform.patmat
 
-//TODO-REFLECT maybe move to TreeInfo
+//TODO-REFLECT reuse this part in compiler
 trait TreeAndTypeAnalysis {
   val global: ReflectGlobal
 

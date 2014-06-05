@@ -20,7 +20,6 @@ trait PatternMatching {
     def counted(str: String, i: Int) = newTermName(str + i)
   }
   
-  //TODO-REFLECT change for trait (usage in Typers)
   class PureMatchTranslator(val typer: analyzer.Typer, val matchStrategy: Tree) {
     def translateMatch(match_ : Match): Tree = ???
   }
