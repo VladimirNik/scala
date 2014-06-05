@@ -20,6 +20,7 @@ trait Analyzer extends AnyRef
             with SyntheticMethods
             with Unapplies
             with Macros
+            with MacrosImpl
             with NamesDefaults
             with TypeDiagnostics
             with ContextErrors

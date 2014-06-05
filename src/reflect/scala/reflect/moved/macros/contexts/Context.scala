@@ -1,6 +1,7 @@
 package scala.reflect.moved.macros.contexts
 
 import scala.reflect.internal.tools.nsc.ReflectGlobal
+import scala.reflect.internal.tools.nsc.ContextAPIImpl
 
 abstract class Context extends scala.reflect.macros.blackbox.Context
                           with scala.reflect.macros.whitebox.Context
@@ -11,11 +12,9 @@ abstract class Context extends scala.reflect.macros.blackbox.Context
                           with FrontEnds
                           with Infrastructure
                           with Typers
-                          with Parsers
-                          with Evals
                           with ExprUtils
                           with Traces
-                          with Internals {
+                          with ContextAPIImpl {
 
   val universe: ReflectGlobal
 
