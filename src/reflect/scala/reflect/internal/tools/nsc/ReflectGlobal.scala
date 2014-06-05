@@ -20,11 +20,13 @@ import scala.reflect.internal.tools.nsc.typechecker.ConstantFolder
 import scala.reflect.internal.transform.Erasure
 import scala.reflect.internal.tools.nsc.transform._
 import scala.reflect.internal.tools.nsc.transform.patmat._
+import scala.reflect.internal.tools.reflect.quasiquotes.Quasiquotes
 
 trait Typechecker extends SymbolTable
     with Printers
     with Positions 
-    with CompilationUnits {
+    with CompilationUnits
+    with QuasiquotesImpl {
   self: ReflectGlobal =>
 
   val analyzer: typechecker.Analyzer {
@@ -201,6 +203,12 @@ trait ReflectGlobal extends Typechecker {
     def uncheckedWarnings: List[(Position, String)] = uncheckedWarnings0.warnings.toList // used in sbt
     def deprecationWarnings: List[(Position, String)] = deprecationWarnings0.warnings.toList // used in sbt
   }
+}
+
+trait QuasiquotesImpl {
+  self: Typechecker =>
+  //REFLECT-GLOBAL override in compiler new { val c: c0.type = c0 } with QuasiquoteImpls
+  def context2quasiquoteImpl(c0: self.analyzer.MacroContext): Quasiquotes { val c: c0.type } = ???
 }
 
 trait TypecheckerImpl extends ReflectGlobal {
