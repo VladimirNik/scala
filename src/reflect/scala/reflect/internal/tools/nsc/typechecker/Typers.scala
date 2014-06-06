@@ -230,7 +230,6 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
             val result = inferImplicit(tree, functionType(from.withoutAnnotations :: Nil, to), reportAmbiguous, isView = true, context, saveAmbiguousDivergent = saveErrors)
             if (result.subst != EmptyTreeTypeSubstituter) {
               result.subst traverse tree
-              //TODO-REFLECT fix Macros
               notifyUndetparamsInferred(result.subst.from, result.subst.to)
             }
             result.tree
@@ -1161,7 +1160,6 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
             else TypeApply(tree, tparams1 map (tparam => TypeTree(tparam.tpeHK) setPos tree.pos.focus)) setPos tree.pos
           )
           context.undetparams ++= tparams1
-          //TODO-REFLECT fix Macros
           notifyUndetparamsAdded(tparams1)
           adapt(tree1 setType restpe.substSym(tparams, tparams1), mode, pt, original)
 
@@ -2450,7 +2448,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
 
     // match has been typed -- virtualize it during type checking so the full context is available
     def virtualizedMatch(match_ : Match, mode: Mode, pt: Type) = {
-      import patmat.{ vpmName, PureMatchTranslator }
+      import patmat.{ PureMatchTranslator }
 
       // TODO: add fallback __match sentinel to predef
       val matchStrategy: Tree =

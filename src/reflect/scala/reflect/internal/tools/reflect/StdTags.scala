@@ -42,12 +42,6 @@ trait StdTags {
   lazy val tagOfDate = tagOfStaticClass[java.util.Date]
 }
 
-object StdRuntimeTags extends StdTags {
-  val u: scala.reflect.runtime.universe.type = scala.reflect.runtime.universe
-  val m = u.runtimeMirror(getClass.getClassLoader)
-  // we need getClass.getClassLoader to support the stuff from scala-compiler.jar
-}
-
 abstract class StdContextTags extends StdTags {
   val tc: scala.reflect.moved.macros.contexts.Context
   val u: tc.universe.type = tc.universe

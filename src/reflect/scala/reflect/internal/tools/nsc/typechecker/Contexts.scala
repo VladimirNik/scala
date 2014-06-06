@@ -178,7 +178,9 @@ trait Contexts { self: Analyzer =>
    * @param scope The current scope
    * @param _outer The next outer context.
    */
-  class Context private[typechecker](val tree: Tree, val owner: Symbol, val scope: Scope,
+  //TODO-REFLECT fix access, should be
+  //class Context private[typechecker](val tree: Tree, val owner: Symbol, val scope: Scope,
+  class Context(val tree: Tree, val owner: Symbol, val scope: Scope,
                                      val unit: CompilationUnit, _outer: Context) {
     private def outerIsNoContext = _outer eq null
     final def outer: Context = if (outerIsNoContext) NoContext else _outer

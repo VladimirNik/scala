@@ -11,13 +11,11 @@ import scala.collection.mutable
 import scala.collection.mutable.{ LinkedHashSet, ListBuffer }
 import scala.reflect.internal.tools.nsc.reporters.Reporter
 
-//TODO-FIX: icode removed
-
 trait CompilationUnits { global: Typechecker =>
 
   /** An object representing a missing compilation unit.
    */
-  object NoCompilationUnit extends CompilationUnit(NoSourceFile) {
+  val NoCompilationUnit = new CompilationUnit(NoSourceFile) {
     override lazy val isJava = false
     override def exists = false
     override def toString() = "NoCompilationUnit"
@@ -41,8 +39,10 @@ trait CompilationUnits { global: Typechecker =>
      */
     private[this] var _firstXmlPos: Position = NoPosition
 
+    //TODO-REFLECT change access modifiers to original:
+    //protected[nsc] def encounteredXml(pos: Position) = _firstXmlPos = pos
     /** Record that we encountered XML. Should only be called once. */
-    protected[nsc] def encounteredXml(pos: Position) = _firstXmlPos = pos
+    def encounteredXml(pos: Position) = _firstXmlPos = pos
 
     /** Does this unit contain XML? */
     def hasXml = _firstXmlPos ne NoPosition
@@ -124,7 +124,7 @@ trait CompilationUnits { global: Typechecker =>
     /** The icode representation of classes in this compilation unit.
      *  It is empty up to phase 'icode'.
      */
-    //TODO-FIX: icode removed (this val should be in compiler part)
+    //TODO-REFLECT: icode removed (this val is in compiler part)
 //    val icode: LinkedHashSet[icodes.IClass] = new LinkedHashSet
 
     def reporter = global.reporter

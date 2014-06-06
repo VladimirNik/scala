@@ -6,7 +6,6 @@
 package scala.reflect.internal.tools.nsc
 package typechecker
 
-//TODO only TypeMismatch
 import symtab.Flags._
 import scala.collection.mutable
 import scala.reflect.ClassTag

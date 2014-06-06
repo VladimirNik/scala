@@ -1,8 +1,8 @@
 package scala.reflect.macros
 package contexts
 
-trait Traces extends util.Traces {
-  self: Context =>
+import scala.reflect.moved.macros.contexts.{ Traces => RTraces }
 
-  def globalSettings = universe.settings
+trait Traces extends RTraces {
+  self: Context =>
 }

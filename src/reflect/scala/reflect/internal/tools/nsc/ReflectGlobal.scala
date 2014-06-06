@@ -49,7 +49,7 @@ trait Typechecker extends SymbolTable
   def registerContext(c: analyzer.Context): Unit
   
   def classPath: PlatformClassPath
-  val loaders: GlobalSymbolLoaders
+  val loaders: ReflectSymbolLoaders
 
   trait Run extends RunContextApi with RunBase {
      /** Have been running into too many init order issues with Run
@@ -58,8 +58,10 @@ trait Typechecker extends SymbolTable
      */
     var isDefined: Boolean
     
+    //TODO-REFLECT in original implementation: var currentUnit: CompilationUnit
+    //but can't be defined here as var because of CompilationUnit problem
     /** The currently compiled unit; set from GlobalPhase */
-    var currentUnit: CompilationUnit
+    def currentUnit: CompilationUnit
     
     /** A map from compiled top-level symbols to their source files */
     val symSource: mutable.HashMap[Symbol, AbstractFile]
@@ -78,7 +80,7 @@ trait Typechecker extends SymbolTable
 }
 
 trait ReflectGlobal extends Typechecker {
-  val analyzer: typechecker.Analyzer {
+  lazy val analyzer: typechecker.Analyzer {
     val global: ReflectGlobal.this.type
   } = new {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
@@ -253,12 +255,12 @@ trait ScalacPatternExpandersImpl extends ScalacPatternExpanders {
   import global._
   
   //Add to AlignedOps in compiler's ScalacPatternExpanders
-  trait AlignedBase extends super.AlignedBase {
+  class AlignedBase(mark: AlignedMark) extends super.AlignedBase(mark) {
     override def unexpandedFormals: List[Type] = ???
   }
   
   override val alignPatterns: ScalacPatternExpander {
-    def apply(sel: Tree, args: List[Tree]): AlignedBase
+    def apply(sel: Tree, args: List[Tree]): AlignedMark
   } = ???
 }
 
@@ -284,7 +286,7 @@ trait TypecheckerImpl extends ReflectGlobal {
   def registerContext(c: analyzer.Context): Unit = ???
   
   def classPath: PlatformClassPath = ???
-  val loaders: GlobalSymbolLoaders = ???
+  val loaders: ReflectSymbolLoaders = ???
 
   trait Run extends super[ReflectGlobal].Run {
      /** Have been running into too many init order issues with Run

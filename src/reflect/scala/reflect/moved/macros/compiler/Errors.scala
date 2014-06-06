@@ -1,7 +1,6 @@
 package scala.reflect.moved.macros
 package compiler
 
-//TODO only TypeMismatch
 import scala.compat.Platform.EOL
 import scala.reflect.moved.macros.util.Traces
 

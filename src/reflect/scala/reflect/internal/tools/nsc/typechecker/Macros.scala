@@ -2,7 +2,6 @@ package scala.reflect.internal
 package tools.nsc
 package typechecker
 
-//TODO only TypeMismatch
 import java.lang.Math.min
 import symtab.Flags._
 import scala.reflect.internal.tools.nsc.util._
@@ -15,7 +14,7 @@ import scala.util.control.ControlThrowable
 import scala.reflect.moved.macros.runtime.{AbortMacroException, MacroRuntimes}
 import scala.reflect.runtime.{universe => ru}
 import scala.reflect.moved.macros.compiler.DefaultMacroCompiler
-import _root_.scala.reflect.internal.tools.reflect.FastTrack
+import scala.reflect.internal.tools.reflect.FastTrack
 import scala.runtime.ScalaRunTime
 import Fingerprint._
 

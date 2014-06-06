@@ -1,6 +1,5 @@
 package scala.reflect.moved.macros.compiler
 
-//TODO only TypeMismatch (and bool to Nothing problem)
 import scala.reflect.internal.Flags._
 
 trait Validators {

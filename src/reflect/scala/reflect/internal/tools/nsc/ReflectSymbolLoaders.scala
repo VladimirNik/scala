@@ -2,6 +2,6 @@ package scala.reflect.internal
 package tools.nsc
 
 //TODO-REFLECT add to compiler's version
-trait GlobalSymbolLoaders {
+trait ReflectSymbolLoaders {
   trait ClassfileLoader
 }

@@ -1,12 +1,12 @@
 package scala.reflect.internal.tools.nsc
 package transform.patmat
 
-//TODO-REFLECT reuse this part in compiler
 trait TreeAndTypeAnalysis {
   val global: ReflectGlobal
 
   import global._
 
+  //TODO-REFLECT this code is removed from MatchAnalysis
     /** Compute the type T implied for a value `v` matched by a pattern `pat` (with expected type `pt`).
    *
    * Usually, this is the pattern's type because pattern matching implies instance-of checks.

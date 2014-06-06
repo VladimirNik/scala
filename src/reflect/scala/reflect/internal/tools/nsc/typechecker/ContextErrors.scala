@@ -6,14 +6,14 @@
 package scala.reflect.internal.tools.nsc
 package typechecker
 
-import _root_.scala.reflect.internal.util.StringOps.{ countElementsAsString, countAsString }
+import scala.reflect.internal.util.StringOps.{ countElementsAsString, countAsString }
 import symtab.Flags.IS_ERROR
-import _root_.scala.compat.Platform.EOL
-import _root_.scala.reflect.runtime.ReflectionUtils
-import _root_.scala.reflect.moved.macros.runtime.AbortMacroException
-import _root_.scala.util.control.NonFatal
-import _root_.scala.reflect.internal.tools.nsc.util.stackTraceString
-import _root_.scala.reflect.io.NoAbstractFile
+import scala.compat.Platform.EOL
+import scala.reflect.runtime.ReflectionUtils
+import scala.reflect.moved.macros.runtime.AbortMacroException
+import scala.util.control.NonFatal
+import scala.reflect.internal.tools.nsc.util.stackTraceString
+import scala.reflect.io.NoAbstractFile
 
 trait ContextErrors {
   self: Analyzer =>

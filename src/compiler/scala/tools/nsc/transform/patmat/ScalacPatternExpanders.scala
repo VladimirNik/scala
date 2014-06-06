@@ -9,10 +9,12 @@ package nsc
 package transform
 package patmat
 
+import scala.reflect.internal.tools.nsc.transform.patmat.{ ScalacPatternExpanders => RScalacPatternExpanders }
+
 /** This is scalac-specific logic layered on top of the scalac-agnostic
  *  "matching products to patterns" logic defined in PatternExpander.
  */
-trait ScalacPatternExpanders {
+trait ScalacPatternExpanders extends RScalacPatternExpanders {  
   val global: Global
 
   import global._
@@ -21,12 +23,12 @@ trait ScalacPatternExpanders {
 
   type PatternAligned = ScalacPatternExpander#Aligned
 
-  implicit class AlignedOps(val aligned: PatternAligned) {
+  implicit class AlignedOps(val aligned: PatternAligned) extends AlignedBase(aligned) {
     import aligned._
     def expectedTypes     = typedPatterns map (_.tpe)
-    def unexpandedFormals = extractor.varargsTypes
+    override def unexpandedFormals = extractor.varargsTypes
   }
-  trait ScalacPatternExpander extends PatternExpander[Tree, Type] {
+  trait ScalacPatternExpander extends PatternExpander[Tree, Type] with super.ScalacPatternExpander {
     def NoPattern = EmptyTree
     def NoType    = global.NoType
 
@@ -88,7 +90,7 @@ trait ScalacPatternExpanders {
       }
     }
   }
-  object alignPatterns extends ScalacPatternExpander {
+  override object alignPatterns extends ScalacPatternExpander {
     /** Converts a T => (A, B, C) extractor to a T => ((A, B, CC)) extractor.
      */
     def tupleExtractor(extractor: Extractor): Extractor =

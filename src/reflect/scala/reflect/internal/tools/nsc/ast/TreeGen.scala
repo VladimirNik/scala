@@ -7,14 +7,14 @@ package scala.reflect.internal
 package tools.nsc
 package ast
 
-import _root_.scala.collection.mutable.ListBuffer
+import scala.collection.mutable.ListBuffer
 import symtab.Flags._
-import _root_.scala.language.postfixOps
+import scala.language.postfixOps
 
 /** XXX to resolve: TreeGen only assumes global is a SymbolTable, but
  *  TreeDSL at the moment expects a Global.  Can we get by with SymbolTable?
  */
-abstract class TreeGen extends _root_.scala.reflect.internal.TreeGen with TreeDSL {
+abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
   val global: ReflectGlobal
 
   import global._
@@ -263,6 +263,7 @@ abstract class TreeGen extends _root_.scala.reflect.internal.TreeGen with TreeDS
   }
 
   //TODO-REFLECT: this method is not required in Typers, used in compiler/scala/tools/nsc/transform/UnCurry.scala
+  //Now this code in compiler's TreeGen
 //  /**
 //   * Create a method based on a Function
 //   *

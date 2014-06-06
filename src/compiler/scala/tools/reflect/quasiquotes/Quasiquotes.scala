@@ -2,8 +2,10 @@ package scala.tools.reflect
 package quasiquotes
 
 import scala.reflect.macros.runtime.Context
+import scala.reflect.internal.tools.reflect.quasiquotes.{ Quasiquotes => RQuasiquotes }
 
-abstract class Quasiquotes extends Parsers
+abstract class Quasiquotes extends RQuasiquotes
+                              with Parsers
                               with Holes
                               with Placeholders
                               with Reifiers {

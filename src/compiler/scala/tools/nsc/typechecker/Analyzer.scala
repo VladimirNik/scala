@@ -7,10 +7,11 @@ package scala.tools.nsc
 package typechecker
 
 import scala.reflect.internal.util.Statistics
+import scala.reflect.internal.tools.nsc.typechecker.{ Analyzer => RAnalyzer }
 
 /** The main attribution phase.
  */
-trait Analyzer extends AnyRef
+trait Analyzer extends RAnalyzer
             with Contexts
             with Namers
             with Typers
@@ -20,6 +21,7 @@ trait Analyzer extends AnyRef
             with SyntheticMethods
             with Unapplies
             with Macros
+            with MacrosImpl
             with NamesDefaults
             with TypeDiagnostics
             with ContextErrors
