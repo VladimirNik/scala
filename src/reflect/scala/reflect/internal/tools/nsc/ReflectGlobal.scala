@@ -142,8 +142,10 @@ trait ReflectGlobal extends Typechecker {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
   } with scala.reflect.internal.transform.Erasure
 
+  //TODO-REFLECT add is to names of these methods
   def beforeErasure = phaseId(currentPeriod) < currentRun.erasurePhase.id
   def beforeErasure(global: ReflectGlobal) = global.phase.id < global.currentRun.erasurePhase.id
+  def afterUncurryPhase = false
   
   val constfold = new {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
