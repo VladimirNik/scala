@@ -189,8 +189,7 @@ abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
    *  which refer to it.
    */
   private def mkPackedValDef(expr: Tree, owner: Symbol, name: Name): (ValDef, () => Ident) = {
-    //TODO-REFLECT - add typer here
-    val packedType: Type = null //original (back) - val packedType = typer.packedType(expr, owner)
+    val packedType = typer.packedType(expr, owner)
     val sym = owner.newValue(name.toTermName, expr.pos.makeTransparent, SYNTHETIC) setInfo packedType
 
     (ValDef(sym, expr), () => Ident(sym) setPos sym.pos.focus setType expr.tpe)
