@@ -151,7 +151,7 @@ abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
     atPos(tree.pos) {
       //TODO-REFLECT maybe in reflect we could use wrapInApply = false, we shouldn't work after typechecker
       //TODO-REFLECT could we use such change - wrapInApply = false and then override it in compiler?
-      mkAsInstanceOf(tree, pt, any = !phase.next.erasedTypes, wrapInApply = isAtPhaseAfter(currentRun.uncurryPhase)) 
+      mkAsInstanceOf(tree, pt, any = !phase.next.erasedTypes, wrapInApply = afterUncurryPhase) 
     }
   }
 

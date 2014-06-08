@@ -146,7 +146,7 @@ trait ReflectGlobal extends Typechecker {
   def beforeErasure = phaseId(currentPeriod) < currentRun.erasurePhase.id
   def beforeErasure(global: ReflectGlobal) = global.phase.id < global.currentRun.erasurePhase.id
   def afterUncurryPhase = false
-  
+
   val constfold = new {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
   } with ConstantFolder
