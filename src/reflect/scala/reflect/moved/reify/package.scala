@@ -68,7 +68,7 @@ package object reify {
         gen.mkMethodCall(currentRun.runDefinitions.arrayClassMethod, List(componentErasure))
       case _ =>
         var erasure = tpe.erasure
-        if (tpe.typeSymbol.isDerivedValueClass && beforeErasure(global)) erasure = tpe //TODO-REFLECT originally was global.phase.id < global.currentRun.erasurePhase.id
+        if (tpe.typeSymbol.isDerivedValueClass && isBeforeErasure(global)) erasure = tpe //TODO-REFLECT originally was global.phase.id < global.currentRun.erasurePhase.id
         gen.mkNullaryCall(currentRun.runDefinitions.Predef_classOf, List(erasure))
     }
   }

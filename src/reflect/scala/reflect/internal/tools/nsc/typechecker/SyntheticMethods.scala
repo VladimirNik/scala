@@ -59,9 +59,8 @@ trait SyntheticMethods extends ast.TreeDSL {
   /** Add the synthetic methods to case classes.
    */
   def addSyntheticMethods(templ: Template, clazz0: Symbol, context: Context): Template = {
-    //TODO-REFLECT - remove checking
     //TODO-REFLECT - original val syntheticsOk = (phase.id <= currentRun.typerPhase.id) && {
-    val syntheticsOk = {
+    val syntheticsOk = notAfterTyperPhase && {
       symbolsToSynthesize(clazz0) filter (_ matchingSymbol clazz0.info isSynthetic) match {
         case Nil  => true
         case syms => log("Not adding synthetic methods: already has " + syms.mkString(", ")) ; false

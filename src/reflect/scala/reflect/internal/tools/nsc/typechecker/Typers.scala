@@ -5077,7 +5077,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         val id = tree.ident
         val id1 = typed1(id, mode, pt) match { case id: Ident => id }
         // [Eugene] am I doing it right?
-        val erasedTypes = !beforeErasure //TODO-REFLECT check originally was: phaseId(currentPeriod) >= currentRun.erasurePhase.id
+        val erasedTypes = !isBeforeErasure //TODO-REFLECT check originally was: phaseId(currentPeriod) >= currentRun.erasurePhase.id
         val tpe = capturedVariableType(id.symbol, erasedTypes = erasedTypes)
         treeCopy.ReferenceToBoxed(tree, id1) setType tpe
       }
