@@ -24,9 +24,10 @@ trait CompilationUnits extends scala.reflect.internal.tools.nsc.CompilationUnits
     * error-reporting hooks.  */
   class CompilationUnit(override val source: SourceFile) extends super.CompilationUnit(source) { self =>
 
+    type Icode = icodes.IClass
     /** The icode representation of classes in this compilation unit.
      *  It is empty up to phase 'icode'.
      */
-    val icode: LinkedHashSet[icodes.IClass] = new LinkedHashSet
+    override val icode: LinkedHashSet[Icode] = new LinkedHashSet
   }
 }

@@ -124,8 +124,13 @@ trait CompilationUnits { global: Typechecker =>
     /** The icode representation of classes in this compilation unit.
      *  It is empty up to phase 'icode'.
      */
-    //TODO-REFLECT: icode removed (this val is in compiler part)
-//    val icode: LinkedHashSet[icodes.IClass] = new LinkedHashSet
+
+    //TODO-REFLECT: val icode: LinkedHashSet[icodes.IClass] = new LinkedHashSet
+    type Icode
+    /** The icode representation of classes in this compilation unit.
+     *  It is empty up to phase 'icode'.
+     */
+    def icode: LinkedHashSet[Icode] = new LinkedHashSet
 
     def reporter = global.reporter
 
