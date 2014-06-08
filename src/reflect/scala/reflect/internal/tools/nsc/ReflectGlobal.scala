@@ -214,7 +214,7 @@ trait ReflectGlobal extends Typechecker {
 trait QuasiquotesImpl {
   self: Typechecker =>
   //REFLECT-GLOBAL override in compiler new { val c: c0.type = c0 } with QuasiquoteImpls
-  def context2quasiquoteImpl(c0: self.analyzer.MacroContext): Quasiquotes { val c: c0.type } = ???
+  def context2quasiquoteImpl(c0: analyzer.MacroContext): Quasiquotes { val c: c0.type } = ???
 }
 
 //TODO-REFLECT this trait should be reimplemented in compiler with default behaviour from compiler

@@ -1,6 +1,5 @@
 package scala.reflect.moved.macros.compiler
 
-//TODO only TypeMismatch
 import scala.reflect.internal.tools.nsc.ReflectGlobal
 
 abstract class DefaultMacroCompiler extends Resolvers
