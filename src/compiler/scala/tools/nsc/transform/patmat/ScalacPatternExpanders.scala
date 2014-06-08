@@ -23,12 +23,16 @@ trait ScalacPatternExpanders extends RScalacPatternExpanders {
 
   type PatternAligned = ScalacPatternExpander#Aligned
 
-  implicit class AlignedOps(val aligned: PatternAligned) extends AlignedBase(aligned) {
+  implicit class AlignedOps(val aligned: PatternAligned) {
     import aligned._
     def expectedTypes     = typedPatterns map (_.tpe)
-    override def unexpandedFormals = extractor.varargsTypes
+    def unexpandedFormals = extractor.varargsTypes
   }
-  trait ScalacPatternExpander extends PatternExpander[Tree, Type] with super.ScalacPatternExpander {
+
+  //TODO-REFLECT wrapper to simplify reflect
+  override def patternsUnexpandedFormals(sel: Tree, args: List[Tree]) = alignPatterns(sel, args).unexpandedFormals
+
+  trait ScalacPatternExpander extends PatternExpander[Tree, Type] {
     def NoPattern = EmptyTree
     def NoType    = global.NoType
 
@@ -90,7 +94,7 @@ trait ScalacPatternExpanders extends RScalacPatternExpanders {
       }
     }
   }
-  override object alignPatterns extends ScalacPatternExpander {
+  object alignPatterns extends ScalacPatternExpander {
     /** Converts a T => (A, B, C) extractor to a T => ((A, B, CC)) extractor.
      */
     def tupleExtractor(extractor: Extractor): Extractor =

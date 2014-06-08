@@ -9,8 +9,6 @@ package nsc
 package transform
 package patmat
 
-import scala.reflect.internal.tools.nsc.transform.patmat.AlignedMark
-
 /** An extractor returns: F1, F2, ..., Fi, opt[Seq[E] or E*]
  *        A case matches: P1, P2, ..., Pj, opt[Seq[E]]
  *          Put together: P1/F1, P2/F2, ... Pi/Fi, Pi+1/E, Pi+2/E, ... Pj/E, opt[Seq[E]]
@@ -121,7 +119,7 @@ trait PatternExpander[Pattern, Type] {
    *       sequence which can populate at least <elementArity> patterns.
    *  < 0: There are more products than patterns: compile time error.
    */
-  final case class Aligned(patterns: Patterns, extractor: Extractor) extends AlignedMark {
+  final case class Aligned(patterns: Patterns, extractor: Extractor) {
     def elementArity = patterns.nonStarArity - productArity
     def productArity = extractor.productArity
     def starArity    = patterns.starArity

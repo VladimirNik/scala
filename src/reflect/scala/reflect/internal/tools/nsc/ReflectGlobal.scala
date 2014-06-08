@@ -254,14 +254,7 @@ trait PatternMatchingImpl extends PatternMatching {
 trait ScalacPatternExpandersImpl extends ScalacPatternExpanders {
   import global._
   
-  //Add to AlignedOps in compiler's ScalacPatternExpanders
-  class AlignedBase(mark: AlignedMark) extends super.AlignedBase(mark) {
-    override def unexpandedFormals: List[Type] = ???
-  }
-  
-  override val alignPatterns: ScalacPatternExpander {
-    def apply(sel: Tree, args: List[Tree]): AlignedMark
-  } = ???
+  override def patternsUnexpandedFormals(sel: Tree, args: List[Tree]) = ???
 }
 
 trait TypecheckerImpl extends ReflectGlobal {

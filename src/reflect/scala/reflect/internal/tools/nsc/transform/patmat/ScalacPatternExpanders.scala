@@ -5,17 +5,8 @@ package transform.patmat
 trait ScalacPatternExpanders {
   val global: SymbolTable
   import global._
-  
-  trait ScalacPatternExpander
-  
-  //Add to AlignedOps in compiler's ScalacPatternExpanders
-  implicit class AlignedBase(aligned: AlignedMark) {
-    def unexpandedFormals: List[Type] = ???
-  }
-  val alignPatterns: ScalacPatternExpander {
-    def apply(sel: Tree, args: List[Tree]): AlignedMark
-  } = ???
+
+  //TODO-REFLECT wrapper to simplify reflect
+  def patternsUnexpandedFormals(sel: Tree, args: List[Tree]): List[Type] = ???
 
 }
-
-trait AlignedMark
