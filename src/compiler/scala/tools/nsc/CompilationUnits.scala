@@ -12,7 +12,14 @@ import scala.reflect.internal.tools.nsc.reporters.Reporter
 
 trait CompilationUnits extends scala.reflect.internal.tools.nsc.CompilationUnits { global: Global =>
 
-  override object NoCompilationUnit extends CompilationUnit(NoSourceFile) {
+//  override object NoCompilationUnit extends CompilationUnit(NoSourceFile) {
+//    //TODO-REFLECT remove code duplication
+//    override lazy val isJava = false
+//    override def exists = false
+//    override def toString() = "NoCompilationUnit"
+//  }
+
+  override val NoCompilationUnit = new CompilationUnit(NoSourceFile) {
     //TODO-REFLECT remove code duplication
     override lazy val isJava = false
     override def exists = false

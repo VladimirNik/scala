@@ -116,8 +116,17 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   // sub-components --------------------------------------------------
 
+  //TODO-REFLECT fix (override object results in duplicate method in class file)
+//  /** Tree generation, usually based on existing symbols. */
+//  override object gen extends {
+//    val global: Global.this.type = Global.this
+//  } with AstTreeGen {
+//    def mkAttributedCast(tree: Tree, pt: Type): Tree =
+//      typer.typed(mkCast(tree, pt))
+//  }
+
   /** Tree generation, usually based on existing symbols. */
-  override object gen extends {
+  override val gen = new {
     val global: Global.this.type = Global.this
   } with AstTreeGen {
     def mkAttributedCast(tree: Tree, pt: Type): Tree =
@@ -131,8 +140,14 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
     def source = currentUnit.source
   }
 
+  //TODO-REFLECT fix (override object results in duplicate method in class file)
+//  /** Fold constants */
+//  override object constfold extends {
+//    val global: Global.this.type = Global.this
+//  } with ConstantFolder
+
   /** Fold constants */
-  override object constfold extends {
+  override val constfold = new {
     val global: Global.this.type = Global.this
   } with ConstantFolder
 
@@ -543,8 +558,16 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
     val runsRightAfter = Some("tailcalls")
   } with SpecializeTypes
 
+  //TODO-REFLECT fix (override object results in duplicate method in class file)
   // phaseName = "erasure"
-  override object erasure extends {
+//  override object erasure extends {
+//    val global: Global.this.type = Global.this
+//    val runsAfter = List("explicitouter")
+//    val runsRightAfter = Some("explicitouter")
+//  } with Erasure
+
+  // phaseName = "erasure"
+  override val erasure = new {
     val global: Global.this.type = Global.this
     val runsAfter = List("explicitouter")
     val runsRightAfter = Some("explicitouter")
@@ -696,9 +719,13 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   object icodeChecker extends icodeCheckers.ICodeChecker()
 
-  override object typer extends analyzer.Typer(
+  //TODO-REFLECT fix (override object results in duplicate method in class file)
+//  override object typer extends analyzer.Typer(
+//    analyzer.NoContext.make(EmptyTree, RootClass, newScope)
+//  )
+  override val typer = new analyzer.Typer(
     analyzer.NoContext.make(EmptyTree, RootClass, newScope)
-  )
+  ){}
 
   /** Add the internal compiler phases to the phases set.
    *  This implementation creates a description map at the same time.
