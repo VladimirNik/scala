@@ -15,7 +15,7 @@ trait CompilationUnits { global: Typechecker =>
 
   /** An object representing a missing compilation unit.
    */
-  val NoCompilationUnit = new CompilationUnit(NoSourceFile) {
+  lazy val NoCompilationUnit = new CompilationUnit(NoSourceFile) {
     override lazy val isJava = false
     override def exists = false
     override def toString() = "NoCompilationUnit"

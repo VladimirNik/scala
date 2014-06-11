@@ -19,7 +19,7 @@ trait CompilationUnits extends scala.reflect.internal.tools.nsc.CompilationUnits
 //    override def toString() = "NoCompilationUnit"
 //  }
 
-  override val NoCompilationUnit = new CompilationUnit(NoSourceFile) {
+  override lazy val NoCompilationUnit = new CompilationUnit(NoSourceFile) {
     //TODO-REFLECT remove code duplication
     override lazy val isJava = false
     override def exists = false

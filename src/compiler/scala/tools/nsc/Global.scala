@@ -41,8 +41,7 @@ import scala.reflect.internal.tools.nsc.Properties
 import scala.reflect.internal.tools.nsc.ReflectGlobal
 
 class Global(var currentSettings: Settings, var reporter: Reporter)
-    extends SymbolTable 
-    with ReflectGlobal
+    extends ReflectGlobal
     with CompilationUnits
     with Plugins
     with PhaseAssembly
@@ -126,7 +125,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 //  }
 
   /** Tree generation, usually based on existing symbols. */
-  override val gen = new {
+  override lazy val gen = new {
     val global: Global.this.type = Global.this
   } with AstTreeGen {
     def mkAttributedCast(tree: Tree, pt: Type): Tree =
@@ -147,7 +146,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 //  } with ConstantFolder
 
   /** Fold constants */
-  override val constfold = new {
+  val constfold = new {
     val global: Global.this.type = Global.this
   } with ConstantFolder
 
@@ -567,7 +566,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 //  } with Erasure
 
   // phaseName = "erasure"
-  override val erasure = new {
+  override lazy val erasure = new {
     val global: Global.this.type = Global.this
     val runsAfter = List("explicitouter")
     val runsRightAfter = Some("explicitouter")
@@ -719,13 +718,9 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   object icodeChecker extends icodeCheckers.ICodeChecker()
 
-  //TODO-REFLECT fix (override object results in duplicate method in class file)
-//  override object typer extends analyzer.Typer(
-//    analyzer.NoContext.make(EmptyTree, RootClass, newScope)
-//  )
-  override val typer = new analyzer.Typer(
+  override object typer extends analyzer.Typer(
     analyzer.NoContext.make(EmptyTree, RootClass, newScope)
-  ){}
+  )
 
   /** Add the internal compiler phases to the phases set.
    *  This implementation creates a description map at the same time.

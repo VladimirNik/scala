@@ -86,16 +86,50 @@ trait ReflectGlobal extends Typechecker {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
   } with typechecker.Analyzer
 
+//  override val gen: scala.reflect.internal.tools.nsc.ast.TreeGen {
+//    val global: ReflectGlobal.this.type
+//    def mkAttributedCast(tree: Tree, pt: Type): Tree
+//  }
+
   /** Tree generation, usually based on existing symbols. */
-  override val gen = new {
+  override lazy val gen: AstTreeGen {
+    val global: ReflectGlobal.this.type
+    def mkAttributedCast(tree: Tree, pt: Type): Tree
+  } = new {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
   } with AstTreeGen {
     def mkAttributedCast(tree: Tree, pt: Type): Tree =
       typer.typed(mkCast(tree, pt))
   }
 
+  //TODO-REFLECT probably here it's better to use object (it's not necessary to override it in compiler)
+  val typer: analyzer.Typer
+  
+////TODO-REFLECT probably here it's better to use object (it's not necessary to override it in compiler)
+//  val typer = new analyzer.Typer(
+//  analyzer.NoContext.make(EmptyTree, RootClass, newScope)
+//){}
+
+  // phaseName = "erasure"  
+//  override val erasure: scala.reflect.internal.transform.Erasure {
+//    val global: ReflectGlobal.this.type
+//  } = null //???
+
+  // phaseName = "erasure"  
+  override lazy val erasure = new {
+    val global: ReflectGlobal.this.type = ReflectGlobal.this
+  } with scala.reflect.internal.transform.Erasure
+
+  val constfold: ConstantFolder {
+    val global: ReflectGlobal.this.type
+  }
+
+//  val constfold = new {
+//    val global: ReflectGlobal.this.type = ReflectGlobal.this
+//  } with ConstantFolder
+
   /** Print tree in detailed form */
-  val nodePrinters = new {
+  lazy val nodePrinters = new {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
   } with ast.NodePrinters {
     var lastPrintedPhase: Phase = NoPhase
@@ -132,24 +166,10 @@ trait ReflectGlobal extends Typechecker {
     }
   }
 
-  //TODO-REFLECT probably here it's better to use object (it's not necessary to override it in compiler)
-  val typer = new analyzer.Typer(
-    analyzer.NoContext.make(EmptyTree, RootClass, newScope)
-  ){}
-
-  // phaseName = "erasure"  
-  override val erasure = new {
-    val global: ReflectGlobal.this.type = ReflectGlobal.this
-  } with scala.reflect.internal.transform.Erasure
-
   def isBeforeErasure = phaseId(currentPeriod) < currentRun.erasurePhase.id
   def isBeforeErasure(global: ReflectGlobal) = global.phase.id < global.currentRun.erasurePhase.id
   def isAfterUncurryPhase = false
   def notAfterTyperPhase = true
-
-  val constfold = new {
-    val global: ReflectGlobal.this.type = ReflectGlobal.this
-  } with ConstantFolder
 
   def currentUnit: CompilationUnit = if (currentRun eq null) NoCompilationUnit else currentRun.currentUnit
 
@@ -259,14 +279,17 @@ trait ScalacPatternExpandersImpl extends ScalacPatternExpanders {
   override def patternsUnexpandedFormals(sel: Tree, args: List[Tree]) = ???
 }
 
-trait TypecheckerImpl extends ReflectGlobal {
-  //TODO-REFLECT required methods for implementation are in Impls classes
-  //TODO-REFLECT rewrite field in typechecker
-  // phaseName = "patmat"
-  val patmat: PatternMatching with ScalacPatternExpanders with TreeAndTypeAnalysis {
-    val global: TypecheckerImpl.this.type
-  } = new {
+trait TypecheckerImpl extends ReflectGlobal { 
+  override object typer extends analyzer.Typer(
+    analyzer.NoContext.make(EmptyTree, RootClass, newScope)
+  ){}
+
+  override object constfold extends {
     val global: TypecheckerImpl.this.type = TypecheckerImpl.this
+  } with ConstantFolder
+
+  override object patmat extends {
+	val global: TypecheckerImpl.this.type = TypecheckerImpl.this
   } with PatternMatchingImpl with ScalacPatternExpandersImpl with TreeAndTypeAnalysis{}
 
   var reporter: Reporter = ???
