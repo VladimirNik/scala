@@ -11,7 +11,7 @@ import symtab._
 import Flags.{ CASE => _, _ }
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
-import scala.reflect.internal.tools.nsc.settings.ScalaVersion
+import scala.tools.nsc.settings.ScalaVersion
 
 /** This class ...
  *

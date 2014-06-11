@@ -3,7 +3,7 @@
  * @author  Paul Phillips
  */
 
-package scala.reflect.internal.tools.nsc.settings
+package scala.tools.nsc.settings
 
 trait AbsScalaSettings {
   self: AbsSettings =>

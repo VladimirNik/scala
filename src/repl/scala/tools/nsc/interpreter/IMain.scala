@@ -15,14 +15,12 @@ import scala.concurrent.{ Future, ExecutionContext }
 import scala.reflect.runtime.{ universe => ru }
 import scala.reflect.{ ClassTag, classTag }
 import scala.reflect.internal.util.{ BatchSourceFile, SourceFile }
-import scala.reflect.internal.tools.nsc.reporters.Reporter
-import scala.reflect.internal.tools.util.PathResolver
+import scala.tools.util.PathResolver
 import scala.tools.nsc.io.AbstractFile
 import scala.tools.nsc.typechecker.{ TypeStrings, StructuredTypeStrings }
 import scala.tools.nsc.util.{ ScalaClassLoader, stringFromReader, stringFromWriter, StackTraceOps }
 import scala.tools.nsc.util.Exceptional.unwrap
 import javax.script.{AbstractScriptEngine, Bindings, ScriptContext, ScriptEngine, ScriptEngineFactory, ScriptException, CompiledScript, Compilable}
-import scala.reflect.internal.tools.nsc.{ Properties, NewLinePrintWriter }
 
 /** An interpreter for Scala code.
  *
@@ -233,7 +231,7 @@ class IMain(@BeanProperty val factory: ScriptEngineFactory, initialSettings: Set
   lazy val isettings = new ISettings(this)
 
   /** Instantiate a compiler.  Overridable. */
-  protected def newCompiler(settings: Settings, reporter: Reporter): ReplGlobal = {
+  protected def newCompiler(settings: Settings, reporter: reporters.Reporter): ReplGlobal = {
     settings.outputDirs setSingleOutput replOutput.dir
     settings.exposeEmptyPackage.value = true
     new Global(settings, reporter) with ReplGlobal { override def toString: String = "<global>" }

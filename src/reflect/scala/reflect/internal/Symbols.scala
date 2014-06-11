@@ -697,7 +697,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     /** Does symbol have ANY flag in `mask` set? */
     final def hasFlag(mask: Long): Boolean = {
       // See `getFlag` to learn more about the `isThreadsafe` call in the body of this method.
-      if (!isCompilerUniverse && !isThreadsafe(purpose = FlagOps(mask))) initialize
+      if (!(isCompilerUniverse || isReflectTypechecker) && !isThreadsafe(purpose = FlagOps(mask))) initialize
       (flags & mask) != 0
     }
     def hasFlag(mask: Int): Boolean = hasFlag(mask.toLong)
@@ -705,7 +705,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     /** Does symbol have ALL the flags in `mask` set? */
     final def hasAllFlags(mask: Long): Boolean = {
       // See `getFlag` to learn more about the `isThreadsafe` call in the body of this method.
-      if (!isCompilerUniverse && !isThreadsafe(purpose = FlagOps(mask))) initialize
+      if (!(isCompilerUniverse || isReflectTypechecker) && !isThreadsafe(purpose = FlagOps(mask))) initialize
       (flags & mask) == mask
     }
 

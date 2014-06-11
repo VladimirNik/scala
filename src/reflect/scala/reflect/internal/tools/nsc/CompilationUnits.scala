@@ -9,7 +9,7 @@ package tools.nsc
 import scala.reflect.internal.util.{ SourceFile, NoSourceFile, FreshNameCreator }
 import scala.collection.mutable
 import scala.collection.mutable.{ LinkedHashSet, ListBuffer }
-import scala.reflect.internal.tools.nsc.reporters.Reporter
+import scala.tools.nsc.reporters.Reporter
 
 trait CompilationUnits { global: Typechecker =>
 

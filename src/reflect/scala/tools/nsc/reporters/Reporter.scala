@@ -3,7 +3,7 @@
  * @author Martin Odersky
  */
 
-package scala.reflect.internal.tools.nsc.reporters
+package scala.tools.nsc.reporters
 
 import scala.reflect.internal.util._
 

@@ -17,13 +17,15 @@ import io.AbstractFile
  * initialize definitions and inspect symbols.
  */
 class SymbolTableForUnitTesting extends SymbolTable {
+  //TODO-REFLECT newStrictTreeCopier and newLazyTreeCopier are defined in scala.reflect.internal.tools.nsc.ast
   // Members declared in scala.reflect.api.Trees
-  override def newStrictTreeCopier: TreeCopier = new StrictTreeCopier
-  override def newLazyTreeCopier: TreeCopier = new LazyTreeCopier
+//  override def newStrictTreeCopier: TreeCopier = new StrictTreeCopier
+//  override def newLazyTreeCopier: TreeCopier = new LazyTreeCopier
   trait TreeCopier extends InternalTreeCopierOps
   // these should be mocks
-  class StrictTreeCopier extends super.StrictTreeCopier with TreeCopier
-  class LazyTreeCopier extends super.LazyTreeCopier with TreeCopier
+  //TODO-REFLECT StrictTreeCopier and LazyTreeCopier are defined in scala.reflect.internal.tools.nsc.ast
+//  class StrictTreeCopier extends super.StrictTreeCopier with TreeCopier
+//  class LazyTreeCopier extends super.LazyTreeCopier with TreeCopier
 
   override def isCompilerUniverse: Boolean = true
   def classPath = new PathResolver(settings).result
@@ -85,7 +87,7 @@ class SymbolTableForUnitTesting extends SymbolTable {
     }
     phasesArray
   }
-  lazy val treeInfo: scala.reflect.internal.TreeInfo{val global: SymbolTableForUnitTesting.this.type} = ???
+  lazy val treeInfo: scala.reflect.internal.tools.nsc.ast.TreeInfo{val global: SymbolTableForUnitTesting.this.type} = ???
 
   val currentFreshNameCreator = new reflect.internal.util.FreshNameCreator
 

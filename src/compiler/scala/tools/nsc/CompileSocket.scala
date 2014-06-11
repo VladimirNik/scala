@@ -11,7 +11,6 @@ import io.{ File, Path, Directory, Socket }
 import scala.tools.util.CompileOutputCommon
 import scala.reflect.internal.util.StringOps.splitWhere
 import scala.sys.process._
-import scala.reflect.internal.tools.nsc.Properties
 
 trait HasCompileSocket {
   def compileSocket: CompileSocket

@@ -13,14 +13,18 @@ import scala.reflect.internal.util.{ OffsetPosition, SourceFile, NoSourceFile, B
 import scala.reflect.internal.pickling.{ PickleBuffer, PickleFormat }
 import scala.reflect.io.VirtualFile
 import scala.language.postfixOps
-import scala.reflect.internal.tools.nsc.reporters.Reporter
+import scala.tools.nsc.reporters.Reporter
 import scala.reflect.internal.tools.nsc.ast.{TreeGen => AstTreeGen}
-import scala.reflect.internal.tools.nsc.util.ClassPath
+import scala.tools.nsc.util.ClassPath
 import scala.reflect.internal.tools.nsc.typechecker.ConstantFolder
 import scala.reflect.internal.transform.Erasure
 import scala.reflect.internal.tools.nsc.transform._
 import scala.reflect.internal.tools.nsc.transform.patmat._
 import scala.reflect.internal.tools.reflect.quasiquotes.Quasiquotes
+import scala.reflect.runtime. {ReflectSetup, JavaUniverse}
+import scala.reflect.api.Universe
+import scala.tools.util.PathResolver
+import scala.tools.nsc.Settings
 
 trait Typechecker extends SymbolTable
     with Printers
@@ -32,7 +36,7 @@ trait Typechecker extends SymbolTable
   val analyzer: typechecker.Analyzer {
     val global: Typechecker.this.type
   }
-  // phaseName = "patmat"
+
   val patmat: PatternMatching with ScalacPatternExpanders with TreeAndTypeAnalysis {
     val global: Typechecker.this.type
   }
@@ -40,16 +44,15 @@ trait Typechecker extends SymbolTable
   var reporter: Reporter
   def settings: Settings
 
-  var globalPhase: Phase
   def currentRun: Run
 
-  def RootClass: ClassSymbol
-  //TODO-REFLECT maybe we don't require such method and its usage
-  def enteringTyper[T](op: => T): T
   def registerContext(c: analyzer.Context): Unit
-  
   def classPath: PlatformClassPath
+
   val loaders: ReflectSymbolLoaders
+  def RootClass: ClassSymbol
+  //TODO-REFLECT maybe we don't require such method here
+  def enteringTyper[T](op: => T): T
 
   trait Run extends RunContextApi with RunBase {
      /** Have been running into too many init order issues with Run
@@ -57,26 +60,31 @@ trait Typechecker extends SymbolTable
      *  top of the file so at least they're not trivially null.
      */
     var isDefined: Boolean
-    
+
     //TODO-REFLECT in original implementation: var currentUnit: CompilationUnit
     //but can't be defined here as var because of CompilationUnit problem
     /** The currently compiled unit; set from GlobalPhase */
     def currentUnit: CompilationUnit
-    
+
     /** A map from compiled top-level symbols to their source files */
     val symSource: mutable.HashMap[Symbol, AbstractFile]
     val compiledFiles: mutable.HashSet[String]
     val runDefinitions: definitions.RunDefinitions
-    
+
     def canRedefine(sym: Symbol): Boolean
     def compiles(sym: Symbol): Boolean
     var reportedFeature: Set[Symbol]
 
-    val typerPhase: Phase
+    //TODO-REFLECT required only for compatibility in Reflect, try to remove
     val erasurePhase: Phase
-    
     var seenMacroExpansionsFallingBack: Boolean
   }
+
+  def isBeforeErasure: Boolean
+  def isBeforeErasure(global: ReflectGlobal): Boolean
+  def isAtPhaseAfterUncurryPhase: Boolean
+  def notAfterTyperPhase: Boolean
+  def notAfterTyper: Boolean
 }
 
 trait ReflectGlobal extends Typechecker {
@@ -86,11 +94,7 @@ trait ReflectGlobal extends Typechecker {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
   } with typechecker.Analyzer
 
-//  override val gen: scala.reflect.internal.tools.nsc.ast.TreeGen {
-//    val global: ReflectGlobal.this.type
-//    def mkAttributedCast(tree: Tree, pt: Type): Tree
-//  }
-
+  //TODO-REFLECT try to remove mkAttributedCast - it's required only for compiler
   /** Tree generation, usually based on existing symbols. */
   override lazy val gen: AstTreeGen {
     val global: ReflectGlobal.this.type
@@ -102,7 +106,7 @@ trait ReflectGlobal extends Typechecker {
       typer.typed(mkCast(tree, pt))
   }
 
-  //TODO-REFLECT probably here it's better to use object (it's not necessary to override it in compiler)
+  //TODO-REFLECT probably it's better to use object here (it's not necessary to override it in the compiler)
   val typer: analyzer.Typer
   
 ////TODO-REFLECT probably here it's better to use object (it's not necessary to override it in compiler)
@@ -128,6 +132,7 @@ trait ReflectGlobal extends Typechecker {
 //    val global: ReflectGlobal.this.type = ReflectGlobal.this
 //  } with ConstantFolder
 
+  //TODO-REFLECT same code is in Global
   /** Print tree in detailed form */
   lazy val nodePrinters = new {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
@@ -140,7 +145,7 @@ trait ReflectGlobal extends Typechecker {
       print(" // " + unit.source)
       if (unit.body == null) println(": tree is null")
       else {
-        val source = util.stringFromWriter(w => newTreePrinter(w) print unit.body)
+        val source = scala.tools.nsc.util.stringFromWriter(w => newTreePrinter(w) print unit.body)
 
         // treePrinter show unit.body
         if (lastPrintedSource == source)
@@ -165,11 +170,6 @@ trait ReflectGlobal extends Typechecker {
       nodePrinters.infolevel = saved
     }
   }
-
-  def isBeforeErasure = phaseId(currentPeriod) < currentRun.erasurePhase.id
-  def isBeforeErasure(global: ReflectGlobal) = global.phase.id < global.currentRun.erasurePhase.id
-  def isAfterUncurryPhase = false
-  def notAfterTyperPhase = true
 
   def currentUnit: CompilationUnit = if (currentRun eq null) NoCompilationUnit else currentRun.currentUnit
 
@@ -203,6 +203,14 @@ trait ReflectGlobal extends Typechecker {
   /** Register top level class (called on entering the class)
   */
   def registerTopLevelSym(sym: Symbol) {}
+
+  protected var lastSeenContext: analyzer.Context = null
+
+  /** Register new context; called for every created context
+   */
+  def registerContext(c: analyzer.Context) {
+    lastSeenContext = c
+  }
 
   /** Collects for certain classes of warnings during this run. */
   class ConditionalWarning(what: String, option: Settings#BooleanSetting) {
@@ -244,7 +252,7 @@ trait QuasiquotesImpl {
 trait MacrosImpl {
   self: typechecker.Analyzer =>
   import self.global._
-  
+
   def macroContextImpl(typer: Typer, prefixTree: Tree, expandeeTree: Tree) = {
     new {
       val universe: self.global.type = self.global
@@ -267,19 +275,22 @@ trait ContextAPIImpl {
 
 trait PatternMatchingImpl extends PatternMatching {
   import global._  
-  
+
   class PureMatchTranslator(override val typer: analyzer.Typer, override val matchStrategy: Tree) extends super.PureMatchTranslator(typer, matchStrategy) {
     override def translateMatch(match_ : Match): Tree = ???
   }
 }
 
-trait ScalacPatternExpandersImpl extends ScalacPatternExpanders {
-  import global._
-  
-  override def patternsUnexpandedFormals(sel: Tree, args: List[Tree]) = ???
+trait TypecheckerApi {
+  self: Universe =>
+  def typecheckTree(tree: Tree, mirror: Mirror = rootMirror): Tree
+  def typecheckTree(tree: Tree, classLoader: ClassLoader): Tree
 }
 
-trait TypecheckerImpl extends ReflectGlobal { 
+class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerApi {
+
+  import analyzer._
+
   override object typer extends analyzer.Typer(
     analyzer.NoContext.make(EmptyTree, RootClass, newScope)
   ){}
@@ -290,69 +301,97 @@ trait TypecheckerImpl extends ReflectGlobal {
 
   override object patmat extends {
 	val global: TypecheckerImpl.this.type = TypecheckerImpl.this
-  } with PatternMatchingImpl with ScalacPatternExpandersImpl with TreeAndTypeAnalysis{}
+  } with PatternMatchingImpl with ScalacPatternExpanders with TreeAndTypeAnalysis{}
 
-  var reporter: Reporter = ???
-  def settings: Settings = ???
+  var reporter: Reporter = new Reporter {
+    protected def info0(pos: Position, msg: String, severity: Severity, force: Boolean): Unit = () //???
+  }
 
-  var globalPhase: Phase = ???
-  def currentRun: Run = ???
+  override lazy val settings: Settings = new Settings
 
-  def RootClass: ClassSymbol = ???
-  //TODO-REFLECT maybe we don't require such method and its usage
+  def currentRun: Run = new Run{}
+
+  def classPath: PlatformClassPath = new PathResolver(settings).result
+
+  //TODO-REFLECT fix it to Multiverse support
+  def RootClass: ClassSymbol = rootMirror.RootClass
+
+  //TODO-REFLECT maybe we don't require such method here
   def enteringTyper[T](op: => T): T = ???
-  def registerContext(c: analyzer.Context): Unit = ???
-  
-  def classPath: PlatformClassPath = ???
-  val loaders: ReflectSymbolLoaders = ???
+  lazy val loaders: ReflectSymbolLoaders = ???
+
+  def isBeforeErasure = true
+  def isBeforeErasure(global: ReflectGlobal) = true
+  def isAtPhaseAfterUncurryPhase = false
+  def notAfterTyperPhase = true
+  def notAfterTyper = true	  
 
   trait Run extends super[ReflectGlobal].Run {
      /** Have been running into too many init order issues with Run
      *  during erroneous conditions.  Moved all these vals up to the
      *  top of the file so at least they're not trivially null.
      */
-    var isDefined: Boolean = ???
-    
-    /** The currently compiled unit; set from GlobalPhase */
-    var currentUnit: CompilationUnit = ???
-    
-    /** A map from compiled top-level symbols to their source files */
-    val symSource: mutable.HashMap[Symbol, AbstractFile] = ???
-    val compiledFiles: mutable.HashSet[String] = ???
-    val runDefinitions: definitions.RunDefinitions = ???
-    
-    def canRedefine(sym: Symbol): Boolean = ???
-    def compiles(sym: Symbol): Boolean = ???
-    var reportedFeature: Set[Symbol] = ???
+    var isDefined: Boolean = false //???
 
-    val typerPhase: Phase = ???
-    val erasurePhase: Phase = ???
-    
-    var seenMacroExpansionsFallingBack: Boolean = ???
+    /** The currently compiled unit; set from GlobalPhase */
+    var currentUnit: CompilationUnit = NoCompilationUnit //???
+
+    /** A map from compiled top-level symbols to their source files */
+    lazy val symSource: mutable.HashMap[Symbol, AbstractFile] = new mutable.HashMap[Symbol, AbstractFile] //??? - TODO-REFLECT - if default value is correct in this case?
+    lazy val compiledFiles: mutable.HashSet[String] = ??? //new mutable.HashSet[String]
+    lazy val runDefinitions: definitions.RunDefinitions = new definitions.RunDefinitions
+
+    //TODO-REFLECT move to ReflectGlobal
+    def compiles(sym: Symbol): Boolean = 
+      if (sym == NoSymbol) false
+      else if (symSource.isDefinedAt(sym)) true
+      else if (sym.isTopLevel && sym.isEarlyInitialized) true
+      else if (!sym.isTopLevel) compiles(sym.enclosingTopLevelClass)
+      else if (sym.isModuleClass) compiles(sym.sourceModule)
+      else false
+
+    //TODO-REFLECT move to ReflectGlobal
+    def canRedefine(sym: Symbol): Boolean = !compiles(sym)
+    var reportedFeature: Set[Symbol] = Set[Symbol]() //???
+
+    lazy val erasurePhase: Phase = ???
+
+    var seenMacroExpansionsFallingBack: Boolean = false //???
+
+    def units = ???
   }
+
+  //TODO-REFLECT: other methods (most of them can be reused from JavaUniverse, problem to reuse JavaUniverse is settings val)
+//  def erasurePhase = SomePhase
+//  def picklerPhase = SomePhase
+//  def currentFreshNameCreator = globalFreshNameCreator
+//  
+//  object treeInfo extends {
+//    val global: TypecheckerImpl.this.type = TypecheckerImpl.this
+//  } with scala.reflect.internal.tools.nsc.ast.TreeInfo
+//
+//  implicit val TreeCopierTag: ClassTag[TreeCopier] = ClassTag[TreeCopier](classOf[TreeCopier])
+//  
+//  private val isLogging = sys.props contains "scala.debug.reflect"
+//
+//  def log(msg: => AnyRef): Unit = if (isLogging) Console.err.println("[reflect] " + msg)
+
+  //TODO-REFLECT: required for infos init (in Symbols)
+  override def isCompilerUniverse = false
+
+  override def isReflectTypechecker = true
+
+  //typechecker method
+  def typecheckTree(tree: Tree, mirror: Mirror = rootMirror) = {
+    val newTree = tree.duplicate
+    val compUnit = new CompilationUnit(NoSourceFile)
+    compUnit.body = newTree
+    val context = typecheckContext(mirror)
+    val namer = newNamer(context)
+    val newCont = namer.enterSym(newTree)
+    val typer = newTyper(newCont)
+    typer.typed(newTree)
+  }
+
+  def typecheckTree(tree: Tree, classLoader: ClassLoader): Tree = typecheckTree(tree, runtimeMirror(classLoader))
 }
-//TODO-REFLECT - field required for Typechecker instantiation
-//[locker.reflect] /** As seen from class TypecheckerImpl, the missing signatures are as follows.
-//[locker.reflect]  *  For convenience, these are usable as stub implementations.
-//[locker.reflect]  */
-//[locker.reflect]   // Members declared in scala.reflect.internal.FreshNames
-//[locker.reflect]   def currentFreshNameCreator: scala.reflect.internal.util.FreshNameCreator = ???
-//[locker.reflect] 
-//[locker.reflect]   // Members declared in scala.reflect.api.ImplicitTags
-//[locker.reflect]   implicit val MirrorTag: (=> scala.reflect.ClassTag[_1899.Mirror]) forSome { val _1899: scala.reflect.internal.tools.nsc.TypecheckerImpl } = ???
-//[locker.reflect]   implicit val RuntimeClassTag: (=> scala.reflect.ClassTag[_1900.RuntimeClass]) forSome { val _1900: scala.reflect.internal.tools.nsc.TypecheckerImpl } = ???
-//[locker.reflect]   implicit val TreeCopierTag: (=> scala.reflect.ClassTag[_1901.TreeCopier]) forSome { val _1901: scala.reflect.internal.tools.nsc.TypecheckerImpl } = ???
-//[locker.reflect] 
-//[locker.reflect]   // Members declared in scala.reflect.api.Mirrors
-//[locker.reflect]   val rootMirror: scala.reflect.internal.tools.nsc.TypecheckerImpl#Mirror = ???
-//[locker.reflect] 
-//[locker.reflect]   // Members declared in scala.reflect.internal.Required
-//[locker.reflect]   def erasurePhase: scala.reflect.internal.Phase = ???
-//[locker.reflect]   def picklerPhase: scala.reflect.internal.Phase = ???
-//[locker.reflect] 
-//[locker.reflect]   // Members declared in scala.reflect.internal.SymbolTable
-//[locker.reflect]   def currentRunId: Int = ???
-//[locker.reflect]   def log(msg: => AnyRef): Unit = ???
-//[locker.reflect]   def mirrorThatLoaded: ((sym: _1904.Symbol)_1904.Mirror) forSome { val _1904: scala.reflect.internal.tools.nsc.TypecheckerImpl } = ???
-//[locker.reflect]   val phaseWithId: Array[scala.reflect.internal.Phase] = ???
-//[locker.reflect]   val treeInfo: scala.reflect.internal.tools.nsc.ast.TreeInfo{val global: scala.reflect.internal.tools.nsc.TypecheckerImpl} = ???

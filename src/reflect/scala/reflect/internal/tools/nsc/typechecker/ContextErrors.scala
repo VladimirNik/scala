@@ -12,7 +12,7 @@ import scala.compat.Platform.EOL
 import scala.reflect.runtime.ReflectionUtils
 import scala.reflect.moved.macros.runtime.AbortMacroException
 import scala.util.control.NonFatal
-import scala.reflect.internal.tools.nsc.util.stackTraceString
+import scala.tools.nsc.util.stackTraceString
 import scala.reflect.io.NoAbstractFile
 
 trait ContextErrors {

@@ -408,6 +408,10 @@ abstract class SymbolTable extends macros.Universe
    */
   def isCompilerUniverse = false
 
+  /** Is this symbol table a part of a reflect typechecer?
+   */
+  def isReflectTypechecker = false
+
   @deprecated("Use enteringPhase", "2.10.0") // Used in SBT 0.12.4
   @inline final def atPhase[T](ph: Phase)(op: => T): T = enteringPhase(ph)(op)
 

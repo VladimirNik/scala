@@ -113,7 +113,7 @@ abstract class ICodes extends AnyRef
       global.loaders.lookupMemberAtTyperPhaseIfPossible(sym, name)
     lazy val symbolTable: global.type = global
     lazy val loaders: global.loaders.type = global.loaders
-    def classPath: scala.reflect.internal.tools.nsc.util.ClassPath[AbstractFile] = ICodes.this.global.platform.classPath
+    def classPath: util.ClassPath[AbstractFile] = ICodes.this.global.platform.classPath
   }
 
   /** A phase which works on icode. */

@@ -3,10 +3,10 @@
  * @author  Paul Phillips
  */
 
-package scala.reflect.internal.tools.nsc
-package settings
+package scala.tools.nsc.settings
 
-import _root_.scala.reflect.internal.tools.util.PathResolver.Defaults
+import scala.tools.util.PathResolver.Defaults
+import scala.tools.nsc.Properties
 
 /** Settings which aren't behind a -X, -Y, or -P option.
  *  When possible, the val and the option have identical names.

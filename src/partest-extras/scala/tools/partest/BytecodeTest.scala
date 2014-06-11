@@ -1,6 +1,6 @@
 package scala.tools.partest
 
-import scala.reflect.internal.tools.nsc.util.JavaClassPath
+import scala.tools.nsc.util.JavaClassPath
 import scala.collection.JavaConverters._
 import scala.tools.asm.{ClassWriter, ClassReader}
 import scala.tools.asm.tree.{ClassNode, MethodNode, InsnList}
@@ -130,9 +130,9 @@ abstract class BytecodeTest extends ASMConverters {
   }
 
   protected lazy val classpath: JavaClassPath = {
-    import scala.reflect.internal.tools.nsc.util.ClassPath.DefaultJavaContext
-    import scala.reflect.internal.tools.util.PathResolver.Defaults
-    // logic inspired by scala.reflect.internal.tools.util.PathResolver implementation
+    import scala.tools.nsc.util.ClassPath.DefaultJavaContext
+    import scala.tools.util.PathResolver.Defaults
+    // logic inspired by scala.tools.util.PathResolver implementation
     val containers = DefaultJavaContext.classesInExpandedPath(Defaults.javaUserClassPath)
     new JavaClassPath(containers, DefaultJavaContext)
   }

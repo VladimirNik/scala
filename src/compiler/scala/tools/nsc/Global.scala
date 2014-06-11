@@ -13,10 +13,8 @@ import java.util.UUID._
 import scala.compat.Platform.currentTime
 import scala.collection.{ mutable, immutable }
 import io.{ SourceReader, AbstractFile, Path }
-import scala.reflect.internal.tools.nsc.reporters.Reporter
-import reporters.ConsoleReporter
-import scala.reflect.internal.tools.nsc.util.{ ClassPath, MergedClassPath }
-import util.{ StatisticsInfo, returning, stackTraceString }
+import reporters.{ Reporter, ConsoleReporter }
+import util.{ ClassPath, MergedClassPath, StatisticsInfo, returning, stackTraceString }
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.{ OffsetPosition, SourceFile, NoSourceFile, BatchSourceFile, ScriptSourceFile }
 import scala.reflect.internal.pickling.{ PickleBuffer, PickleFormat }
@@ -37,7 +35,6 @@ import backend.opt.{ Inliners, InlineExceptionHandlers, ConstantOptimization, Cl
 import backend.icode.analysis._
 import scala.language.postfixOps
 import scala.tools.nsc.ast.{TreeGen => AstTreeGen}
-import scala.reflect.internal.tools.nsc.Properties
 import scala.reflect.internal.tools.nsc.ReflectGlobal
 
 class Global(var currentSettings: Settings, var reporter: Reporter)
@@ -55,8 +52,11 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   override def isCompilerUniverse = true
   override val useOffsetPositions = !currentSettings.Yrangepos
 
-  override def isAfterUncurryPhase = isAtPhaseAfter(currentRun.uncurryPhase)
-  override def notAfterTyperPhase = phase.id <= currentRun.typerPhase.id
+  def isBeforeErasure = phaseId(currentPeriod) < currentRun.erasurePhase.id
+  def isBeforeErasure(global: ReflectGlobal) = global.phase.id < global.currentRun.erasurePhase.id
+  def isAtPhaseAfterUncurryPhase = isAtPhaseAfter(currentRun.uncurryPhase)
+  def notAfterTyperPhase = phase.id <= currentRun.typerPhase.id
+  def notAfterTyper = phaseId(currentPeriod) <= currentRun.typerPhase.id
 
   type RuntimeClass = java.lang.Class[_]
   implicit val RuntimeClassTag: ClassTag[RuntimeClass] = ClassTag[RuntimeClass](classOf[RuntimeClass])
@@ -245,11 +245,12 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   /** Called from parser, which signals hereby that a method definition has been parsed. */
   def signalParseProgress(pos: Position) {}
 
-  /** Register new context; called for every created context
-   */
-  def registerContext(c: analyzer.Context) {
-    lastSeenContext = c
-  }
+  //TODO-REFLECT moved to ReflectGlobal
+//  /** Register new context; called for every created context
+//   */
+//  def registerContext(c: analyzer.Context) {
+//    lastSeenContext = c
+//  }
 
   //TODO-REFLECT moved to ReflectGlobal
 //  /** Register top level class (called on entering the class)
@@ -1094,10 +1095,11 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
    */
   protected var lastSeenSourceFile: SourceFile = NoSourceFile
 
-  /** Let's share a lot more about why we crash all over the place.
-   *  People will be very grateful.
-   */
-  protected var lastSeenContext: analyzer.Context = null
+  //TODO-REFLECT lastSeenContext moved to reflect
+//  /** Let's share a lot more about why we crash all over the place.
+//   *  People will be very grateful.
+//   */
+//  protected var lastSeenContext: analyzer.Context = null
 
   /** The currently active run
    */

@@ -780,7 +780,7 @@ trait Infer extends Checkable {
     // The chance of TypeErrors should be reduced through context errors
     private[typechecker] def isApplicableSafe(undetparams: List[Symbol], ftpe: Type, argtpes0: List[Type], pt: Type): Boolean = {
       def applicableExpectingPt(pt: Type): Boolean = {
-        val silent = context.makeSilent(reportAmbiguousErrors = false)
+        val silent = context.makeSilent(reportAmbiguousErrors = false, mirror = context.mirror)
         val result = newTyper(silent).infer.isApplicable(undetparams, ftpe, argtpes0, pt)
         if (silent.hasErrors && !pt.isWildcard)
           applicableExpectingPt(WildcardType) // second try

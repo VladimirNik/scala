@@ -1,4 +1,9 @@
-package scala.reflect.internal.tools.nsc
+/* NSC -- new Scala compiler
+ * Copyright 2005-2013 LAMP/EPFL
+ * @author Martin Odersky
+ */
+
+package scala.tools.nsc
 
 import java.io.{Writer, PrintWriter}
 

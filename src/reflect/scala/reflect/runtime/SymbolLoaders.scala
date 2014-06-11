@@ -135,11 +135,14 @@ private[reflect] trait SymbolLoaders { self: SymbolTable =>
               if (loadingMirror eq currentMirror) {
                 initAndEnterClassAndModule(pkgClass, name.toTypeName, new TopClassCompleter(_, _))
               } else {
+                println(s"Resolving other mirror: $name")
                 val origOwner = loadingMirror.packageNameToScala(pkgClass.fullName)
-                val clazz = origOwner.info decl name.toTypeName
-                val module = origOwner.info decl name.toTermName
-                assert(clazz != NoSymbol)
-                assert(module != NoSymbol)
+                val origClazz = origOwner.info decl name.toTypeName
+                val origModule = origOwner.info decl name.toTermName
+                assert(origClazz != NoSymbol)
+                assert(origModule != NoSymbol)
+                val clazz = origClazz.cloneSymbol(pkgClass)
+                val module = origModule.cloneSymbol(pkgClass)
                 // currentMirror.mirrorDefining(cls) might side effect by entering symbols into pkgClass.info.decls
                 // therefore, even though in the beginning of this method, super.lookupEntry(name) returned null
                 // entering clazz/module now will result in a double-enter assertion in PackageScope.enter
