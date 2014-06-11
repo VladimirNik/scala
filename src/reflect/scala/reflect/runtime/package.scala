@@ -6,6 +6,9 @@ package reflect
  */
 package object runtime {
 
+  import scala.reflect.internal.tools.nsc.{TypecheckerApi, RuntimeTypechecker}
+
+  //TODO-REFLECT changed to RuntimeTypechecker
   /** The entry point into Scala runtime reflection.
    *
    * To use Scala runtime reflection, simply use or import `scala.reflect.runtime.universe._`
@@ -14,7 +17,7 @@ package object runtime {
    * [[http://docs.scala-lang.org/overviews/reflection/environment-universes-mirrors.html Reflection Guide: Universes]]
    * for more details.
    */
-  lazy val universe: api.JavaUniverse = new runtime.JavaUniverse
+  lazy val universe: api.JavaUniverse with TypecheckerApi = new RuntimeTypechecker //new runtime.JavaUniverse
 
   /** The runtime reflection mirror that corresponds to the current lexical context.
    *  It's typically equivalent to `universe.runtimeMirror(getClass.getClassLoader)` invoked at the call site.

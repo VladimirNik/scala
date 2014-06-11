@@ -209,7 +209,7 @@ trait Trees extends scala.reflect.internal.Trees { self: SymbolTable =>
     // that I've reverted to a hard-coded constant here.
     val debug = false
 
-    val trace = scala.reflect.internal.tools.nsc.util.trace when debug
+    val trace = scala.tools.nsc.util.trace when debug
 
     val locals = util.HashSet[Symbol](8)
 

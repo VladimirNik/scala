@@ -2,7 +2,7 @@ package scala.tools
 package reflect
 
 import scala.tools.nsc.Global
-import scala.reflect.internal.tools.nsc.reporters.Reporter
+import scala.tools.nsc.reporters.Reporter
 import scala.tools.nsc.Settings
 
 /** A version of Global that uses reflection to get class

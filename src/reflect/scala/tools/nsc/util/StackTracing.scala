@@ -1,7 +1,10 @@
-/* NSC -- new Scala compiler */
+/* NSC -- new Scala compiler
+ * Copyright 2005-2013 LAMP/EPFL
+ */
 
-package scala.reflect.internal.tools.nsc.util
+package scala.tools.nsc.util
 
+//TODO-REFLECT changed modifier - originally was - private[util] trait...
 trait StackTracing extends Any {
 
   /** Format a stack trace, returning the prefix consisting of frames that satisfy
@@ -17,7 +20,7 @@ trait StackTracing extends Any {
   def stackTracePrefixString(e: Throwable)(p: StackTraceElement => Boolean): String = {
     import collection.mutable.{ ArrayBuffer, ListBuffer }
     import compat.Platform.EOL
-    import scala.util.Properties.isJavaAtLeast
+    import util.Properties.isJavaAtLeast
 
     val sb = ListBuffer.empty[String]
 

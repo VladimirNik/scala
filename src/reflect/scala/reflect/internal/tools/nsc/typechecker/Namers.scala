@@ -48,10 +48,16 @@ trait Namers extends MethodSynthesis {
     case _                 => false
   }
 
+  //TODO-REFLECT pass here normal mirror
   private class NormalNamer(context: Context) extends Namer(context)
+  //TODO-REFLECT pass here normal mirror
+//  def newNamer(context: Context): Namer = newNamer(context, useContextMirror = false)
   def newNamer(context: Context): Namer = new NormalNamer(context)
 
   abstract class Namer(val context: Context) extends MethodSynth with NamerContextErrors { thisNamer =>
+    val namerMirror = context.mirror
+    //val namerMirror: Mirror = if (useContextMirror) context.mirror else rootMirror
+
     // overridden by the presentation compiler
     def saveDefaultGetter(meth: Symbol, default: Symbol) { }
 
@@ -73,19 +79,19 @@ trait Namers extends MethodSynthesis {
       }
       val ownerCtx = tree match {
         case vd: ValDef if isConstrParam(vd) =>
-          context.makeConstructorContext
+          context.makeConstructorContext(mirror = namerMirror)
         case _ =>
           context
       }
-      newNamer(ownerCtx.makeNewScope(tree, sym))
+      newNamer(ownerCtx.makeNewScope(tree, sym, mirror = namerMirror))
     }
     def createInnerNamer() = {
-      newNamer(context.make(context.tree, owner, newScope))
+      newNamer(context.make(context.tree, owner, newScope, namerMirror))
     }
     def createPrimaryConstructorParameterNamer: Namer = { //todo: can we merge this with SCCmode?
       val classContext = context.enclClass
       val outerContext = classContext.outer.outer
-      val paramContext = outerContext.makeNewScope(outerContext.tree, outerContext.owner)
+      val paramContext = outerContext.makeNewScope(outerContext.tree, outerContext.owner, mirror = namerMirror)
 
       owner.unsafeTypeParams foreach (paramContext.scope enter _)
       newNamer(paramContext)
@@ -290,7 +296,7 @@ trait Namers extends MethodSynthesis {
           case DocDef(_, defn)                               => enterSym(defn)
           case tree @ Import(_, _)                           =>
             assignSymbol(tree)
-            returnContext = context.make(tree)
+            returnContext = context.make(tree, mirror = namerMirror)
           case _ =>
         }
         returnContext
@@ -370,7 +376,7 @@ trait Namers extends MethodSynthesis {
     /** All PackageClassInfoTypes come from here. */
     def createPackageSymbol(pos: Position, pid: RefTree): Symbol = {
       val pkgOwner = pid match {
-        case Ident(_)                 => if (owner.isEmptyPackageClass) rootMirror.RootClass else owner
+        case Ident(_)                 => if (owner.isEmptyPackageClass) namerMirror.RootClass else owner
         case Select(qual: RefTree, _) => createPackageSymbol(pos, qual).moduleClass
       }
       val existing = pkgOwner.info.decls.lookup(pid.name)
@@ -685,7 +691,7 @@ trait Namers extends MethodSynthesis {
     }
     def enterPackage(tree: PackageDef) {
       val sym = assignSymbol(tree)
-      newNamer(context.make(tree, sym.moduleClass, sym.info.decls)) enterSyms tree.stats
+      newNamer(context.make(tree, sym.moduleClass, sym.info.decls, namerMirror)) enterSyms tree.stats
     }
     def enterTypeDef(tree: TypeDef) = assignAndEnterFinishedSymbol(tree)
 
@@ -919,7 +925,7 @@ trait Namers extends MethodSynthesis {
       enterSelf(templ.self)
 
       val decls = newScope
-      val templateNamer = newNamer(context.make(templ, clazz, decls))
+      val templateNamer = newNamer(context.make(templ, clazz, decls, namerMirror))
       templateNamer enterSyms templ.body
 
       // add apply and unapply methods to companion objects of case classes,
@@ -1490,7 +1496,7 @@ trait Namers extends MethodSynthesis {
           case defn: MemberDef =>
             val ainfos = defn.mods.annotations filterNot (_ eq null) map { ann =>
               val ctx    = typer.context
-              val annCtx = ctx.make(ann)
+              val annCtx = ctx.make(ann, mirror = namerMirror)
               annCtx.setReportErrors()
               // need to be lazy, #1782. beforeTyper to allow inferView in annotation args, SI-5892.
               AnnotationInfo lazily {
@@ -1714,7 +1720,7 @@ trait Namers extends MethodSynthesis {
       // @M an abstract type's type parameters are entered.
       // TODO: change to isTypeMember ?
       if (defnSym.isAbstractType)
-        newNamer(ctx.makeNewScope(tree, tree.symbol)) enterSyms tparams //@M
+        newNamer(ctx.makeNewScope(tree, tree.symbol, ctx.mirror)) enterSyms tparams //@M
       restp complete sym
     }
   }

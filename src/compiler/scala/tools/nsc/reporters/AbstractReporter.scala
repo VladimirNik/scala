@@ -9,7 +9,6 @@ package reporters
 import scala.collection.mutable
 import scala.tools.nsc.Settings
 import scala.reflect.internal.util.Position
-import scala.reflect.internal.tools.nsc.reporters.Reporter
 
 /**
  * This reporter implements filtering.

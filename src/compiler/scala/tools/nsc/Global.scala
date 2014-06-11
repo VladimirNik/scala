@@ -13,10 +13,8 @@ import java.util.UUID._
 import scala.compat.Platform.currentTime
 import scala.collection.{ mutable, immutable }
 import io.{ SourceReader, AbstractFile, Path }
-import scala.reflect.internal.tools.nsc.reporters.Reporter
-import reporters.ConsoleReporter
-import scala.reflect.internal.tools.nsc.util.{ ClassPath, MergedClassPath }
-import util.{ StatisticsInfo, returning, stackTraceString }
+import reporters.{ Reporter, ConsoleReporter }
+import util.{ ClassPath, MergedClassPath, StatisticsInfo, returning, stackTraceString }
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.{ OffsetPosition, SourceFile, NoSourceFile, BatchSourceFile, ScriptSourceFile }
 import scala.reflect.internal.pickling.{ PickleBuffer, PickleFormat }
@@ -37,11 +35,10 @@ import backend.opt.{ Inliners, InlineExceptionHandlers, ConstantOptimization, Cl
 import backend.icode.analysis._
 import scala.language.postfixOps
 import scala.tools.nsc.ast.{TreeGen => AstTreeGen}
-import scala.reflect.internal.tools.nsc.Properties
-import scala.reflect.internal.tools.nsc.ReflectGlobal
+import scala.reflect.internal.tools.nsc.TypecheckerRequirements
 
 class Global(var currentSettings: Settings, var reporter: Reporter)
-    extends ReflectGlobal
+    extends TypecheckerRequirements
     with CompilationUnits
     with Plugins
     with PhaseAssembly
@@ -55,8 +52,11 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   override def isCompilerUniverse = true
   override val useOffsetPositions = !currentSettings.Yrangepos
 
-  override def isAfterUncurryPhase = isAtPhaseAfter(currentRun.uncurryPhase)
-  override def notAfterTyperPhase = phase.id <= currentRun.typerPhase.id
+  def isBeforeErasure = phaseId(currentPeriod) < currentRun.erasurePhase.id
+  def isBeforeErasure(global: TypecheckerRequirements) = global.phase.id < global.currentRun.erasurePhase.id
+  def isAtPhaseAfterUncurryPhase = isAtPhaseAfter(currentRun.uncurryPhase)
+  def notAfterTyperPhase = phase.id <= currentRun.typerPhase.id
+  def notAfterTyper = phaseId(currentPeriod) <= currentRun.typerPhase.id
 
   type RuntimeClass = java.lang.Class[_]
   implicit val RuntimeClassTag: ClassTag[RuntimeClass] = ClassTag[RuntimeClass](classOf[RuntimeClass])
@@ -83,7 +83,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   override def settings = currentSettings
 
-  //TODO-REFLECT moved to ReflectGlobal
+  //TODO-REFLECT moved to TypecheckerRequirements
 //  /** Switch to turn on detailed type logs */
 //  var printTypings = settings.Ytyperdebug.value
 
@@ -107,7 +107,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   type ThisPlatform = JavaPlatform { val global: Global.this.type }
   lazy val platform: ThisPlatform  = new GlobalPlatform
 
-  //TODO-REFLECT - moved to ReflectGlobal
+  //TODO-REFLECT - moved to TypecheckerRequirements
 //  type PlatformClassPath = ClassPath[AbstractFile]
   type OptClassPath = Option[PlatformClassPath]
 
@@ -237,7 +237,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   // ------------ Hooks for interactive mode-------------------------
 
-  //TODO-REFLECT moved to ReflectGlobal
+  //TODO-REFLECT moved to TypecheckerRequirements
 //  /** Called every time an AST node is successfully typechecked in typerPhase.
 //   */
 //  def signalDone(context: analyzer.Context, old: Tree, result: Tree) {}
@@ -245,13 +245,14 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   /** Called from parser, which signals hereby that a method definition has been parsed. */
   def signalParseProgress(pos: Position) {}
 
-  /** Register new context; called for every created context
-   */
-  def registerContext(c: analyzer.Context) {
-    lastSeenContext = c
-  }
+  //TODO-REFLECT moved to TypecheckerRequirements
+//  /** Register new context; called for every created context
+//   */
+//  def registerContext(c: analyzer.Context) {
+//    lastSeenContext = c
+//  }
 
-  //TODO-REFLECT moved to ReflectGlobal
+  //TODO-REFLECT moved to TypecheckerRequirements
 //  /** Register top level class (called on entering the class)
 //   */
 //  def registerTopLevelSym(sym: Symbol) {}
@@ -306,7 +307,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   override protected def isDeveloper = settings.developer || super.isDeveloper
 
-  //TODO-REFLECT moved to ReflectGlobal
+  //TODO-REFLECT moved to TypecheckerRequirements
 //  /** This is for WARNINGS which should reach the ears of scala developers
 //   *  whenever they occur, but are not useful for normal users. They should
 //   *  be precise, explanatory, and infrequent. Please don't use this as a
@@ -324,7 +325,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   def informComplete(msg: String): Unit    = reporter.withoutTruncating(inform(msg))
 
-  //TODO-REFLECT moved to ReflectGlobal
+  //TODO-REFLECT moved to TypecheckerRequirements
 //  def logError(msg: String, t: Throwable): Unit = ()
 
   override def shouldLogAtThisPhase = settings.log.isSetByUser && (
@@ -1094,10 +1095,11 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
    */
   protected var lastSeenSourceFile: SourceFile = NoSourceFile
 
-  /** Let's share a lot more about why we crash all over the place.
-   *  People will be very grateful.
-   */
-  protected var lastSeenContext: analyzer.Context = null
+  //TODO-REFLECT lastSeenContext moved to reflect
+//  /** Let's share a lot more about why we crash all over the place.
+//   *  People will be very grateful.
+//   */
+//  protected var lastSeenContext: analyzer.Context = null
 
   /** The currently active run
    */
@@ -1202,7 +1204,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
       inform("[running phase " + ph.name + " on " + currentRun.size +  " compilation units]")
   }
 
-  //TODO-REFLECT moved to ReflectGlobal
+  //TODO-REFLECT moved to TypecheckerRequirements
 //  /** Collects for certain classes of warnings during this run. */
 //  class ConditionalWarning(what: String, option: Settings#BooleanSetting) {
 //    val warnings = mutable.LinkedHashMap[Position, String]()
@@ -1214,7 +1216,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 //        warning("there were %d %s warning(s); re-run with %s for details".format(warnings.size, what, option.name))
 //  }
 
-  //TODO-REFLECT moved to ReflectGlobal
+  //TODO-REFLECT moved to TypecheckerRequirements
 //  def newSourceFile(code: String, filename: String = "<console>") =
 //    new BatchSourceFile(filename, code)
 
@@ -1232,7 +1234,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   /** A Run is a single execution of the compiler on a set of units.
    */
-  class Run extends super[ReflectGlobal].Run {
+  class Run extends super[TypecheckerRequirements].Run {
     /** Have been running into too many init order issues with Run
      *  during erroneous conditions.  Moved all these vals up to the
      *  top of the file so at least they're not trivially null.
@@ -1241,7 +1243,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
     /** The currently compiled unit; set from GlobalPhase */
     var currentUnit: CompilationUnit = NoCompilationUnit
 
-    //TODO-REFLECT moved to ReflectGlobal (Typechecer's Run)
+    //TODO-REFLECT moved to TypecheckerRequirements (Typechecer's Run)
 //    // This change broke sbt; I gave it the thrilling name of uncheckedWarnings0 so
 //    // as to recover uncheckedWarnings for its ever-fragile compiler interface.
 //    val deprecationWarnings0 = new ConditionalWarning("deprecation", settings.deprecation)

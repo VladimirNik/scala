@@ -69,7 +69,7 @@ trait Implicits {
     val start           = if (Statistics.canEnable) Statistics.startTimer(implicitNanos) else null
     if (shouldPrint)
       typingStack.printTyping(tree, "typing implicit: %s %s".format(tree, context.undetparamsString))
-    val implicitSearchContext = context.makeImplicit(reportAmbiguous)
+    val implicitSearchContext = context.makeImplicit(reportAmbiguous, context.mirror)
     val result = new ImplicitSearch(tree, pt, isView, implicitSearchContext, pos).bestImplicit
     if (result.isFailure && saveAmbiguousDivergent && implicitSearchContext.hasErrors) {
       context.updateBuffer(implicitSearchContext.reportBuffer.errors.collect {
@@ -123,7 +123,7 @@ trait Implicits {
     val tvars = tpars map (TypeVar untouchable _)
     val tpSubsted = tp.subst(tpars, tvars)
 
-    val search = new ImplicitSearch(EmptyTree, functionType(List(tpSubsted), AnyTpe), true, context.makeImplicit(reportAmbiguousErrors = false))
+    val search = new ImplicitSearch(EmptyTree, functionType(List(tpSubsted), AnyTpe), true, context.makeImplicit(reportAmbiguousErrors = false, context.mirror))
 
     search.allImplicitsPoly(tvars)
   }
@@ -790,7 +790,7 @@ trait Implicits {
       private val shadower: Shadower = {
         /** Used for exclude implicits from outer scopes that are shadowed by same-named implicits */
         final class LocalShadower extends Shadower {
-          val shadowed = util.HashSet[Name](512)
+          val shadowed = scala.tools.nsc.util.HashSet[Name](512)
           def addInfos(infos: Infos) {
             infos.foreach(i => shadowed.addEntry(i.name))
           }

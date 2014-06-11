@@ -2,7 +2,7 @@ package scala.reflect.internal.tools.nsc
 package transform.patmat
 
 trait PatternMatching {
-  val global: ReflectGlobal
+  val global: TypecheckerRequirements
   import global._
 
 //  val vpmName = global.analyzer.vpmName

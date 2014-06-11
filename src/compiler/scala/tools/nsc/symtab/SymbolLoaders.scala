@@ -8,7 +8,7 @@ package symtab
 
 import java.io.IOException
 import scala.compat.Platform.currentTime
-import scala.reflect.internal.tools.nsc.util.{ ClassPath }
+import scala.tools.nsc.util.{ ClassPath }
 import classfile.ClassfileParser
 import scala.reflect.internal.MissingRequirementError
 import scala.reflect.internal.util.Statistics

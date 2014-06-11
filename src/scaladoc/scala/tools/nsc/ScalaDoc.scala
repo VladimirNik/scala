@@ -10,7 +10,6 @@ import java.io.File.pathSeparator
 import scala.tools.nsc.doc.DocFactory
 import scala.tools.nsc.reporters.ConsoleReporter
 import scala.reflect.internal.util.FakePos
-import scala.reflect.internal.tools.nsc.Properties
 
 /** The main class for scaladoc, a front-end for the Scala compiler
  *  that generates documentation from source files.

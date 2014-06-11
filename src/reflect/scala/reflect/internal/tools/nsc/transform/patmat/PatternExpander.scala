@@ -3,11 +3,7 @@
  * @author  Paul Phillips
  */
 
-package scala
-package tools
-package nsc
-package transform
-package patmat
+package scala.reflect.internal.tools.nsc.transform.patmat
 
 /** An extractor returns: F1, F2, ..., Fi, opt[Seq[E] or E*]
  *        A case matches: P1, P2, ..., Pj, opt[Seq[E]]
@@ -111,7 +107,6 @@ trait PatternExpander[Pattern, Type] {
     override def toString = s"$pat: $tpe"
   }
 
-  //TODO-REFLECT remove AlignedMark - required only for patmat compatibility
   /** If elementArity is...
    *    0: A perfect match between extractor and the fixed patterns.
    *       If there is a star pattern it will match any sequence.

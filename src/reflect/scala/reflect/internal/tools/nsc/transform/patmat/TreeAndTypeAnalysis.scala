@@ -2,7 +2,7 @@ package scala.reflect.internal.tools.nsc
 package transform.patmat
 
 trait TreeAndTypeAnalysis {
-  val global: ReflectGlobal
+  val global: TypecheckerRequirements
 
   import global._
 

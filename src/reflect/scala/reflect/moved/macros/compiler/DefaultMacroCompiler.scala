@@ -1,11 +1,11 @@
 package scala.reflect.moved.macros.compiler
 
-import scala.reflect.internal.tools.nsc.ReflectGlobal
+import scala.reflect.internal.tools.nsc.TypecheckerRequirements
 
 abstract class DefaultMacroCompiler extends Resolvers
                                        with Validators
                                        with Errors {
-  val global: ReflectGlobal
+  val global: TypecheckerRequirements
   import global._
   import analyzer._
   import treeInfo._

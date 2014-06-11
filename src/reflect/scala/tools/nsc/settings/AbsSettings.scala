@@ -3,18 +3,18 @@
  * @author  Paul Phillips
  */
 
-package scala.reflect.internal.tools.nsc.settings
+package scala.tools.nsc.settings
 
 /** A Settings abstraction boiled out of the original highly mutable Settings
  *  class with the intention of creating an ImmutableSettings which can be used
  *  interchangeably.   Except of course without the mutants.
  */
 
-trait AbsSettings extends _root_.scala.reflect.internal.settings.AbsSettings {
+trait AbsSettings extends scala.reflect.internal.settings.AbsSettings {
   type Setting <: AbsSetting      // Fix to the concrete Setting type
   type ResultOfTryToSet           // List[String] in mutable, (Settings, List[String]) in immutable
   def errorFn: String => Unit
-  protected def allSettings: _root_.scala.collection.Set[Setting]
+  protected def allSettings: scala.collection.Set[Setting]
 
   // settings minus internal usage settings
   def visibleSettings = allSettings filterNot (_.isInternalOnly)
@@ -87,10 +87,7 @@ trait AbsSettings extends _root_.scala.reflect.internal.settings.AbsSettings {
      *  remainder of the command line.  It consumes any applicable arguments and
      *  returns the unconsumed ones.
      */
-    //TODO-REFLECT protected[nsc] def tryToSet(args: List[String]): Option[ResultOfTryToSet]
-    //change package name back to scala.tools.nsc.settings
-    //change access to: protected[nsc] def tryToSet(args: List[String]): Option[ResultOfTryToSet]
-    def tryToSet(args: List[String]): Option[ResultOfTryToSet]
+    protected[nsc] def tryToSet(args: List[String]): Option[ResultOfTryToSet]
 
     /** Commands which can take lists of arguments in form -Xfoo:bar,baz override
      *  this method and accept them as a list.  It returns List[String] for

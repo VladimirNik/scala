@@ -9,8 +9,7 @@ package tools.nsc
 import io.{ Directory, File, Path }
 import scala.reflect.internal.tools.nsc.io.Jar
 import java.io.IOException
-import scala.reflect.internal.tools.nsc.reporters.Reporter
-import scala.tools.nsc.reporters.ConsoleReporter
+import scala.tools.nsc.reporters.{Reporter,ConsoleReporter}
 import util.Exceptional.unwrap
 
 /** An object that runs Scala code in script files.

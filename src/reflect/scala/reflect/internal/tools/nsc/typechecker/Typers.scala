@@ -94,8 +94,11 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
 
   case class SilentResultValue[+T](value: T) extends SilentResult[T] { override def isEmpty = false }
 
+  //TODO-REFLECT pass here correct mirror
+  //def newTyper(context: Context): Typer = newTyper(context, useContextMirror = false)
   def newTyper(context: Context): Typer = new NormalTyper(context)
 
+  //TODO-REFLECT pass here correct mirror
   private class NormalTyper(context : Context) extends Typer(context)
 
   // A transient flag to mark members of anonymous classes
@@ -105,7 +108,11 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
   private final val InterpolatorCodeRegex  = """\$\{.*?\}""".r
   private final val InterpolatorIdentRegex = """\$[$\w]+""".r // note that \w doesn't include $
 
+  //TODO-REFLECT pass here correct mirror
   abstract class Typer(context0: Context) extends TyperDiagnostics with Adaptation with Tag with PatternTyper with TyperContextErrors {
+    val typerMirror = context0.mirror
+    //val typerMirror: Mirror = if (useContextMirror) context0.mirror else rootMirror
+    
     import context0.unit
     import typeDebug.{ ptTree, ptBlock, ptLine, inGreen, inRed }
     import TyperErrorGen._
@@ -461,14 +468,14 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     final def constrTyperIf(inConstr: Boolean): Typer =
       if (inConstr) {
         assert(context.undetparams.isEmpty, context.undetparams)
-        newTyper(context.makeConstructorContext)
+        newTyper(context.makeConstructorContext(typerMirror))
       } else this
 
     @inline
     final def withCondConstrTyper[T](inConstr: Boolean)(f: Typer => T): T =
       if (inConstr) {
         assert(context.undetparams.isEmpty, context.undetparams)
-        val c = context.makeConstructorContext
+        val c = context.makeConstructorContext(typerMirror)
         typerWithLocalContext(c)(f)
       } else {
         f(this)
@@ -499,7 +506,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
      */
     def labelTyper(ldef: LabelDef): Typer =
       if (ldef.symbol == NoSymbol) { // labeldef is part of template
-        val typer1 = newTyper(context.makeNewScope(ldef, context.owner))
+        val typer1 = newTyper(context.makeNewScope(ldef, context.owner, mirror = typerMirror))
         typer1.enterLabelDef(ldef)
         typer1
       } else this
@@ -565,7 +572,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         }
         val qual = typedQualifier { atPos(tree.pos.makeTransparent) {
           tree match {
-            case Ident(_) => Ident(rootMirror.getPackageObjectWithMember(pre, sym))
+            case Ident(_) => Ident(typerMirror.getPackageObjectWithMember(pre, sym))
             case Select(qual, _) => Select(qual, nme.PACKAGEkw)
             case SelectFromTypeTree(qual, _) => Select(qual, nme.PACKAGEkw)
           }
@@ -689,7 +696,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         if (context.reportErrors ||
             reportAmbiguousErrors != context.ambiguousErrors ||
             newtree != context.tree) {
-          val context1 = context.makeSilent(reportAmbiguousErrors, newtree)
+          val context1 = context.makeSilent(reportAmbiguousErrors, newtree, typerMirror)
           context1.undetparams = context.undetparams
           context1.savedTypeBounds = context.savedTypeBounds
           context1.namedApplyBlockInfo = context.namedApplyBlockInfo
@@ -1070,7 +1077,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
                   unit.echo(tree.pos, msg)
 
                 debuglog(msg)
-                val silentContext = context.makeImplicit(context.ambiguousErrors)
+                val silentContext = context.makeImplicit(context.ambiguousErrors, typerMirror)
                 val res = newTyper(silentContext).typed(
                   new ApplyImplicitView(coercion, List(tree)) setPos tree.pos, mode, pt)
                 silentContext.firstError match {
@@ -1549,7 +1556,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
           val cbody1 = treeCopy.Block(cbody, preSuperStats, superCall1)
           val clazz = context.owner
             assert(clazz != NoSymbol, templ)
-          val cscope = context.outer.makeNewScope(ctor, context.outer.owner)
+          val cscope = context.outer.makeNewScope(ctor, context.outer.owner, typerMirror)
           val cbody2 = { // called both during completion AND typing.
             val typer1 = newTyper(cscope)
             // XXX: see about using the class's symbol....
@@ -1751,7 +1758,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       assert(clazz != NoSymbol, cdef)
       reenterTypeParams(cdef.tparams)
       val tparams1 = cdef.tparams mapConserve (typedTypeDef)
-      val impl1 = newTyper(context.make(cdef.impl, clazz, newScope)).typedTemplate(cdef.impl, typedParentTypes(cdef.impl))
+      val impl1 = newTyper(context.make(cdef.impl, clazz, newScope,  typerMirror)).typedTemplate(cdef.impl, typedParentTypes(cdef.impl))
       val impl2 = finishMethodSynthesis(impl1, clazz, context)
       if (clazz.isTrait && clazz.info.parents.nonEmpty && clazz.info.firstParent.typeSymbol == AnyClass)
         checkEphemeral(clazz, impl2.body)
@@ -1792,7 +1799,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         || !linkedClass.isSerializable
         || clazz.isSerializable
       )
-      val impl1 = newTyper(context.make(mdef.impl, clazz, newScope)).typedTemplate(mdef.impl, {
+      val impl1 = newTyper(context.make(mdef.impl, clazz, newScope, typerMirror)).typedTemplate(mdef.impl, {
         typedParentTypes(mdef.impl) ++ (
           if (noSerializable) Nil
           else {
@@ -1875,7 +1882,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       // the following is necessary for templates generated later
       assert(clazz.info.decls != EmptyScope, clazz)
       val body1 = pluginsEnterStats(this, templ.body)
-      enterSyms(context.outer.make(templ, clazz, clazz.info.decls), body1)
+      enterSyms(context.outer.make(templ, clazz, clazz.info.decls, typerMirror), body1)
       if (!templ.isErrorTyped) // if `parentTypes` has invalidated the template, don't validate it anymore
       validateParentClasses(parents1, selfType)
       if (clazz.isCase)
@@ -1938,9 +1945,9 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       val sym = vdef.symbol
       val valDefTyper = {
         val maybeConstrCtx =
-          if ((sym.isParameter || sym.isEarlyInitialized) && sym.owner.isConstructor) context.makeConstructorContext
+          if ((sym.isParameter || sym.isEarlyInitialized) && sym.owner.isConstructor) context.makeConstructorContext(typerMirror)
           else context
-        newTyper(maybeConstrCtx.makeNewScope(vdef, sym))
+        newTyper(maybeConstrCtx.makeNewScope(vdef, sym, mirror = typerMirror))
       }
       valDefTyper.typedValDefImpl(vdef)
     }
@@ -2231,7 +2238,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     }
 
     def typedTypeDef(tdef: TypeDef): TypeDef =
-      typerWithCondLocalContext(context.makeNewScope(tdef, tdef.symbol))(tdef.tparams.nonEmpty) {
+      typerWithCondLocalContext(context.makeNewScope(tdef, tdef.symbol, typerMirror))(tdef.tparams.nonEmpty) {
         _.typedTypeDefImpl(tdef)
       }
 
@@ -2306,7 +2313,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         val block = treeCopy.Block(block0, pluginsEnterStats(this, block0.stats), block0.expr)
         for (stat <- block.stats) enterLabelDef(stat)
 
-        if (phaseId(currentPeriod) <= currentRun.typerPhase.id) {
+        if (notAfterTyper) {
           // This is very tricky stuff, because we are navigating the Skylla and Charybdis of
           // anonymous classes and what to return from them here. On the one hand, we cannot admit
           // every non-private member of an anonymous class as a part of the structural type of the
@@ -2420,7 +2427,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
 
     def typedCases(cases: List[CaseDef], pattp: Type, pt: Type): List[CaseDef] =
       cases mapConserve { cdef =>
-        newTyper(context.makeNewScope(cdef, context.owner)).typedCase(cdef, pattp, pt)
+        newTyper(context.makeNewScope(cdef, context.owner, typerMirror)).typedCase(cdef, pattp, pt)
       }
 
     def adaptCase(cdef: CaseDef, mode: Mode, tpe: Type): CaseDef = deriveCaseDef(cdef)(adapt(_, mode, tpe))
@@ -2453,7 +2460,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       // TODO: add fallback __match sentinel to predef
       val matchStrategy: Tree =
         if (!(settings.Xexperimental && context.isNameInScope(vpmName._match))) null    // fast path, avoiding the next line if there's no __match to be seen
-        else newTyper(context.makeImplicit(reportAmbiguousErrors = false)).silent(_.typed(Ident(vpmName._match)), reportAmbiguousErrors = false) orElse (_ => null)
+        else newTyper(context.makeImplicit(reportAmbiguousErrors = false, mirror = typerMirror)).silent(_.typed(Ident(vpmName._match)), reportAmbiguousErrors = false) orElse (_ => null)
 
       if (matchStrategy ne null) // virtualize
         typed((new PureMatchTranslator(this.asInstanceOf[patmat.global.analyzer.Typer] /*TODO*/, matchStrategy)).translateMatch(match_), mode, pt)
@@ -2550,7 +2557,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         val paramSyms = List(x, default)
         methodSym setInfo polyType(List(A1, B1), MethodType(paramSyms, B1.tpe))
 
-        val methodBodyTyper = newTyper(context.makeNewScope(context.tree, methodSym))
+        val methodBodyTyper = newTyper(context.makeNewScope(context.tree, methodSym, typerMirror))
         if (!paramSynthetic) methodBodyTyper.context.scope enter x
 
         // First, type without the default case; only the cases provided
@@ -2630,7 +2637,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         val methodSym = anonClass.newMethod(nme.isDefinedAt, tree.pos.makeTransparent, FINAL)
         val paramSym = mkParam(methodSym)
 
-        val methodBodyTyper = newTyper(context.makeNewScope(context.tree, methodSym)) // should use the DefDef for the context's tree, but it doesn't exist yet (we need the typer we're creating to create it)
+        val methodBodyTyper = newTyper(context.makeNewScope(context.tree, methodSym, typerMirror)) // should use the DefDef for the context's tree, but it doesn't exist yet (we need the typer we're creating to create it)
         if (!paramSynthetic) methodBodyTyper.context.scope enter paramSym
         methodSym setInfo MethodType(List(paramSym), BooleanTpe)
 
@@ -2648,7 +2655,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
 
         methodSym setInfo MethodType(List(paramSym), AnyTpe)
 
-        val methodBodyTyper = newTyper(context.makeNewScope(context.tree, methodSym))
+        val methodBodyTyper = newTyper(context.makeNewScope(context.tree, methodSym, typerMirror))
         if (!paramSynthetic) methodBodyTyper.context.scope enter paramSym
 
         val match_ = methodBodyTyper.typedMatch(selector(paramSym), cases, mode, resTp)
@@ -2758,7 +2765,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
           // The symbol is entered in the same scope used for the block below, and won't thus be reentered later.
           // It has to be a new scope, though, or we'll "get ambiguous reference to overloaded definition" [pos/sammy_twice.scala]
           // makeSilent: [pos/nonlocal-unchecked.scala -- when translation all functions to sams]
-          val nestedCtx = enterSym(context.makeNewScope(context.tree, context.owner).makeSilent(), samBodyDef)
+          val nestedCtx = enterSym(context.makeNewScope(context.tree, context.owner, mirror = typerMirror).makeSilent(mirror = typerMirror), samBodyDef)
           nestedTyper = newTyper(nestedCtx)
 
           // NOTE: this `samBodyDef.symbol.info` runs the type completer set up by the enterSym above
@@ -2984,7 +2991,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
             case imp @ Import(_, _) =>
               imp.symbol.initialize
               if (!imp.symbol.isError) {
-                context = context.make(imp)
+                context = context.make(imp, mirror = typerMirror)
                 typedImport(imp)
               } else EmptyTree
             case _ =>
@@ -2995,7 +3002,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
               } else {
                 val localTyper = if (inBlock || (stat.isDef && !stat.isInstanceOf[LabelDef])) {
                   this
-                } else newTyper(context.make(stat, exprOwner))
+                } else newTyper(context.make(stat, exprOwner, mirror = typerMirror))
                 // XXX this creates a spurious dead code warning if an exception is thrown
                 // in a constructor, even if it is the only thing in the constructor.
                 val result = checkDead(localTyper.typedByValueExpr(stat))
@@ -3654,7 +3661,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         else {
           val typedAnn: Tree = {
             // local dummy fixes SI-5544
-            val localTyper = newTyper(context.make(ann, context.owner.newLocalDummy(ann.pos)))
+            val localTyper = newTyper(context.make(ann, context.owner.newLocalDummy(ann.pos), mirror = typerMirror))
             localTyper.typed(ann, mode, annType)
           }
           def annInfo(t: Tree): AnnotationInfo = t match {
@@ -4004,11 +4011,11 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     def typed1(tree: Tree, mode: Mode, pt: Type): Tree = {
       // Lookup in the given class using the root mirror.
       def lookupInOwner(owner: Symbol, name: Name): Symbol =
-        if (mode.inQualMode) rootMirror.missingHook(owner, name) else NoSymbol
+        if (mode.inQualMode) typerMirror.missingHook(owner, name) else NoSymbol
 
       // Lookup in the given qualifier.  Used in last-ditch efforts by typedIdent and typedSelect.
-      def lookupInRoot(name: Name): Symbol  = lookupInOwner(rootMirror.RootClass, name)
-      def lookupInEmpty(name: Name): Symbol = rootMirror.EmptyPackageClass.info member name
+      def lookupInRoot(name: Name): Symbol  = lookupInOwner(typerMirror.RootClass, name)
+      def lookupInEmpty(name: Name): Symbol = typerMirror.EmptyPackageClass.info member name
 
       def lookupInQualifier(qual: Tree, name: Name): Symbol = (
         if (name == nme.ERROR || qual.tpe.widen.isErroneous)
@@ -4340,7 +4347,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       }
 
       def tryTypedArgs(args: List[Tree], mode: Mode): Option[List[Tree]] = {
-        val c = context.makeSilent(reportAmbiguousErrors = false)
+        val c = context.makeSilent(reportAmbiguousErrors = false, mirror = typerMirror)
         c.retyping = true
         try {
           val res = newTyper(c).typedArgs(args, mode)
@@ -4836,7 +4843,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
           val decls = newScope
           //Console.println("Owner: " + context.enclClass.owner + " " + context.enclClass.owner.id)
           val self = refinedType(parents1 map (_.tpe), context.enclClass.owner, decls, templ.pos)
-          newTyper(context.make(templ, self.typeSymbol, decls)).typedRefinement(templ)
+          newTyper(context.make(templ, self.typeSymbol, decls, typerMirror)).typedRefinement(templ)
           templ updateAttachment CompoundTypeTreeOriginalAttachment(parents1, Nil) // stats are set elsewhere
           tree setType (if (templ.exists(_.isErroneous)) ErrorType else self) // Being conservative to avoid SI-5361
         }
@@ -4925,7 +4932,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         val pdef = treeCopy.PackageDef(pdef0, pdef0.pid, pluginsEnterStats(this, pdef0.stats))
         val pid1 = typedQualifier(pdef.pid).asInstanceOf[RefTree]
         assert(sym.moduleClass ne NoSymbol, sym)
-        val stats1 = newTyper(context.make(tree, sym.moduleClass, sym.info.decls))
+        val stats1 = newTyper(context.make(tree, sym.moduleClass, sym.info.decls, typerMirror))
           .typedStats(pdef.stats, NoSymbol)
         treeCopy.PackageDef(tree, pid1, stats1) setType NoType
       }
@@ -4937,7 +4944,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       def defDefTyper(ddef: DefDef) = {
         val isConstrDefaultGetter = ddef.mods.hasDefault && sym.owner.isModuleClass &&
             nme.defaultGetterToMethod(sym.name) == nme.CONSTRUCTOR
-        newTyper(context.makeNewScope(ddef, sym)).constrTyperIf(isConstrDefaultGetter)
+        newTyper(context.makeNewScope(ddef, sym, mirror = typerMirror)).constrTyperIf(isConstrDefaultGetter)
       }
 
       def typedAlternative(alt: Alternative) = {
@@ -5163,7 +5170,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       }
 
       def typedExistentialTypeTree(tree: ExistentialTypeTree) = {
-        val tree1 = typerWithLocalContext(context.makeNewScope(tree, context.owner)){
+        val tree1 = typerWithLocalContext(context.makeNewScope(tree, context.owner, mirror = typerMirror)){
           _.typedExistentialTypeTree(tree, mode)
         }
         checkExistentialsFeature(tree1.pos, tree1.tpe, "the existential type")
@@ -5191,7 +5198,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         if (fun.symbol == NoSymbol)
           fun.symbol = context.owner.newAnonymousFunctionValue(fun.pos)
 
-        typerWithLocalContext(context.makeNewScope(fun, fun.symbol))(_.typedFunction(fun, mode, pt))
+        typerWithLocalContext(context.makeNewScope(fun, fun.symbol, mirror = typerMirror))(_.typedFunction(fun, mode, pt))
       }
 
       // Trees only allowed during pattern mode.
@@ -5216,8 +5223,8 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       def typedMemberDef(tree: MemberDef): Tree = tree match {
         case tree: ValDef     => typedValDef(tree)
         case tree: DefDef     => defDefTyper(tree).typedDefDef(tree)
-        case tree: ClassDef   => newTyper(context.makeNewScope(tree, sym)).typedClassDef(tree)
-        case tree: ModuleDef  => newTyper(context.makeNewScope(tree, sym.moduleClass)).typedModuleDef(tree)
+        case tree: ClassDef   => newTyper(context.makeNewScope(tree, sym, mirror = typerMirror)).typedClassDef(tree)
+        case tree: ModuleDef  => newTyper(context.makeNewScope(tree, sym.moduleClass, mirror = typerMirror)).typedModuleDef(tree)
         case tree: TypeDef    => typedTypeDef(tree)
         case tree: PackageDef => typedPackageDef(tree)
         case _                => abort(s"unexpected member def: ${tree.getClass}\n$tree")
@@ -5225,7 +5232,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
 
       // Trees not allowed during pattern mode.
       def typedOutsidePatternMode(tree: Tree): Tree = tree match {
-        case tree: Block            => typerWithLocalContext(context.makeNewScope(tree, context.owner))(_.typedBlock(tree, mode, pt))
+        case tree: Block            => typerWithLocalContext(context.makeNewScope(tree, context.owner, mirror = typerMirror))(_.typedBlock(tree, mode, pt))
         case tree: If               => typedIf(tree)
         case tree: TypeApply        => typedTypeApply(tree)
         case tree: Function         => typedFunction(tree)
@@ -5347,10 +5354,10 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     }
 
     def atOwner(owner: Symbol): Typer =
-      newTyper(context.make(owner = owner))
+      newTyper(context.make(owner = owner, mirror = typerMirror))
 
     def atOwner(tree: Tree, owner: Symbol): Typer =
-      newTyper(context.make(tree, owner))
+      newTyper(context.make(tree, owner, mirror = typerMirror))
 
     /** Types expression or definition `tree`.
      */

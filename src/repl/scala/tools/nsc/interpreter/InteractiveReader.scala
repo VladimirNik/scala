@@ -9,7 +9,7 @@ package interpreter
 import java.io.IOException
 import session.History
 import InteractiveReader._
-import scala.reflect.internal.tools.nsc.Properties.isMac
+import Properties.isMac
 
 /** Reads lines from an input stream */
 trait InteractiveReader {

@@ -411,7 +411,7 @@ trait AnalyzerPlugins { self: Analyzer =>
         val hasExistingSym = tree.symbol != NoSymbol
         val result = plugin.pluginsEnterSym(namer, tree)
         if (result && hasExistingSym) Some(namer.context)
-        else if (result && tree.isInstanceOf[Import]) Some(namer.context.make(tree))
+        else if (result && tree.isInstanceOf[Import]) Some(namer.context.make(tree, mirror = namer.namerMirror))
         else if (result) Some(namer.context)
         else None
       }

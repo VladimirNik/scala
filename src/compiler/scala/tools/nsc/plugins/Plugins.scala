@@ -8,8 +8,8 @@ package scala.tools.nsc
 package plugins
 
 import scala.reflect.io.{ File, Path }
-import scala.reflect.internal.tools.nsc.util.ClassPath
-import scala.reflect.internal.tools.util.PathResolver.Defaults
+import scala.tools.nsc.util.ClassPath
+import scala.tools.util.PathResolver.Defaults
 
 /** Support for run-time loading of compiler plugins.
  *

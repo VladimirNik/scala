@@ -5,7 +5,7 @@
 
 package scala.tools.nsc
 
-import scala.reflect.internal.tools.util.PathResolver
+import scala.tools.util.PathResolver
 
 class GenericRunnerSettings(error: String => Unit) extends Settings(error) {
   def classpathURLs = new PathResolver(this).asURLs

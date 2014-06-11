@@ -4,10 +4,10 @@ package moved
 
 //TODO only TypeMismatch
 import scala.reflect.macros.ReificationException
-import scala.reflect.internal.tools.nsc.ReflectGlobal
+import scala.reflect.internal.tools.nsc.TypecheckerRequirements
 
 package object reify {
-  private def mkReifier(global1: ReflectGlobal)(typer: global1.analyzer.Typer, universe: global1.Tree, mirror: global1.Tree, reifee: Any, concrete: Boolean): Reifier { val global: global1.type } = {
+  private def mkReifier(global1: TypecheckerRequirements)(typer: global1.analyzer.Typer, universe: global1.Tree, mirror: global1.Tree, reifee: Any, concrete: Boolean): Reifier { val global: global1.type } = {
     val typer1: typer.type = typer
     val universe1: universe.type = universe
     val mirror1: mirror.type = mirror
@@ -24,7 +24,7 @@ package object reify {
     } with Reifier
   }
 
-  private[reify] def mkDefaultMirrorRef(global: ReflectGlobal)(universe: global.Tree, typer0: global.analyzer.Typer): global.Tree = {
+  private[reify] def mkDefaultMirrorRef(global: TypecheckerRequirements)(universe: global.Tree, typer0: global.analyzer.Typer): global.Tree = {
     import global._
     import definitions.JavaUniverseClass
 
@@ -42,13 +42,13 @@ package object reify {
     else Select(universe, nme.rootMirror)
   }
 
-  def reifyTree(global: ReflectGlobal)(typer: global.analyzer.Typer, universe: global.Tree, mirror: global.Tree, tree: global.Tree): global.Tree =
+  def reifyTree(global: TypecheckerRequirements)(typer: global.analyzer.Typer, universe: global.Tree, mirror: global.Tree, tree: global.Tree): global.Tree =
     mkReifier(global)(typer, universe, mirror, tree, concrete = false).reification.asInstanceOf[global.Tree]
 
-  def reifyType(global: ReflectGlobal)(typer: global.analyzer.Typer,universe: global.Tree, mirror: global.Tree, tpe: global.Type, concrete: Boolean = false): global.Tree =
+  def reifyType(global: TypecheckerRequirements)(typer: global.analyzer.Typer,universe: global.Tree, mirror: global.Tree, tpe: global.Type, concrete: Boolean = false): global.Tree =
     mkReifier(global)(typer, universe, mirror, tpe, concrete = concrete).reification.asInstanceOf[global.Tree]
 
-  def reifyRuntimeClass(global: ReflectGlobal)(typer0: global.analyzer.Typer, tpe0: global.Type, concrete: Boolean = true): global.Tree = {
+  def reifyRuntimeClass(global: TypecheckerRequirements)(typer0: global.analyzer.Typer, tpe0: global.Type, concrete: Boolean = true): global.Tree = {
     import global._
     import definitions._
     import analyzer.enclosingMacroPosition
@@ -75,7 +75,7 @@ package object reify {
 
   // Note: If  current context is inside the constructor of an object or otherwise not inside
   // a class/object body, this will return an EmptyTree.
-  def reifyEnclosingRuntimeClass(global: ReflectGlobal)(typer0: global.analyzer.Typer): global.Tree = {
+  def reifyEnclosingRuntimeClass(global: TypecheckerRequirements)(typer0: global.analyzer.Typer): global.Tree = {
     import global._
     def isThisInScope = typer0.context.enclosingContextChain exists (_.tree.isInstanceOf[ImplDef])
     if (isThisInScope) {
