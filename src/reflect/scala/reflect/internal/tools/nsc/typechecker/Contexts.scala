@@ -119,6 +119,13 @@ trait Contexts { self: Analyzer =>
     c
   }
 
+  def emptyContext: Context = {
+    val stC = startContext
+    val ris = RootImports.completeList
+    val c = (stC /: ris)((c, sym) => c.make(gen.mkWildcardImport(sym)))
+    c
+  }
+
   def resetContexts() {
     startContext.enclosingContextChain foreach { context =>
       context.tree match {

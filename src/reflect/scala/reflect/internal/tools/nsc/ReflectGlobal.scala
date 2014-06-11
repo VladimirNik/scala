@@ -21,7 +21,8 @@ import scala.reflect.internal.transform.Erasure
 import scala.reflect.internal.tools.nsc.transform._
 import scala.reflect.internal.tools.nsc.transform.patmat._
 import scala.reflect.internal.tools.reflect.quasiquotes.Quasiquotes
-import scala.reflect.runtime.ReflectSetup
+import scala.reflect.runtime. {ReflectSetup, JavaUniverse}
+import scala.reflect.api.Universe
 
 trait Typechecker extends SymbolTable
     with Printers
@@ -280,7 +281,12 @@ trait ScalacPatternExpandersImpl extends ScalacPatternExpanders {
   override def patternsUnexpandedFormals(sel: Tree, args: List[Tree]) = ???
 }
 
-class TypecheckerImpl extends scala.reflect.runtime.SymbolTable with ReflectSetup with ReflectGlobal {
+trait TypecheckerApi {
+  self: Universe =>
+  def typecheckTree(tree: Tree): Tree
+}
+
+class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerApi {
 
   import analyzer._
 
@@ -296,10 +302,13 @@ class TypecheckerImpl extends scala.reflect.runtime.SymbolTable with ReflectSetu
 	val global: TypecheckerImpl.this.type = TypecheckerImpl.this
   } with PatternMatchingImpl with ScalacPatternExpandersImpl with TreeAndTypeAnalysis{}
 
-  var reporter: Reporter = ???
-  def settings: Settings = ???
+  var reporter: Reporter = new Reporter {
+    protected def info0(pos: Position, msg: String, severity: Severity, force: Boolean): Unit = ???
+  }
 
-  var globalPhase: Phase = ???
+  override lazy val settings: Settings = new scala.reflect.internal.tools.nsc.Settings
+
+  var globalPhase: Phase = NoPhase
   def currentRun: Run = ???
 
   def RootClass: ClassSymbol = ???
@@ -308,7 +317,7 @@ class TypecheckerImpl extends scala.reflect.runtime.SymbolTable with ReflectSetu
   def registerContext(c: analyzer.Context): Unit = ???
   
   def classPath: PlatformClassPath = ???
-  val loaders: ReflectSymbolLoaders = ???
+  lazy val loaders: ReflectSymbolLoaders = ???
 
   trait Run extends super[ReflectGlobal].Run {
      /** Have been running into too many init order issues with Run
@@ -336,25 +345,26 @@ class TypecheckerImpl extends scala.reflect.runtime.SymbolTable with ReflectSetu
   }
 
   //TODO-REFLECT: other methods (most of them can be reused from JavaUniverse, problem to reuse JavaUniverse is settings val)
-  def erasurePhase = SomePhase
-  def picklerPhase = SomePhase
-  def currentFreshNameCreator = globalFreshNameCreator
-  
-  object treeInfo extends {
-    val global: TypecheckerImpl.this.type = TypecheckerImpl.this
-  } with scala.reflect.internal.tools.nsc.ast.TreeInfo
-
-  implicit val TreeCopierTag: ClassTag[TreeCopier] = ClassTag[TreeCopier](classOf[TreeCopier])
-  
-  private val isLogging = sys.props contains "scala.debug.reflect"
-
-  def log(msg: => AnyRef): Unit = if (isLogging) Console.err.println("[reflect] " + msg)
+//  def erasurePhase = SomePhase
+//  def picklerPhase = SomePhase
+//  def currentFreshNameCreator = globalFreshNameCreator
+//  
+//  object treeInfo extends {
+//    val global: TypecheckerImpl.this.type = TypecheckerImpl.this
+//  } with scala.reflect.internal.tools.nsc.ast.TreeInfo
+//
+//  implicit val TreeCopierTag: ClassTag[TreeCopier] = ClassTag[TreeCopier](classOf[TreeCopier])
+//  
+//  private val isLogging = sys.props contains "scala.debug.reflect"
+//
+//  def log(msg: => AnyRef): Unit = if (isLogging) Console.err.println("[reflect] " + msg)
 
   //typechecker method
   def typecheckTree(tree: Tree) = {
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = tree
-    val typer = newTyper(rootContext(compUnit))
+    val context = emptyContext
+    val typer = newTyper(context)
     typer.typed(tree)
   }
 }
