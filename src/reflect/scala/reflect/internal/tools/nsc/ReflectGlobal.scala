@@ -21,6 +21,7 @@ import scala.reflect.internal.transform.Erasure
 import scala.reflect.internal.tools.nsc.transform._
 import scala.reflect.internal.tools.nsc.transform.patmat._
 import scala.reflect.internal.tools.reflect.quasiquotes.Quasiquotes
+import scala.reflect.runtime.ReflectSetup
 
 trait Typechecker extends SymbolTable
     with Printers
@@ -279,7 +280,10 @@ trait ScalacPatternExpandersImpl extends ScalacPatternExpanders {
   override def patternsUnexpandedFormals(sel: Tree, args: List[Tree]) = ???
 }
 
-trait TypecheckerImpl extends ReflectGlobal { 
+class TypecheckerImpl extends scala.reflect.runtime.SymbolTable with ReflectSetup with ReflectGlobal {
+
+  import analyzer._
+
   override object typer extends analyzer.Typer(
     analyzer.NoContext.make(EmptyTree, RootClass, newScope)
   ){}
@@ -329,6 +333,29 @@ trait TypecheckerImpl extends ReflectGlobal {
     val erasurePhase: Phase = ???
     
     var seenMacroExpansionsFallingBack: Boolean = ???
+  }
+
+  //TODO-REFLECT: other methods (most of them can be reused from JavaUniverse, problem to reuse JavaUniverse is settings val)
+  def erasurePhase = SomePhase
+  def picklerPhase = SomePhase
+  def currentFreshNameCreator = globalFreshNameCreator
+  
+  object treeInfo extends {
+    val global: TypecheckerImpl.this.type = TypecheckerImpl.this
+  } with scala.reflect.internal.tools.nsc.ast.TreeInfo
+
+  implicit val TreeCopierTag: ClassTag[TreeCopier] = ClassTag[TreeCopier](classOf[TreeCopier])
+  
+  private val isLogging = sys.props contains "scala.debug.reflect"
+
+  def log(msg: => AnyRef): Unit = if (isLogging) Console.err.println("[reflect] " + msg)
+
+  //typechecker method
+  def typecheckTree(tree: Tree) = {
+    val compUnit = new CompilationUnit(NoSourceFile)
+    compUnit.body = tree
+    val typer = newTyper(rootContext(compUnit))
+    typer.typed(tree)
   }
 }
 //TODO-REFLECT - field required for Typechecker instantiation
