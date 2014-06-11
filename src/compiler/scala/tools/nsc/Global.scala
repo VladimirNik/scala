@@ -245,11 +245,12 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   /** Called from parser, which signals hereby that a method definition has been parsed. */
   def signalParseProgress(pos: Position) {}
 
-  /** Register new context; called for every created context
-   */
-  def registerContext(c: analyzer.Context) {
-    lastSeenContext = c
-  }
+  //TODO-REFLECT moved to ReflectGlobal
+//  /** Register new context; called for every created context
+//   */
+//  def registerContext(c: analyzer.Context) {
+//    lastSeenContext = c
+//  }
 
   //TODO-REFLECT moved to ReflectGlobal
 //  /** Register top level class (called on entering the class)
@@ -1094,10 +1095,11 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
    */
   protected var lastSeenSourceFile: SourceFile = NoSourceFile
 
-  /** Let's share a lot more about why we crash all over the place.
-   *  People will be very grateful.
-   */
-  protected var lastSeenContext: analyzer.Context = null
+  //TODO-REFLECT lastSeenContext moved to reflect
+//  /** Let's share a lot more about why we crash all over the place.
+//   *  People will be very grateful.
+//   */
+//  protected var lastSeenContext: analyzer.Context = null
 
   /** The currently active run
    */

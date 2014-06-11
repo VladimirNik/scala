@@ -206,6 +206,14 @@ trait ReflectGlobal extends Typechecker {
   */
   def registerTopLevelSym(sym: Symbol) {}
 
+  protected var lastSeenContext: analyzer.Context = null
+
+  /** Register new context; called for every created context
+   */
+  def registerContext(c: analyzer.Context) {
+    lastSeenContext = c
+  }
+
   /** Collects for certain classes of warnings during this run. */
   class ConditionalWarning(what: String, option: Settings#BooleanSetting) {
     val warnings = mutable.LinkedHashMap[Position, String]()
@@ -314,8 +322,7 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
   def RootClass: ClassSymbol = ???
   //TODO-REFLECT maybe we don't require such method and its usage
   def enteringTyper[T](op: => T): T = ???
-  def registerContext(c: analyzer.Context): Unit = ???
-  
+
   def classPath: PlatformClassPath = ???
   lazy val loaders: ReflectSymbolLoaders = ???
 
