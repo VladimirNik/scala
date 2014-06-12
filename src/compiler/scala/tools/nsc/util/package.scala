@@ -92,7 +92,7 @@ package object util {
      *  shared stack trace segments.
      *  @param p the predicate to select the prefix
      */
-    def stackTracePrefixString(p: StackTraceElement => Boolean): String = stackTracePrefixString(p)
+    def stackTracePrefixString(p: StackTraceElement => Boolean): String = stackTracePrefixString(e)(p)
   }
 
   lazy val trace = rutil.trace
