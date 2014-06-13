@@ -23,6 +23,7 @@ import scala.reflect.internal.tools.nsc.transform.patmat._
 import scala.reflect.internal.tools.reflect.quasiquotes.Quasiquotes
 import scala.reflect.runtime. {ReflectSetup, JavaUniverse}
 import scala.reflect.api.Universe
+import scala.reflect.internal.tools.util.PathResolver
 
 trait Typechecker extends SymbolTable
     with Printers
@@ -74,11 +75,18 @@ trait Typechecker extends SymbolTable
     def compiles(sym: Symbol): Boolean
     var reportedFeature: Set[Symbol]
 
-    val typerPhase: Phase
+//    val typerPhase: Phase
+    //TODO-REFLECT required only for compatibility in Reflect, try to remove
     val erasurePhase: Phase
     
     var seenMacroExpansionsFallingBack: Boolean
   }
+
+  def isBeforeErasure: Boolean
+  def isBeforeErasure(global: ReflectGlobal): Boolean
+  def isAtPhaseAfterUncurryPhase: Boolean
+  def notAfterTyperPhase: Boolean
+  def notAfterTyper: Boolean
 }
 
 trait ReflectGlobal extends Typechecker {
@@ -167,11 +175,6 @@ trait ReflectGlobal extends Typechecker {
       nodePrinters.infolevel = saved
     }
   }
-
-  def isBeforeErasure = phaseId(currentPeriod) < currentRun.erasurePhase.id
-  def isBeforeErasure(global: ReflectGlobal) = global.phase.id < global.currentRun.erasurePhase.id
-  def isAfterUncurryPhase = false
-  def notAfterTyperPhase = true
 
   def currentUnit: CompilationUnit = if (currentRun eq null) NoCompilationUnit else currentRun.currentUnit
 
@@ -311,44 +314,61 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
   } with PatternMatchingImpl with ScalacPatternExpandersImpl with TreeAndTypeAnalysis{}
 
   var reporter: Reporter = new Reporter {
-    protected def info0(pos: Position, msg: String, severity: Severity, force: Boolean): Unit = ???
+    protected def info0(pos: Position, msg: String, severity: Severity, force: Boolean): Unit = () //???
   }
 
   override lazy val settings: Settings = new scala.reflect.internal.tools.nsc.Settings
 
   var globalPhase: Phase = NoPhase
-  def currentRun: Run = ???
+  def currentRun: Run = new Run{} //???
 
+  def classPath: PlatformClassPath = new PathResolver(settings).result //???
+  
   def RootClass: ClassSymbol = ???
   //TODO-REFLECT maybe we don't require such method and its usage
   def enteringTyper[T](op: => T): T = ???
-
-  def classPath: PlatformClassPath = ???
   lazy val loaders: ReflectSymbolLoaders = ???
+
+  def isBeforeErasure = true
+  def isBeforeErasure(global: ReflectGlobal) = true
+  def isAtPhaseAfterUncurryPhase = false
+  def notAfterTyperPhase = true
+  def notAfterTyper = true	  
 
   trait Run extends super[ReflectGlobal].Run {
      /** Have been running into too many init order issues with Run
      *  during erroneous conditions.  Moved all these vals up to the
      *  top of the file so at least they're not trivially null.
      */
-    var isDefined: Boolean = ???
+    var isDefined: Boolean = false //???
     
     /** The currently compiled unit; set from GlobalPhase */
-    var currentUnit: CompilationUnit = ???
+    var currentUnit: CompilationUnit = NoCompilationUnit //???
     
     /** A map from compiled top-level symbols to their source files */
-    val symSource: mutable.HashMap[Symbol, AbstractFile] = ???
-    val compiledFiles: mutable.HashSet[String] = ???
-    val runDefinitions: definitions.RunDefinitions = ???
-    
-    def canRedefine(sym: Symbol): Boolean = ???
-    def compiles(sym: Symbol): Boolean = ???
-    var reportedFeature: Set[Symbol] = ???
+    lazy val symSource: mutable.HashMap[Symbol, AbstractFile] = ??? //new mutable.HashMap[Symbol, AbstractFile]
+    lazy val compiledFiles: mutable.HashSet[String] = ??? //new mutable.HashSet[String]
+    lazy val runDefinitions: definitions.RunDefinitions = new definitions.RunDefinitions
 
-    val typerPhase: Phase = ???
-    val erasurePhase: Phase = ???
+    //TODO-REFLECT move to ReflectGlobal
+    def compiles(sym: Symbol): Boolean = 
+      if (sym == NoSymbol) false
+      else if (symSource.isDefinedAt(sym)) true
+      else if (sym.isTopLevel && sym.isEarlyInitialized) true
+      else if (!sym.isTopLevel) compiles(sym.enclosingTopLevelClass)
+      else if (sym.isModuleClass) compiles(sym.sourceModule)
+      else false
+
+    //TODO-REFLECT move to ReflectGlobal
+    def canRedefine(sym: Symbol): Boolean = !compiles(sym)
+    var reportedFeature: Set[Symbol] = Set[Symbol]() //???
+
+//    val typerPhase: Phase = ???
+    lazy val erasurePhase: Phase = ???
     
-    var seenMacroExpansionsFallingBack: Boolean = ???
+    var seenMacroExpansionsFallingBack: Boolean = false //???
+
+    def units = ???
   }
 
   //TODO-REFLECT: other methods (most of them can be reused from JavaUniverse, problem to reuse JavaUniverse is settings val)

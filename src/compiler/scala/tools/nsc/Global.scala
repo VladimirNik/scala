@@ -55,8 +55,11 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   override def isCompilerUniverse = true
   override val useOffsetPositions = !currentSettings.Yrangepos
 
-  override def isAfterUncurryPhase = isAtPhaseAfter(currentRun.uncurryPhase)
-  override def notAfterTyperPhase = phase.id <= currentRun.typerPhase.id
+  def isBeforeErasure = phaseId(currentPeriod) < currentRun.erasurePhase.id
+  def isBeforeErasure(global: ReflectGlobal) = global.phase.id < global.currentRun.erasurePhase.id
+  def isAtPhaseAfterUncurryPhase = isAtPhaseAfter(currentRun.uncurryPhase)
+  def notAfterTyperPhase = phase.id <= currentRun.typerPhase.id
+  def notAfterTyper = phaseId(currentPeriod) <= currentRun.typerPhase.id
 
   type RuntimeClass = java.lang.Class[_]
   implicit val RuntimeClassTag: ClassTag[RuntimeClass] = ClassTag[RuntimeClass](classOf[RuntimeClass])
