@@ -46,13 +46,13 @@ trait Typechecker extends SymbolTable
   var globalPhase: Phase
   def currentRun: Run
 
+  def registerContext(c: analyzer.Context): Unit
+  def classPath: PlatformClassPath
+
+  val loaders: ReflectSymbolLoaders
   def RootClass: ClassSymbol
   //TODO-REFLECT maybe we don't require such method and its usage
   def enteringTyper[T](op: => T): T
-  def registerContext(c: analyzer.Context): Unit
-  
-  def classPath: PlatformClassPath
-  val loaders: ReflectSymbolLoaders
 
   trait Run extends RunContextApi with RunBase {
      /** Have been running into too many init order issues with Run
@@ -319,12 +319,12 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
 
   override lazy val settings: Settings = new scala.reflect.internal.tools.nsc.Settings
 
-  var globalPhase: Phase = NoPhase
+  var globalPhase: Phase = NoPhase //SomePhase
   def currentRun: Run = new Run{} //???
 
   def classPath: PlatformClassPath = new PathResolver(settings).result //???
   
-  def RootClass: ClassSymbol = ???
+  def RootClass: ClassSymbol = rootMirror.RootClass //??? (in Global additional classes are used to create RootClass)
   //TODO-REFLECT maybe we don't require such method and its usage
   def enteringTyper[T](op: => T): T = ???
   lazy val loaders: ReflectSymbolLoaders = ???
@@ -334,6 +334,17 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
   def isAtPhaseAfterUncurryPhase = false
   def notAfterTyperPhase = true
   def notAfterTyper = true	  
+
+  // part of the init process from global
+//    private val firstPhase = {
+//      // Initialization.  definitions.init requires phase != NoPhase
+//      import scala.reflect.internal.SomePhase
+//      curRunId += 1
+//      curRun = this
+//      phase = SomePhase
+//      phaseWithId(phase.id) = phase
+//      definitions.init()
+//    }
 
   trait Run extends super[ReflectGlobal].Run {
      /** Have been running into too many init order issues with Run
@@ -391,6 +402,8 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = tree
     val context = emptyContext
+//    val namer = newNamer(context)
+//    val newCont = namer.enterSym(tree)
     val typer = newTyper(context)
     typer.typed(tree)
   }
