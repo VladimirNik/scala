@@ -43,7 +43,6 @@ trait Typechecker extends SymbolTable
   var reporter: Reporter
   def settings: Settings
 
-  var globalPhase: Phase
   def currentRun: Run
 
   def registerContext(c: analyzer.Context): Unit
@@ -319,7 +318,6 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
 
   override lazy val settings: Settings = new scala.reflect.internal.tools.nsc.Settings
 
-  var globalPhase: Phase = NoPhase //SomePhase
   def currentRun: Run = new Run{} //???
 
   def classPath: PlatformClassPath = new PathResolver(settings).result //???
