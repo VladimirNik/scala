@@ -54,6 +54,14 @@ trait Contexts { self: Analyzer =>
     rootMirror.RootClass,
     rootMirror.RootClass.info.decls)
   }
+  
+  //TODO-REFLECT: only for test purposes
+  val typecheckContext = {
+    NoContext.make(
+    Template(List(), noSelfType, List()) setSymbol global.NoSymbol setType global.NoType,
+    global.NoSymbol,
+    rootMirror.RootClass.info.decls)
+  }
 
   private lazy val allUsedSelectors =
     mutable.Map[ImportInfo, Set[ImportSelector]]() withDefaultValue Set()

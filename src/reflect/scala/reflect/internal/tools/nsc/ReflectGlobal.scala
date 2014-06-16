@@ -395,11 +395,14 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
 //
 //  def log(msg: => AnyRef): Unit = if (isLogging) Console.err.println("[reflect] " + msg)
 
+  //TODO-REFLECT: required for infos init (in Symbols)
+  override def isCompilerUniverse = true
+
   //typechecker method
   def typecheckTree(tree: Tree) = {
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = tree
-    val context = emptyContext
+    val context = typecheckContext
 //    val namer = newNamer(context)
 //    val newCont = namer.enterSym(tree)
     val typer = newTyper(context)
