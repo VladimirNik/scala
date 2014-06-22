@@ -56,12 +56,15 @@ trait Contexts { self: Analyzer =>
   }
   
   //TODO-REFLECT: only for test purposes
-  val typecheckContext = {
+  val typecheckContextBase = {
     NoContext.make(
     Template(List(), noSelfType, List()) setSymbol global.NoSymbol setType global.NoType,
     global.NoSymbol,
     rootMirror.RootClass.info.decls)
-  }
+  }.set(ReportErrors | AmbiguousErrors | MacrosEnabled | ImplicitsEnabled | EnrichmentEnabled)
+
+  def typecheckContext =
+    (typecheckContextBase /: RootImports.completeList)((c, sym) => c.make(gen.mkWildcardImport(sym)))
 
   private lazy val allUsedSelectors =
     mutable.Map[ImportInfo, Set[ImportSelector]]() withDefaultValue Set()
