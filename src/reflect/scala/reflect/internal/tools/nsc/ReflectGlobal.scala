@@ -355,7 +355,7 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
     var currentUnit: CompilationUnit = NoCompilationUnit //???
     
     /** A map from compiled top-level symbols to their source files */
-    lazy val symSource: mutable.HashMap[Symbol, AbstractFile] = ??? //new mutable.HashMap[Symbol, AbstractFile]
+    lazy val symSource: mutable.HashMap[Symbol, AbstractFile] = new mutable.HashMap[Symbol, AbstractFile] //??? - TODO-REFLECT - if default value is correct in this case?
     lazy val compiledFiles: mutable.HashSet[String] = ??? //new mutable.HashSet[String]
     lazy val runDefinitions: definitions.RunDefinitions = new definitions.RunDefinitions
 
@@ -403,9 +403,9 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = tree
     val context = typecheckContext
-//    val namer = newNamer(context)
-//    val newCont = namer.enterSym(tree)
-    val typer = newTyper(context)
+    val namer = newNamer(context)
+    val newCont = namer.enterSym(tree)
+    val typer = newTyper(newCont)
     typer.typed(tree)
   }
 }
