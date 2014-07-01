@@ -285,12 +285,6 @@ trait PatternMatchingImpl extends PatternMatching {
   }
 }
 
-trait ScalacPatternExpandersImpl extends ScalacPatternExpanders {
-  import global._
-  
-  override def patternsUnexpandedFormals(sel: Tree, args: List[Tree]) = ???
-}
-
 trait TypecheckerApi {
   self: Universe =>
   def typecheckTree(tree: Tree): Tree
@@ -310,7 +304,7 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
 
   override object patmat extends {
 	val global: TypecheckerImpl.this.type = TypecheckerImpl.this
-  } with PatternMatchingImpl with ScalacPatternExpandersImpl with TreeAndTypeAnalysis{}
+  } with PatternMatchingImpl with ScalacPatternExpanders with TreeAndTypeAnalysis{}
 
   var reporter: Reporter = new Reporter {
     protected def info0(pos: Position, msg: String, severity: Severity, force: Boolean): Unit = () //???
@@ -400,13 +394,14 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
 
   //typechecker method
   def typecheckTree(tree: Tree) = {
+    val newTree = tree.duplicate
     val compUnit = new CompilationUnit(NoSourceFile)
-    compUnit.body = tree
+    compUnit.body = newTree
     val context = typecheckContext
     val namer = newNamer(context)
-    val newCont = namer.enterSym(tree)
+    val newCont = namer.enterSym(newTree)
     val typer = newTyper(newCont)
-    typer.typed(tree)
+    typer.typed(newTree)
   }
 }
 //TODO-REFLECT - field required for Typechecker instantiation
