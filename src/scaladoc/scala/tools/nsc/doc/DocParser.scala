@@ -8,7 +8,6 @@ package nsc
 package doc
 
 import reporters._
-import scala.reflect.internal.tools.nsc.reporters.Reporter
 import scala.reflect.internal.util._
 import DocParser.Parsed
 

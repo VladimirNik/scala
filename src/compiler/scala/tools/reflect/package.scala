@@ -8,7 +8,6 @@ package scala.tools
 import scala.reflect.api.JavaUniverse
 import scala.reflect.internal.util.Position
 import scala.language.implicitConversions
-import scala.reflect.internal.tools.nsc.reporters.Reporter
 import scala.tools.nsc.reporters._
 import scala.tools.nsc.Settings
 

@@ -13,7 +13,7 @@ import scala.reflect.internal.util.{ OffsetPosition, SourceFile, NoSourceFile, B
 import scala.reflect.internal.pickling.{ PickleBuffer, PickleFormat }
 import scala.reflect.io.VirtualFile
 import scala.language.postfixOps
-import scala.reflect.internal.tools.nsc.reporters.Reporter
+import scala.tools.nsc.reporters.Reporter
 import scala.reflect.internal.tools.nsc.ast.{TreeGen => AstTreeGen}
 import scala.reflect.internal.tools.nsc.util.ClassPath
 import scala.reflect.internal.tools.nsc.typechecker.ConstantFolder

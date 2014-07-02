@@ -13,8 +13,7 @@ import java.util.UUID._
 import scala.compat.Platform.currentTime
 import scala.collection.{ mutable, immutable }
 import io.{ SourceReader, AbstractFile, Path }
-import scala.reflect.internal.tools.nsc.reporters.Reporter
-import reporters.ConsoleReporter
+import reporters.{ Reporter, ConsoleReporter }
 import scala.reflect.internal.tools.nsc.util.{ ClassPath, MergedClassPath }
 import util.{ StatisticsInfo, returning, stackTraceString }
 import scala.reflect.ClassTag

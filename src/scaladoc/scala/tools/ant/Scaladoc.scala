@@ -17,8 +17,7 @@ import org.apache.tools.ant.util.{FileUtils, GlobPatternMapper}
 
 import scala.tools.nsc.Global
 import scala.tools.nsc.doc.Settings
-import scala.reflect.internal.tools.nsc.reporters.Reporter
-import scala.tools.nsc.reporters.ConsoleReporter
+import scala.tools.nsc.reporters.{Reporter, ConsoleReporter}
 
 /** An Ant task to document Scala code.
  *

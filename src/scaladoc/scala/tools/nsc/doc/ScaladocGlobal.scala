@@ -7,7 +7,7 @@ package scala.tools.nsc
 package doc
 
 import scala.tools.nsc.ast.parser.{ SyntaxAnalyzer, BracePatch }
-import scala.reflect.internal.tools.nsc.reporters.Reporter
+import reporters.Reporter
 import typechecker.Analyzer
 import scala.reflect.internal.util.{ BatchSourceFile, RangePosition }
 
