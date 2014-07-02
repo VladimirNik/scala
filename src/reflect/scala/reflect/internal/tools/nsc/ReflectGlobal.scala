@@ -23,7 +23,7 @@ import scala.reflect.internal.tools.nsc.transform.patmat._
 import scala.reflect.internal.tools.reflect.quasiquotes.Quasiquotes
 import scala.reflect.runtime. {ReflectSetup, JavaUniverse}
 import scala.reflect.api.Universe
-import scala.reflect.internal.tools.util.PathResolver
+import scala.tools.util.PathResolver
 import scala.tools.nsc.Settings
 
 trait Typechecker extends SymbolTable

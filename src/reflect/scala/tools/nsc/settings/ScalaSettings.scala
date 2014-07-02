@@ -4,10 +4,10 @@
  */
 // $Id$
 
-package scala.reflect.internal.tools.nsc.settings
+package scala.tools.nsc.settings
 
 import scala.annotation.elidable
-import scala.reflect.internal.tools.util.PathResolver.Defaults
+import scala.tools.util.PathResolver.Defaults
 import scala.collection.mutable
 import scala.language.{implicitConversions, existentials}
 

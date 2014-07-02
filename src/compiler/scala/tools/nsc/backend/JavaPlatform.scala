@@ -8,7 +8,7 @@ package backend
 
 import io.AbstractFile
 import util.{ ClassPath, MergedClassPath, DeltaClassPath }
-import scala.reflect.internal.tools.util.PathResolver
+import scala.tools.util.PathResolver
 
 trait JavaPlatform extends Platform {
   val global: Global

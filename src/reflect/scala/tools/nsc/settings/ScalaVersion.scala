@@ -4,7 +4,7 @@
  */
 // $Id$
 
-package scala.reflect.internal.tools.nsc.settings
+package scala.tools.nsc.settings
 
 /**
  * Represents a single Scala version in a manner that

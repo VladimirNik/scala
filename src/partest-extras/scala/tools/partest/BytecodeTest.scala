@@ -131,8 +131,8 @@ abstract class BytecodeTest extends ASMConverters {
 
   protected lazy val classpath: JavaClassPath = {
     import scala.tools.nsc.util.ClassPath.DefaultJavaContext
-    import scala.reflect.internal.tools.util.PathResolver.Defaults
-    // logic inspired by scala.reflect.internal.tools.util.PathResolver implementation
+    import scala.tools.util.PathResolver.Defaults
+    // logic inspired by scala.tools.util.PathResolver implementation
     val containers = DefaultJavaContext.classesInExpandedPath(Defaults.javaUserClassPath)
     new JavaClassPath(containers, DefaultJavaContext)
   }

@@ -3,7 +3,7 @@
  * @author  Paul Phillips
  */
 
-package scala.reflect.internal.tools.util
+package scala.tools.util
 
 import scala.reflect.internal.tools.reflect.WrappedProperties.AccessControl
 import scala.tools.nsc.{ Settings }

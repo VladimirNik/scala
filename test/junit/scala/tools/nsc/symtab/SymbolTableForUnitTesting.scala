@@ -3,7 +3,7 @@ package symtab
 
 import scala.reflect.ClassTag
 import scala.reflect.internal.{Phase, NoPhase, SomePhase}
-import scala.reflect.internal.tools.util.PathResolver
+import scala.tools.util.PathResolver
 import util.ClassPath
 import io.AbstractFile
 

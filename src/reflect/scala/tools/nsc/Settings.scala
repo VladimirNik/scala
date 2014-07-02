@@ -6,7 +6,7 @@
 package scala.tools
 package nsc
 
-import scala.reflect.internal.tools.nsc.settings.MutableSettings
+import settings.MutableSettings
 
 /** A compatibility stub.
  */

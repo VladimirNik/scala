@@ -9,7 +9,7 @@ package plugins
 
 import scala.reflect.io.{ File, Path }
 import scala.tools.nsc.util.ClassPath
-import scala.reflect.internal.tools.util.PathResolver.Defaults
+import scala.tools.util.PathResolver.Defaults
 
 /** Support for run-time loading of compiler plugins.
  *
