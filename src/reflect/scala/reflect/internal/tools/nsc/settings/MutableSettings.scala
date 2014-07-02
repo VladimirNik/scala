@@ -432,8 +432,10 @@ class MutableSettings(val errorFn: String => Unit)
     withHelpSyntax(name + " <n>")
   }
 
+  //TODO-REFLECT: removed private[nsc] modifier:
+  //originally was class BooleanSetting private[nsc](
   /** A setting represented by a boolean flag (false, unless set) */
-  class BooleanSetting private[nsc](
+  class BooleanSetting (
     name: String,
     descr: String)
   extends Setting(name, descr) {
