@@ -7,7 +7,7 @@ package scala.tools
 package cmd
 
 import scala.collection.mutable.ListBuffer
-import scala.reflect.internal.tools.nsc.Properties.envOrNone
+import nsc.Properties.envOrNone
 
 /** Mixes in the specification trait and uses the vals therein to
  *  side-effect private accumulators.  From this emerges formatted help,

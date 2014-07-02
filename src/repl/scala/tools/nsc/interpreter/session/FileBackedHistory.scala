@@ -9,7 +9,6 @@ package session
 
 import scala.tools.nsc.io._
 import FileBackedHistory._
-import scala.reflect.internal.tools.nsc.Properties
 
 /** TODO: file locking.
  */

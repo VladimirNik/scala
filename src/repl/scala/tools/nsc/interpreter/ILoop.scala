@@ -23,7 +23,6 @@ import scala.collection.generic.Clearable
 import scala.concurrent.{ ExecutionContext, Await, Future, future }
 import ExecutionContext.Implicits._
 import java.io.{ BufferedReader, FileReader }
-import scala.reflect.internal.tools.nsc.Properties
 import scala.reflect.internal.tools.util.PathResolver
 
 /** The Scala interactive shell.  It provides a read-eval-print loop

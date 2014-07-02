@@ -2,7 +2,7 @@ package scala
 package tools.nsc
 
 import scala.tools.nsc.reporters.ConsoleReporter
-import scala.reflect.internal.tools.nsc.Properties.{ versionString, copyrightString, residentPromptString }
+import Properties.{ versionString, copyrightString, residentPromptString }
 import scala.reflect.internal.util.FakePos
 
 abstract class Driver {

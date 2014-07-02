@@ -3,7 +3,9 @@
  * @author  Stephane Micheloud
  */
 
-package scala.reflect.internal.tools.nsc
+package scala.tools.nsc
+
+import scala.reflect.internal.tools.nsc.ReflectGlobal
 
 /** Loads `compiler.properties` from the jar archive file.
  */

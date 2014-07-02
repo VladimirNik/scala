@@ -24,6 +24,7 @@ import scala.reflect.internal.tools.reflect.quasiquotes.Quasiquotes
 import scala.reflect.runtime. {ReflectSetup, JavaUniverse}
 import scala.reflect.api.Universe
 import scala.reflect.internal.tools.util.PathResolver
+import scala.tools.nsc.Settings
 
 trait Typechecker extends SymbolTable
     with Printers
@@ -311,7 +312,7 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
     protected def info0(pos: Position, msg: String, severity: Severity, force: Boolean): Unit = () //???
   }
 
-  override lazy val settings: Settings = new scala.reflect.internal.tools.nsc.Settings
+  override lazy val settings: Settings = new Settings
 
   def currentRun: Run = new Run{} //???
 

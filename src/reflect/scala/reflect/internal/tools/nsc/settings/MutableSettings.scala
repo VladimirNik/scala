@@ -13,6 +13,7 @@ import scala.io.Source
 import scala.reflect.internal.util.StringOps
 import scala.reflect.{ ClassTag, classTag }
 import scala.reflect.internal._
+import scala.tools.nsc.Settings
 
 /** A mutable Settings object.
  */

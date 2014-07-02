@@ -60,7 +60,7 @@ package object util {
   /** Generate a string using a routine that wants to write on a stream. */
   def stringFromWriter(writer: PrintWriter => Unit): String = {
     val stringWriter = new StringWriter()
-    val stream = new scala.reflect.internal.tools.nsc.NewLinePrintWriter(stringWriter)
+    val stream = new NewLinePrintWriter(stringWriter)
     writer(stream)
     stream.close()
     stringWriter.toString

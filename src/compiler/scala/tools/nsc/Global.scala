@@ -35,7 +35,6 @@ import backend.opt.{ Inliners, InlineExceptionHandlers, ConstantOptimization, Cl
 import backend.icode.analysis._
 import scala.language.postfixOps
 import scala.tools.nsc.ast.{TreeGen => AstTreeGen}
-import scala.reflect.internal.tools.nsc.Properties
 import scala.reflect.internal.tools.nsc.ReflectGlobal
 
 class Global(var currentSettings: Settings, var reporter: Reporter)

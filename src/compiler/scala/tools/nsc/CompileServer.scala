@@ -10,7 +10,6 @@ import scala.tools.nsc.reporters.{Reporter, ConsoleReporter}
 import scala.reflect.internal.util.FakePos //Position
 import scala.tools.util.SocketServer
 import settings.FscSettings
-import scala.reflect.internal.tools.nsc.Properties
 
 /**
  *  The server part of the fsc offline compiler.  It awaits compilation
