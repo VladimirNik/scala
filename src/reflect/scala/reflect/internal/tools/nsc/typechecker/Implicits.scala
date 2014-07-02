@@ -790,7 +790,7 @@ trait Implicits {
       private val shadower: Shadower = {
         /** Used for exclude implicits from outer scopes that are shadowed by same-named implicits */
         final class LocalShadower extends Shadower {
-          val shadowed = util.HashSet[Name](512)
+          val shadowed = scala.tools.nsc.util.HashSet[Name](512)
           def addInfos(infos: Infos) {
             infos.foreach(i => shadowed.addEntry(i.name))
           }

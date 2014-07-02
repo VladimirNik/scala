@@ -1,4 +1,10 @@
-package scala.reflect.internal.tools.nsc.util
+/* NSC -- new Scala compiler
+ * Copyright 2006-2013 LAMP/EPFL
+ * @author  Martin Odersky
+ */
+
+package scala.tools.nsc
+package util
 
 import scala.reflect.internal.Chars._
 

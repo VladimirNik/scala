@@ -15,7 +15,7 @@ import scala.reflect.io.VirtualFile
 import scala.language.postfixOps
 import scala.tools.nsc.reporters.Reporter
 import scala.reflect.internal.tools.nsc.ast.{TreeGen => AstTreeGen}
-import scala.reflect.internal.tools.nsc.util.ClassPath
+import scala.tools.nsc.util.ClassPath
 import scala.reflect.internal.tools.nsc.typechecker.ConstantFolder
 import scala.reflect.internal.transform.Erasure
 import scala.reflect.internal.tools.nsc.transform._
@@ -137,6 +137,7 @@ trait ReflectGlobal extends Typechecker {
 //    val global: ReflectGlobal.this.type = ReflectGlobal.this
 //  } with ConstantFolder
 
+  //TODO-REFLECT same code is in Global
   /** Print tree in detailed form */
   lazy val nodePrinters = new {
     val global: ReflectGlobal.this.type = ReflectGlobal.this
@@ -149,7 +150,7 @@ trait ReflectGlobal extends Typechecker {
       print(" // " + unit.source)
       if (unit.body == null) println(": tree is null")
       else {
-        val source = util.stringFromWriter(w => newTreePrinter(w) print unit.body)
+        val source = scala.tools.nsc.util.stringFromWriter(w => newTreePrinter(w) print unit.body)
 
         // treePrinter show unit.body
         if (lastPrintedSource == source)

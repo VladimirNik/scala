@@ -7,7 +7,7 @@ package scala.tools
 package nsc
 package settings
 
-import scala.reflect.internal.tools.nsc.util.ClassPath
+import util.ClassPath
 import io.{ Path, AbstractFile }
 
 class FscSettings(error: String => Unit) extends Settings(error) {

@@ -6,7 +6,7 @@
 package scala.tools.nsc
 package backend
 
-import scala.reflect.internal.tools.nsc.util.ClassPath
+import util.ClassPath
 import io.AbstractFile
 
 /** The platform dependent pieces of Global.

@@ -534,7 +534,7 @@ class MutableSettings(val errorFn: String => Unit)
     prependPath: StringSetting,
     appendPath: StringSetting)
   extends StringSetting(name, "path", descr, default) {
-    import scala.reflect.internal.tools.nsc.util.ClassPath.join
+    import scala.tools.nsc.util.ClassPath.join
     def prepend(s: String) = prependPath.value = join(s, prependPath.value)
     def append(s: String) = appendPath.value = join(appendPath.value, s)
 

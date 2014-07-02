@@ -17,7 +17,7 @@ import scala.reflect.internal.{ JavaAccFlags }
 import scala.reflect.internal.pickling.{PickleBuffer, ByteCodecs}
 import scala.tools.nsc.io.AbstractFile
 
-import scala.reflect.internal.tools.nsc.util.ClassPath
+import util.ClassPath
 
 /** This abstract class implements a class file parser.
  *

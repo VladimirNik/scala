@@ -1,4 +1,5 @@
-package scala.reflect.internal.tools.nsc.util
+package scala.tools.nsc
+package util
 
 // todo: We should unify this with Tracer. I'd do it but Tracer is
 // too complicated for me to understand quickly.
