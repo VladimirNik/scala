@@ -292,7 +292,7 @@ trait TypecheckerApi {
   def typecheckTree(tree: Tree): Tree
 }
 
-class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerApi {
+trait TypecheckerImpl extends ReflectGlobal with TypecheckerApi {
 
   import analyzer._
 

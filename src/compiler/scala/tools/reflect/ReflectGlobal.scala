@@ -10,7 +10,7 @@ import scala.tools.nsc.Settings
  */
 class ReflectGlobal(currentSettings: Settings, reporter: Reporter, override val rootClassLoader: ClassLoader)
   extends Global(currentSettings, reporter) with scala.tools.reflect.ReflectSetup with scala.reflect.runtime.SymbolTable {
-
+  type Run = super[Global].Run
   override def transformedType(sym: Symbol) =
     postErasure.transformInfo(sym,
       erasure.transformInfo(sym,
