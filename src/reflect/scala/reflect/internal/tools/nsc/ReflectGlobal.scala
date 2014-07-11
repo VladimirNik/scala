@@ -296,7 +296,7 @@ trait TypecheckerImpl extends ReflectGlobal with TypecheckerApi {
 
   import analyzer._
 
-  override object typer extends analyzer.Typer(
+  override val typer = new analyzer.Typer(
     analyzer.NoContext.make(EmptyTree, RootClass, newScope)
   ){}
 

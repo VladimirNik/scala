@@ -719,9 +719,9 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   object icodeChecker extends icodeCheckers.ICodeChecker()
 
-  override object typer extends analyzer.Typer(
+  override val typer = new analyzer.Typer(
     analyzer.NoContext.make(EmptyTree, RootClass, newScope)
-  )
+  ){}
 
   /** Add the internal compiler phases to the phases set.
    *  This implementation creates a description map at the same time.
