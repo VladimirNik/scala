@@ -47,6 +47,7 @@ trait Typechecker extends SymbolTable
   def currentRun: Run
 
   def registerContext(c: analyzer.Context): Unit
+  //TODO-REFLECT move type PlatformClassPath here to remove dependency
   def classPath: PlatformClassPath
 
   val loaders: ReflectSymbolLoaders
@@ -54,6 +55,7 @@ trait Typechecker extends SymbolTable
   //TODO-REFLECT maybe we don't require such method and its usage
   def enteringTyper[T](op: => T): T
 
+  //TODO-REFLECT move RunBase to this trait to remove dependency 
   trait Run extends RunContextApi with RunBase {
      /** Have been running into too many init order issues with Run
      *  during erroneous conditions.  Moved all these vals up to the
@@ -289,7 +291,7 @@ trait PatternMatchingImpl extends PatternMatching {
 
 trait TypecheckerApi {
   self: Universe =>
-  def typecheckTree(tree: Tree): Tree
+  def typecheckTree(tree: Tree): Tree = ???
 }
 
 trait TypecheckerImpl extends ReflectGlobal with TypecheckerApi {
@@ -395,7 +397,7 @@ trait TypecheckerImpl extends ReflectGlobal with TypecheckerApi {
   override def isCompilerUniverse = true
 
   //typechecker method
-  def typecheckTree(tree: Tree) = {
+  override def typecheckTree(tree: Tree) = {
     val newTree = tree.duplicate
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = newTree

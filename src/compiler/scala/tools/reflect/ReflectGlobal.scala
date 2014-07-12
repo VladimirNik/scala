@@ -17,7 +17,6 @@ class ReflectGlobal(currentSettings: Settings, reporter: Reporter, override val 
         uncurry.transformInfo(sym,
           refChecks.transformInfo(sym, sym.info))))
 
-  override val typer = super[Global].typer
   override def isCompilerUniverse = true
 
   // Typically `runtimeMirror` creates a new mirror for every new classloader

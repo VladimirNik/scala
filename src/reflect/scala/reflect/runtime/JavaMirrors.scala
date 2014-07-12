@@ -4,7 +4,6 @@ package runtime
 
 import scala.ref.WeakReference
 import scala.collection.mutable.WeakHashMap
-
 import java.lang.{Class => jClass, Package => jPackage}
 import java.lang.reflect.{
   Method => jMethod, Constructor => jConstructor, Field => jField,
@@ -22,8 +21,10 @@ import ReflectionUtils._
 import scala.language.existentials
 import scala.runtime.{ScalaRunTime, BoxesRunTime}
 import scala.reflect.internal.tools.nsc.TypecheckerImpl
+import scala.reflect.internal.tools.nsc.ReflectGlobal
+import scala.reflect.internal.tools.nsc.TypecheckerApi
 
-private[scala] trait JavaMirrors extends TypecheckerImpl with api.JavaUniverse with TwoWayCaches { thisUniverse: SymbolTable =>
+private[scala] trait JavaMirrors extends internal.SymbolTable with TypecheckerApi with api.JavaUniverse with TwoWayCaches { thisUniverse: SymbolTable =>
 
   private lazy val mirrors = new WeakHashMap[ClassLoader, WeakReference[JavaMirror]]()
 
