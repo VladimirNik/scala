@@ -720,7 +720,8 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   object icodeChecker extends icodeCheckers.ICodeChecker()
 
   override object typer extends analyzer.Typer(
-    analyzer.NoContext.make(EmptyTree, RootClass, newScope)
+    analyzer.NoContext.make(EmptyTree, RootClass, newScope),
+    rootMirror
   )
 
   /** Add the internal compiler phases to the phases set.

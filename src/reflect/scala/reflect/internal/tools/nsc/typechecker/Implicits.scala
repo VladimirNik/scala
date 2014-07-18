@@ -69,7 +69,7 @@ trait Implicits {
     val start           = if (Statistics.canEnable) Statistics.startTimer(implicitNanos) else null
     if (shouldPrint)
       typingStack.printTyping(tree, "typing implicit: %s %s".format(tree, context.undetparamsString))
-    val implicitSearchContext = context.makeImplicit(reportAmbiguous)
+    val implicitSearchContext = context.makeImplicit(reportAmbiguous, context.mirror)
     val result = new ImplicitSearch(tree, pt, isView, implicitSearchContext, pos).bestImplicit
     if (result.isFailure && saveAmbiguousDivergent && implicitSearchContext.hasErrors) {
       context.updateBuffer(implicitSearchContext.reportBuffer.errors.collect {
