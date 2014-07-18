@@ -123,7 +123,7 @@ trait Implicits {
     val tvars = tpars map (TypeVar untouchable _)
     val tpSubsted = tp.subst(tpars, tvars)
 
-    val search = new ImplicitSearch(EmptyTree, functionType(List(tpSubsted), AnyTpe), true, context.makeImplicit(reportAmbiguousErrors = false))
+    val search = new ImplicitSearch(EmptyTree, functionType(List(tpSubsted), AnyTpe), true, context.makeImplicit(reportAmbiguousErrors = false, context.mirror))
 
     search.allImplicitsPoly(tvars)
   }
