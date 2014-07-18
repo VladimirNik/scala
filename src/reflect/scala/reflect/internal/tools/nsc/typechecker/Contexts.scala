@@ -24,7 +24,7 @@ trait Contexts { self: Analyzer =>
 
   object NoContext
     extends Context(EmptyTree, NoSymbol, EmptyScope, NoCompilationUnit,
-                    null) { // We can't pass the uninitialized `this`. Instead, we treat null specially in `Context#outer`
+                    null, rootMirror) { // We can't pass the uninitialized `this`. Instead, we treat null specially in `Context#outer`
     enclClass  = this
     enclMethod = this
 
@@ -52,19 +52,21 @@ trait Contexts { self: Analyzer =>
     NoContext.make(
     Template(List(), noSelfType, List()) setSymbol global.NoSymbol setType global.NoType,
     rootMirror.RootClass,
-    rootMirror.RootClass.info.decls)
+    rootMirror.RootClass.info.decls, rootMirror)
   }
   
   //TODO-REFLECT: only for test purposes
-  val typecheckContextBase = {
+  def typecheckContextBase(mirror: Mirror) = {
     NoContext.make(
     Template(List(), noSelfType, List()) setSymbol global.NoSymbol setType global.NoType,
     global.NoSymbol,
-    rootMirror.RootClass.info.decls)
+    mirror.RootClass.info.decls, mirror)
   }.set(ReportErrors | AmbiguousErrors | MacrosEnabled | ImplicitsEnabled | EnrichmentEnabled)
 
-  def typecheckContext =
-    (typecheckContextBase /: RootImports.completeList)((c, sym) => c.make(gen.mkWildcardImport(sym)))
+  def typecheckContext(mirror: Mirror) =
+    (typecheckContextBase(mirror) /: RootImports.completeList)((c, sym) => c.make(gen.mkWildcardImport(sym), mirror = mirror))
+
+  def typecheckContext: Context = typecheckContext(rootMirror)
 
   private lazy val allUsedSelectors =
     mutable.Map[ImportInfo, Set[ImportSelector]]() withDefaultValue Set()
@@ -199,7 +201,7 @@ trait Contexts { self: Analyzer =>
   //TODO-REFLECT fix access, should be
   //class Context private[typechecker](val tree: Tree, val owner: Symbol, val scope: Scope,
   class Context(val tree: Tree, val owner: Symbol, val scope: Scope,
-                                     val unit: CompilationUnit, _outer: Context) {
+                                     val unit: CompilationUnit, _outer: Context, val mirror: Mirror) {
     private def outerIsNoContext = _outer eq null
     final def outer: Context = if (outerIsNoContext) NoContext else _outer
 
@@ -444,7 +446,7 @@ trait Contexts { self: Analyzer =>
      * `Context#imports`.
      */
     def make(tree: Tree = tree, owner: Symbol = owner,
-             scope: Scope = scope, unit: CompilationUnit = unit): Context = {
+             scope: Scope = scope, unit: CompilationUnit = unit, mirror: Mirror = rootMirror): Context = {
       val isTemplateOrPackage = tree match {
         case _: Template | _: PackageDef => true
         case _                           => false
@@ -467,9 +469,9 @@ trait Contexts { self: Analyzer =>
 
       // The blank canvas
       val c = if (isImport)
-        new Context(tree, owner, scope, unit, this) with ImportContext
+        new Context(tree, owner, scope, unit, this, mirror) with ImportContext
       else
-        new Context(tree, owner, scope, unit, this)
+        new Context(tree, owner, scope, unit, this, mirror)
 
       // Fields that are directly propagated
       c.variance           = variance
@@ -491,19 +493,19 @@ trait Contexts { self: Analyzer =>
       c
     }
 
-    def make(tree: Tree, owner: Symbol, scope: Scope): Context =
+    def make(tree: Tree, owner: Symbol, scope: Scope, mirror: Mirror): Context =
       // TODO SI-7345 Moving this optimization into the main overload of `make` causes all tests to fail.
       //              even if it is extened to check that `unit == this.unit`. Why is this?
       if (tree == this.tree && owner == this.owner && scope == this.scope) this
-      else make(tree, owner, scope, unit)
+      else make(tree, owner, scope, unit, mirror)
 
     /** Make a child context that represents a new nested scope */
-    def makeNewScope(tree: Tree, owner: Symbol): Context =
-      make(tree, owner, newNestedScope(scope))
+    def makeNewScope(tree: Tree, owner: Symbol, mirror: Mirror = rootMirror): Context =
+      make(tree, owner, newNestedScope(scope), mirror)
 
     /** Make a child context that buffers errors and warnings into a fresh report buffer. */
-    def makeSilent(reportAmbiguousErrors: Boolean = ambiguousErrors, newtree: Tree = tree): Context = {
-      val c = make(newtree)
+    def makeSilent(reportAmbiguousErrors: Boolean = ambiguousErrors, newtree: Tree = tree, mirror: Mirror = rootMirror): Context = {
+      val c = make(newtree, mirror = mirror)
       c.setBufferErrors()
       c.setAmbiguousErrors(reportAmbiguousErrors)
       c._reportBuffer = new ReportBuffer // A fresh buffer so as not to leak errors/warnings into `this`.
@@ -511,8 +513,8 @@ trait Contexts { self: Analyzer =>
     }
 
     /** Make a silent child context does not allow implicits. Used to prevent chaining of implicit views. */
-    def makeImplicit(reportAmbiguousErrors: Boolean) = {
-      val c = makeSilent(reportAmbiguousErrors)
+    def makeImplicit(reportAmbiguousErrors: Boolean, mirror: Mirror = rootMirror) = {
+      val c = makeSilent(reportAmbiguousErrors, mirror = mirror)
       c(ImplicitsEnabled | EnrichmentEnabled) = false
       c
     }
@@ -527,9 +529,9 @@ trait Contexts { self: Analyzer =>
      * constructor are also entered into the new constructor scope. Members of the class however will not be
      * accessible.
      */
-    def makeConstructorContext = {
+    def makeConstructorContext(mirror: Mirror) = {
       val baseContext = enclClass.outer.nextEnclosing(!_.tree.isInstanceOf[Template])
-      val argContext = baseContext.makeNewScope(tree, owner)
+      val argContext = baseContext.makeNewScope(tree, owner, mirror)
       argContext.contextMode = contextMode
       argContext.inSelfSuperCall = true
       def enterElems(c: Context) {
@@ -741,7 +743,7 @@ trait Contexts { self: Analyzer =>
       (pre == NoPrefix) || {
         val ab = sym.accessBoundary(sym.owner)
 
-        (  (ab.isTerm || ab == rootMirror.RootClass)
+        (  (ab.isTerm || ab == mirror.RootClass)
         || (accessWithin(ab) || accessWithinLinked(ab)) &&
              (  !sym.isLocalToThis
              || sym.owner.isImplClass // allow private local accesses to impl classes

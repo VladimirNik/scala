@@ -242,9 +242,9 @@ trait PatternTypers {
 
       // use "tree" for the context, not context.tree: don't make another CaseDef context,
       // as instantiateTypeVar's bounds would end up there
-      val ctorContext = context.makeNewScope(tree, context.owner)
+      val ctorContext = context.makeNewScope(tree, context.owner, context.mirror)
       freeVars foreach ctorContext.scope.enter
-      newTyper(ctorContext).infer.inferConstructorInstance(tree1, caseClass.typeParams, ptSafe)
+      newTyper(ctorContext, ctorContext.mirror).infer.inferConstructorInstance(tree1, caseClass.typeParams, ptSafe)
 
       // simplify types without losing safety,
       // so that we get rid of unnecessary type slack, and so that error messages don't unnecessarily refer to skolems
@@ -287,9 +287,9 @@ trait PatternTypers {
 
       def freshUnapplyArgType(): Type = {
         val GenPolyType(freeVars, unappFormal) = freshArgType(unapplyType.skolemizeExistential(context.owner, tree))
-        val unapplyContext = context.makeNewScope(context.tree, context.owner)
+        val unapplyContext = context.makeNewScope(context.tree, context.owner, context.mirror)
         freeVars foreach unapplyContext.scope.enter
-        val pattp = newTyper(unapplyContext).infer.inferTypedPattern(tree, unappFormal, pt, canRemedy)
+        val pattp = newTyper(unapplyContext, unapplyContext.mirror).infer.inferTypedPattern(tree, unappFormal, pt, canRemedy)
         // turn any unresolved type variables in freevars into existential skolems
         val skolems = freeVars map (fv => unapplyContext.owner.newExistentialSkolem(fv, fv))
         pattp.substSym(freeVars, skolems)

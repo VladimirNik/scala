@@ -870,7 +870,7 @@ trait Macros extends MacroRuntimes with Traces with Helpers {
           context.implicitsEnabled = typer.context.implicitsEnabled
           context.enrichmentEnabled = typer.context.enrichmentEnabled
           context.macrosEnabled = typer.context.macrosEnabled
-          macroExpand(newTyper(context), tree, EXPRmode, WildcardType)
+          macroExpand(newTyper(context, context.mirror), tree, EXPRmode, WildcardType)
         case _ =>
           tree
       })

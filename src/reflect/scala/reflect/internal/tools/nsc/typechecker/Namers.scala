@@ -48,15 +48,16 @@ trait Namers extends MethodSynthesis {
     case _                 => false
   }
 
-  private class NormalNamer(context: Context) extends Namer(context)
-  def newNamer(context: Context): Namer = new NormalNamer(context)
+  private class NormalNamer(context: Context, mirror: Mirror) extends Namer(context, mirror)
+  def newNamer(context: Context): Namer = newNamer(context, rootMirror)
+  def newNamer(context: Context, mirror: Mirror): Namer = new NormalNamer(context, mirror)
 
-  abstract class Namer(val context: Context) extends MethodSynth with NamerContextErrors { thisNamer =>
+  abstract class Namer(val context: Context, val namerMirror: Mirror = rootMirror) extends MethodSynth with NamerContextErrors { thisNamer =>
     // overridden by the presentation compiler
     def saveDefaultGetter(meth: Symbol, default: Symbol) { }
 
     import NamerErrorGen._
-    val typer = newTyper(context)
+    val typer = newTyper(context, namerMirror)
 
     private lazy val innerNamer =
       if (isTemplateContext(context)) createInnerNamer() else this
@@ -73,29 +74,29 @@ trait Namers extends MethodSynthesis {
       }
       val ownerCtx = tree match {
         case vd: ValDef if isConstrParam(vd) =>
-          context.makeConstructorContext
+          context.makeConstructorContext(mirror = namerMirror)
         case _ =>
           context
       }
-      newNamer(ownerCtx.makeNewScope(tree, sym))
+      newNamer(ownerCtx.makeNewScope(tree, sym, mirror = namerMirror), namerMirror)
     }
     def createInnerNamer() = {
-      newNamer(context.make(context.tree, owner, newScope))
+      newNamer(context.make(context.tree, owner, newScope, namerMirror), namerMirror)
     }
     def createPrimaryConstructorParameterNamer: Namer = { //todo: can we merge this with SCCmode?
       val classContext = context.enclClass
       val outerContext = classContext.outer.outer
-      val paramContext = outerContext.makeNewScope(outerContext.tree, outerContext.owner)
+      val paramContext = outerContext.makeNewScope(outerContext.tree, outerContext.owner, mirror = namerMirror)
 
       owner.unsafeTypeParams foreach (paramContext.scope enter _)
-      newNamer(paramContext)
+      newNamer(paramContext, namerMirror)
     }
 
     def enclosingNamerWithScope(scope: Scope) = {
       var cx = context
       while (cx != NoContext && cx.scope != scope) cx = cx.outer
       if (cx == NoContext || cx == context) thisNamer
-      else newNamer(cx)
+      else newNamer(cx, namerMirror)
     }
 
     def enterValueParams(vparamss: List[List[ValDef]]): List[List[Symbol]] = {
@@ -290,7 +291,7 @@ trait Namers extends MethodSynthesis {
           case DocDef(_, defn)                               => enterSym(defn)
           case tree @ Import(_, _)                           =>
             assignSymbol(tree)
-            returnContext = context.make(tree)
+            returnContext = context.make(tree, mirror = namerMirror)
           case _ =>
         }
         returnContext
@@ -370,7 +371,7 @@ trait Namers extends MethodSynthesis {
     /** All PackageClassInfoTypes come from here. */
     def createPackageSymbol(pos: Position, pid: RefTree): Symbol = {
       val pkgOwner = pid match {
-        case Ident(_)                 => if (owner.isEmptyPackageClass) rootMirror.RootClass else owner
+        case Ident(_)                 => if (owner.isEmptyPackageClass) namerMirror.RootClass else owner
         case Select(qual: RefTree, _) => createPackageSymbol(pos, qual).moduleClass
       }
       val existing = pkgOwner.info.decls.lookup(pid.name)
@@ -500,7 +501,7 @@ trait Namers extends MethodSynthesis {
         val ctx = namer enterSym t
         // for Import trees, enterSym returns a changed context, so we need a new namer
         if (ctx eq namer.context) namer
-        else newNamer(ctx)
+        else newNamer(ctx, namerMirror)
       }
     }
     def applicableTypeParams(owner: Symbol): List[Symbol] =
@@ -685,7 +686,7 @@ trait Namers extends MethodSynthesis {
     }
     def enterPackage(tree: PackageDef) {
       val sym = assignSymbol(tree)
-      newNamer(context.make(tree, sym.moduleClass, sym.info.decls)) enterSyms tree.stats
+      newNamer(context.make(tree, sym.moduleClass, sym.info.decls, namerMirror), namerMirror) enterSyms tree.stats
     }
     def enterTypeDef(tree: TypeDef) = assignAndEnterFinishedSymbol(tree)
 
@@ -919,7 +920,7 @@ trait Namers extends MethodSynthesis {
       enterSelf(templ.self)
 
       val decls = newScope
-      val templateNamer = newNamer(context.make(templ, clazz, decls))
+      val templateNamer = newNamer(context.make(templ, clazz, decls, namerMirror), namerMirror)
       templateNamer enterSyms templ.body
 
       // add apply and unapply methods to companion objects of case classes,
@@ -1315,7 +1316,7 @@ trait Namers extends MethodSynthesis {
             else ownerNamer getOrElse {
               val ctx = context.nextEnclosing(c => c.scope.toList.contains(meth))
               assert(ctx != NoContext, meth)
-              val nmr = newNamer(ctx)
+              val nmr = newNamer(ctx, namerMirror)
               ownerNamer = Some(nmr)
               nmr
             }
@@ -1490,11 +1491,11 @@ trait Namers extends MethodSynthesis {
           case defn: MemberDef =>
             val ainfos = defn.mods.annotations filterNot (_ eq null) map { ann =>
               val ctx    = typer.context
-              val annCtx = ctx.make(ann)
+              val annCtx = ctx.make(ann, mirror = namerMirror)
               annCtx.setReportErrors()
               // need to be lazy, #1782. beforeTyper to allow inferView in annotation args, SI-5892.
               AnnotationInfo lazily {
-                enteringTyper(newTyper(annCtx) typedAnnotation ann)
+                enteringTyper(newTyper(annCtx, namerMirror) typedAnnotation ann)
               }
             }
             if (ainfos.nonEmpty) {
@@ -1714,7 +1715,7 @@ trait Namers extends MethodSynthesis {
       // @M an abstract type's type parameters are entered.
       // TODO: change to isTypeMember ?
       if (defnSym.isAbstractType)
-        newNamer(ctx.makeNewScope(tree, tree.symbol)) enterSyms tparams //@M
+        newNamer(ctx.makeNewScope(tree, tree.symbol, ctx.mirror), ctx.mirror) enterSyms tparams //@M
       restp complete sym
     }
   }

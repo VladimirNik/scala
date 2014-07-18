@@ -101,6 +101,7 @@ trait ReflectGlobal extends Typechecker {
 //    def mkAttributedCast(tree: Tree, pt: Type): Tree
 //  }
 
+  //TODO-REFLECT try to remove mkAttributedCast - it's required only for compiler
   /** Tree generation, usually based on existing symbols. */
   override lazy val gen: AstTreeGen {
     val global: ReflectGlobal.this.type
@@ -289,7 +290,8 @@ trait PatternMatchingImpl extends PatternMatching {
 
 trait TypecheckerApi {
   self: Universe =>
-  def typecheckTree(tree: Tree): Tree
+  def typecheckTree(tree: Tree, mirror: Mirror = rootMirror): Tree
+  def typecheckTree(tree: Tree, classLoader: ClassLoader): Tree
 }
 
 class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerApi {
@@ -297,8 +299,14 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
   import analyzer._
 
   override object typer extends analyzer.Typer(
-    analyzer.NoContext.make(EmptyTree, RootClass, newScope)
+    analyzer.NoContext.make(EmptyTree, RootClass, newScope),
+    rootMirror
   ){}
+  
+  //def createTyper(mirror: Mirror): Typer = 
+  //some make overriding is required!!! to create this typer
+//    new analyzer.Typer(analyzer.NoContext.make(EmptyTree, mirror.RootClass, newScope)))
+
 
   override object constfold extends {
     val global: TypecheckerImpl.this.type = TypecheckerImpl.this
@@ -395,16 +403,18 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
   override def isCompilerUniverse = true
 
   //typechecker method
-  def typecheckTree(tree: Tree) = {
+  def typecheckTree(tree: Tree, mirror: Mirror = rootMirror) = {
     val newTree = tree.duplicate
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = newTree
-    val context = typecheckContext
-    val namer = newNamer(context)
+    val context = typecheckContext(mirror)
+    val namer = newNamer(context, mirror)
     val newCont = namer.enterSym(newTree)
-    val typer = newTyper(newCont)
+    val typer = newTyper(newCont, mirror)
     typer.typed(newTree)
   }
+  
+  def typecheckTree(tree: Tree, classLoader: ClassLoader): Tree = typecheckTree(tree, runtimeMirror(classLoader))
 }
 //TODO-REFLECT - field required for Typechecker instantiation
 //[locker.reflect] /** As seen from class TypecheckerImpl, the missing signatures are as follows.
