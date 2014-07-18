@@ -222,7 +222,7 @@ abstract class TreeCheckers extends Analyzer {
 
   override def newTyper(context: Context): Typer = new TreeChecker(context)
 
-  class TreeChecker(context0: Context) extends Typer(context0, rootMirror) {
+  class TreeChecker(context0: Context) extends Typer(context0) {
     // If we don't intercept this all the synthetics get added at every phase,
     // with predictably unfortunate results.
     override protected def finishMethodSynthesis(templ: Template, clazz: Symbol, context: Context): Template = templ

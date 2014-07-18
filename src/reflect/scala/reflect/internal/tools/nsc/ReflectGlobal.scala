@@ -299,8 +299,7 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
   import analyzer._
 
   override object typer extends analyzer.Typer(
-    analyzer.NoContext.make(EmptyTree, RootClass, newScope),
-    rootMirror
+    analyzer.NoContext.make(EmptyTree, RootClass, newScope)
   ){}
   
   //def createTyper(mirror: Mirror): Typer = 
@@ -408,10 +407,8 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = newTree
     val context = typecheckContext(mirror)
-    //TODO-REFLECT add mirror to newNamer
     val namer = newNamer(context)
     val newCont = namer.enterSym(newTree)
-    //TODO-REFLECT add mirror to newTyper
     val typer = newTyper(newCont)
     typer.typed(newTree)
   }

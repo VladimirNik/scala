@@ -49,11 +49,12 @@ trait Namers extends MethodSynthesis {
   }
 
   //TODO-REFLECT pass here normal mirror
-  private class NormalNamer(context: Context, mirror: Mirror = rootMirror) extends Namer(context, mirror)
+  private class NormalNamer(context: Context) extends Namer(context)
   //TODO-REFLECT pass here normal mirror
-  def newNamer(context: Context): Namer = new NormalNamer(context, rootMirror)
+  def newNamer(context: Context): Namer = new NormalNamer(context)
 
-  abstract class Namer(val context: Context, val namerMirror: Mirror = rootMirror) extends MethodSynth with NamerContextErrors { thisNamer =>
+  abstract class Namer(val context: Context) extends MethodSynth with NamerContextErrors { thisNamer =>
+    val namerMirror: Mirror = rootMirror
     // overridden by the presentation compiler
     def saveDefaultGetter(meth: Symbol, default: Symbol) { }
 
