@@ -95,10 +95,11 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
   case class SilentResultValue[+T](value: T) extends SilentResult[T] { override def isEmpty = false }
 
   //TODO-REFLECT pass here correct mirror
-  def newTyper(context: Context): Typer = new NormalTyper(context)
+  def newTyper(context: Context): Typer = newTyper(context, useContextMirror = false)
+  def newTyper(context: Context, useContextMirror: Boolean): Typer = new NormalTyper(context, useContextMirror)
 
   //TODO-REFLECT pass here correct mirror
-  private class NormalTyper(context : Context) extends Typer(context)
+  private class NormalTyper(context : Context, useContextMirror: Boolean) extends Typer(context, useContextMirror)
 
   // A transient flag to mark members of anonymous classes
   // that are turned private by typedBlock
@@ -108,8 +109,8 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
   private final val InterpolatorIdentRegex = """\$[$\w]+""".r // note that \w doesn't include $
 
   //TODO-REFLECT pass here correct mirror
-  abstract class Typer(context0: Context) extends TyperDiagnostics with Adaptation with Tag with PatternTyper with TyperContextErrors {
-    val typerMirror: Mirror = rootMirror
+  abstract class Typer(context0: Context, useContextMirror: Boolean = false) extends TyperDiagnostics with Adaptation with Tag with PatternTyper with TyperContextErrors {
+    val typerMirror: Mirror = if (useContextMirror) context0.mirror else rootMirror
     import context0.unit
     import typeDebug.{ ptTree, ptBlock, ptLine, inGreen, inRed }
     import TyperErrorGen._
