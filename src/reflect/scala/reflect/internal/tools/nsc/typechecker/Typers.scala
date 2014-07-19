@@ -110,7 +110,8 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
 
   //TODO-REFLECT pass here correct mirror
   abstract class Typer(context0: Context, useContextMirror: Boolean = false) extends TyperDiagnostics with Adaptation with Tag with PatternTyper with TyperContextErrors {
-    val typerMirror: Mirror = if (useContextMirror) context0.mirror else rootMirror
+    val typerMirror = rootMirror
+    //    val typerMirror: Mirror = if (useContextMirror) context0.mirror else rootMirror
     import context0.unit
     import typeDebug.{ ptTree, ptBlock, ptLine, inGreen, inRed }
     import TyperErrorGen._
@@ -248,7 +249,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     private var namerCache: Namer = null
     def namer = {
       if ((namerCache eq null) || namerCache.context != context)
-        namerCache = newNamer(context)
+        namerCache = newNamer(context, useContextMirror = true)
       namerCache
     }
 
@@ -466,7 +467,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     final def constrTyperIf(inConstr: Boolean): Typer =
       if (inConstr) {
         assert(context.undetparams.isEmpty, context.undetparams)
-        newTyper(context.makeConstructorContext(typerMirror))
+        newTyper(context.makeConstructorContext(typerMirror), false)
       } else this
 
     @inline
