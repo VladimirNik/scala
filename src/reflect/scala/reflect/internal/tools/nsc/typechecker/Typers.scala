@@ -95,11 +95,11 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
   case class SilentResultValue[+T](value: T) extends SilentResult[T] { override def isEmpty = false }
 
   //TODO-REFLECT pass here correct mirror
-  def newTyper(context: Context): Typer = newTyper(context, useContextMirror = false)
-  def newTyper(context: Context, useContextMirror: Boolean): Typer = new NormalTyper(context, useContextMirror)
+  //def newTyper(context: Context): Typer = newTyper(context, useContextMirror = false)
+  def newTyper(context: Context): Typer = new NormalTyper(context)
 
   //TODO-REFLECT pass here correct mirror
-  private class NormalTyper(context : Context, useContextMirror: Boolean) extends Typer(context, useContextMirror)
+  private class NormalTyper(context : Context) extends Typer(context)
 
   // A transient flag to mark members of anonymous classes
   // that are turned private by typedBlock
@@ -109,9 +109,10 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
   private final val InterpolatorIdentRegex = """\$[$\w]+""".r // note that \w doesn't include $
 
   //TODO-REFLECT pass here correct mirror
-  abstract class Typer(context0: Context, useContextMirror: Boolean = false) extends TyperDiagnostics with Adaptation with Tag with PatternTyper with TyperContextErrors {
-    val typerMirror = rootMirror
-    //    val typerMirror: Mirror = if (useContextMirror) context0.mirror else rootMirror
+  abstract class Typer(context0: Context) extends TyperDiagnostics with Adaptation with Tag with PatternTyper with TyperContextErrors {
+    val typerMirror = context0.mirror
+    //val typerMirror: Mirror = if (useContextMirror) context0.mirror else rootMirror
+    
     import context0.unit
     import typeDebug.{ ptTree, ptBlock, ptLine, inGreen, inRed }
     import TyperErrorGen._
@@ -249,7 +250,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     private var namerCache: Namer = null
     def namer = {
       if ((namerCache eq null) || namerCache.context != context)
-        namerCache = newNamer(context, useContextMirror = true)
+        namerCache = newNamer(context)
       namerCache
     }
 
@@ -467,7 +468,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     final def constrTyperIf(inConstr: Boolean): Typer =
       if (inConstr) {
         assert(context.undetparams.isEmpty, context.undetparams)
-        newTyper(context.makeConstructorContext(typerMirror), false)
+        newTyper(context.makeConstructorContext(typerMirror))
       } else this
 
     @inline
