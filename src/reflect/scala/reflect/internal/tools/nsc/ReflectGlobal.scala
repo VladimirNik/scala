@@ -399,7 +399,9 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
 //  def log(msg: => AnyRef): Unit = if (isLogging) Console.err.println("[reflect] " + msg)
 
   //TODO-REFLECT: required for infos init (in Symbols)
-  override def isCompilerUniverse = true
+  override def isCompilerUniverse = false
+  
+  override def isReflectTypechecker = true
 
   //typechecker method
   def typecheckTree(tree: Tree, mirror: Mirror = rootMirror) = {
