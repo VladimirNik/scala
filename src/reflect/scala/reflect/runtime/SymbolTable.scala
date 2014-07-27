@@ -29,4 +29,5 @@ trait SymbolTable extends internal.SymbolTable with JavaMirrors with SymbolLoade
    *  in order to prevent memory leaks: http://groups.google.com/group/scala-internals/browse_thread/thread/eabcf3d406dab8b2.
    */
   override def isCompilerUniverse = false
+  override def isReflectTypechecker = false
 }
