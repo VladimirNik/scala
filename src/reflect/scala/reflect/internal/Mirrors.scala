@@ -270,6 +270,7 @@ trait Mirrors extends api.Mirrors {
       }
 
       initialized = true
+      println("===> Mirror's init is finished")
     }
   }
 

@@ -43,20 +43,32 @@ trait FindMembers {
 
     // Main entry point
     def apply(): T = {
+      if (name.toString() == "List") println("==========================================================================")
       if (Statistics.canEnable) Statistics.incCounter(findMemberCount)
       val start = if (Statistics.canEnable) Statistics.pushTimer(typeOpsStack, findMemberNanos) else null
       try searchConcreteThenDeferred
-      finally if (Statistics.canEnable) Statistics.popTimer(typeOpsStack, start)
+      finally {
+        if (Statistics.canEnable) Statistics.popTimer(typeOpsStack, start)
+        if (name.toString() == "List") println("==========================================================================")
+      }
     }
 
     protected def result: T
 
     // SLS 5.1.3 First, a concrete definition always overrides an abstract definition
     private def searchConcreteThenDeferred: T = {
+      //println("def searchConcreteThenDeferred: T (begin)")
       val deferredSeen = walkBaseClasses(requiredFlags, excludedFlags | DEFERRED)
-      if (deferredSeen) // OPT: the `if` avoids a second pass if the first pass didn't spot any candidates.
+      //if is not required for Int
+      if (deferredSeen) {// OPT: the `if` avoids a second pass if the first pass didn't spot any candidates.
+        //println("if (deferredSeen) ...")
         walkBaseClasses(requiredFlags | DEFERRED, excludedFlags & ~(DEFERRED.toLong))
-      result
+      } else {
+        //println("else (not deferredSeen) ...")
+      } 
+      val r = result
+      //println("def searchConcreteThenDeferred: T (end)")
+      r
     }
 
     /*
@@ -68,7 +80,20 @@ trait FindMembers {
                and `excluded & DEFERRED != 0L`
      */
     private def walkBaseClasses(required: Long, excluded: Long): Boolean = {
+      //println()
+      if (name.toString() == "List") println("===> def walkBaseClasses(required: Long, excluded: Long): Boolean (begin)")
+      if (name.toString() == "List") println(s"tpe: $tpe")
+      //required: 0
+      //println(s"required: $required")
+      //excluded: 4398114144272
+      //println(s"excluded: $excluded")
+      if (name.toString() == "List") {
+        val typeSymbol = tpe.typeSymbol
+        println(s"typeSymbol: $typeSymbol")
+        println(s"-> typeSymbol.owner.enclosingRootClass == rootMirror.RootClass: ${typeSymbol.owner.enclosingRootClass == rootMirror.RootClass}")
+      }
       var bcs = initBaseClasses
+      if (name.toString() == "List") println(s"bcs: $bcs")
 
       // Have we seen a candidate deferred member?
       var deferredSeen = false
@@ -85,7 +110,15 @@ trait FindMembers {
       while (!bcs.isEmpty) {
         val currentBaseClass = bcs.head
         val decls = currentBaseClass.info.decls
+        if (name.toString() == "List") println(s"-> currentBaseClass: $currentBaseClass") //currentBaseClass: package scala
+        if (name.toString() == "List") println(s"-> currentBaseClass.owner.enclosingRootClass == rootMirror.RootClass: ${currentBaseClass.owner.enclosingRootClass == rootMirror.RootClass}")
+        //if (name.toString() == "Int") println(s"decls: $decls")
+        //println(s"currentBaseClass.owner.enclosingRootClass == rootMirror.RootClass: ${currentBaseClass.owner.enclosingRootClass == rootMirror.RootClass}")
+        
+        //entry: class Int (depth=0)
         var entry = if (findAll) decls.elems else decls.lookupEntry(name)
+        //println(s"findAll: $findAll")
+        //println(s"entry: $entry")
         while (entry ne null) {
           val sym = entry.sym
           val flags = sym.flags
@@ -102,7 +135,7 @@ trait FindMembers {
           }
           entry = if (findAll) entry.next else decls lookupNextEntry entry
         }
-
+        //println("4")
         // SLS 5.2 The private modifier can be used with any definition or declaration in a template.
         //         They are not inherited by subclasses [...]
         if (currentBaseClass.isRefinementClass)
@@ -113,9 +146,12 @@ trait FindMembers {
           refinementParents :::= currentBaseClass.parentSymbols
         else if (currentBaseClass.isClass)
           seenFirstNonRefinementClass = true // only inherit privates of refinement parents after this point
-
+        //println("5")
         bcs = bcs.tail
       }
+      //println("6")
+      //println("<=== def walkBaseClasses(required: Long, excluded: Long): Boolean (end)")
+      //println
       deferredSeen
     }
 
@@ -199,7 +235,10 @@ trait FindMembers {
     }
 
     protected def shortCircuit(sym: Symbol): Boolean = false
-    protected def result: Scope = membersScope
+    protected def result: Scope = {
+      //println("def result (line-206)")
+      membersScope
+    }
 
     protected def addMemberIfNew(sym: Symbol): Unit = {
       val members = membersScope
@@ -224,17 +263,21 @@ trait FindMembers {
     private[this] var lastM: ::[Symbol]     = null
 
     private def clearAndAddResult(sym: Symbol): Unit = {
+      //println("def clearAndAddResult(sym: Symbol): Unit (line 233)")
       member0 = sym
       members = null
       lastM = null
     }
 
-    protected def shortCircuit(sym: Symbol): Boolean = (name.isTypeName || (stableOnly && sym.isStable && !sym.hasVolatileType)) && {
+    protected def shortCircuit(sym: Symbol): Boolean = {(name.isTypeName || (stableOnly && sym.isStable && !sym.hasVolatileType)) && {
+      //println("def shortCircuit(sym: Symbol): Boolean (line 240)")
       clearAndAddResult(sym)
       true
     }
+    }
 
-    protected def addMemberIfNew(sym: Symbol): Unit =
+    protected def addMemberIfNew(sym: Symbol): Unit = {
+      //println("def addMemberIfNew(sym: Symbol): Unit (line 245)")
       if (member0 eq NoSymbol) {
         member0 = sym // The first found member
       } else if (members eq null) {
@@ -261,28 +304,44 @@ trait FindMembers {
           lastM = lastM1
         }
       }
+    }
 
     // Cache for the member type of the first member we find.
     private[this] var _member0Tpe: Type = null
     private[this] def member0Tpe: Type = {
+      //println("def member0Tpe: Type (line 277)")
       assert(member0 != null)
       if (_member0Tpe eq null) _member0Tpe = self.memberType(member0)
       _member0Tpe
     }
 
-    override protected def memberTypeLow(sym: Symbol): Type =
+    override protected def memberTypeLow(sym: Symbol): Type = {
+      //println("def memberTypeLow(sym: Symbol): Type (line 284)")
       if (sym eq member0) member0Tpe else super.memberTypeLow(sym)
+    }
 
     // Assemble the result from the hand-rolled ListBuffer
-    protected def result: Symbol = if (members eq null) {
-      if (member0 == NoSymbol) {
-        if (Statistics.canEnable) Statistics.incCounter(noMemberCount)
-        NoSymbol
-      } else member0
-    } else {
-      if (Statistics.canEnable) Statistics.incCounter(multMemberCount)
-      lastM.tl = Nil
-      initBaseClasses.head.newOverloaded(tpe, members)
+    protected def result: Symbol = {
+      //println("===> begin def result (line-283)")
+      //println(s"members eq null: ${members eq null}") //true
+      val rres = if (members eq null) {
+        //println(s"member0 == NoSymbol: ${member0 == NoSymbol}") //false
+        if (member0 == NoSymbol) {
+          if (Statistics.canEnable) Statistics.incCounter(noMemberCount)
+          NoSymbol
+        } else {
+          //we are here
+          //println(s"member0: $member0")
+          member0
+        }
+      } else {
+        if (Statistics.canEnable) Statistics.incCounter(multMemberCount)
+        lastM.tl = Nil
+        initBaseClasses.head.newOverloaded(tpe, members)
+      }
+      //println(s"Result of result: $rres")
+      //println("===> end def result")
+      rres
     }
   }
 }

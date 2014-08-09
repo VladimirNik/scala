@@ -1013,8 +1013,14 @@ trait Types
     def findMember(name: Name, excludedFlags: Long, requiredFlags: Long, stableOnly: Boolean): Symbol = {
       def findMemberInternal = new FindMember(this, name, excludedFlags, requiredFlags, stableOnly).apply()
 
-      if (this.isGround) findMemberInternal
-      else suspendingTypeVars(typeVarsInType(this))(findMemberInternal)
+      if (this.isGround) {
+        //we are here, see findMemberInternal
+        //println(s"$name is a ground")
+        findMemberInternal
+      } else { 
+        //println(s"$name is not a ground")
+        suspendingTypeVars(typeVarsInType(this))(findMemberInternal)
+      }
     }
 
     /** The (existential or otherwise) skolems and existentially quantified variables which are free in this type */
@@ -1208,10 +1214,15 @@ trait Types
     private[reflect] var underlyingCache: Type = NoType
     private[reflect] var underlyingPeriod = NoPeriod
     override def underlying: Type = {
+      if (sym.name != null && sym.name.toString().contains("Predef")) println("***getting underlying")
       val cache = underlyingCache
-      if (underlyingPeriod == currentPeriod && cache != null) cache
-      else {
+      if (underlyingPeriod == currentPeriod && cache != null) {
+        if (sym.name != null && sym.name.toString().contains("Predef")) println("***if true")
+        cache
+      } else {
+        if (sym.name != null && sym.name.toString().contains("Predef")) println("***if false")
         defineUnderlyingOfSingleType(this)
+        if (sym.name != null && sym.name.toString().contains("Predef")) println(s"underlyingCache: ${showRaw(underlyingCache)}")
         underlyingCache
       }
     }
@@ -1252,12 +1263,20 @@ trait Types
   }
 
   protected def defineUnderlyingOfSingleType(tpe: SingleType) = {
+    if (tpe.sym != null && tpe.sym.name.toString().contains("Predef")) 
+      println(">>>>>>>>>>>>>> def defineUnderlyingOfSingleType")
     val period = tpe.underlyingPeriod
     if (period != currentPeriod) {
       tpe.underlyingPeriod = currentPeriod
       if (!isValid(period)) {
         // [Eugene to Paul] needs review
-        tpe.underlyingCache = if (tpe.sym == NoSymbol) ThisType(rootMirror.RootClass) else tpe.pre.memberType(tpe.sym).resultType
+        tpe.underlyingCache = if (tpe.sym == NoSymbol) {
+          println(">>> underlyingCache with rootMirror")
+          ThisType(rootMirror.RootClass)
+        } else {
+          println(">>> using rootMirror")
+          tpe.pre.memberType(tpe.sym).resultType
+        }
         assert(tpe.underlyingCache ne tpe, tpe)
       }
     }

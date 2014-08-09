@@ -72,6 +72,7 @@ trait Importers { to: SymbolTable =>
         val mytypeParams = their.typeParams map importSymbol
         new LazyPolyType(mytypeParams) with FlagAgnosticCompleter {
           override def complete(my: to.Symbol): Unit = {
+            //if ((my.name != null) && (my.name.toString().contains("checkV"))) println("===> recreatedSymbolCompleter (Importers, line 75) - complete - begin")
             val theirCore = their.info match {
               case from.PolyType(_, core) => core
               case core => core

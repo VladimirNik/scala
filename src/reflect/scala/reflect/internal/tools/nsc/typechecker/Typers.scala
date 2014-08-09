@@ -1942,6 +1942,9 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       mods.copy(annotations = Nil) setPositions mods.positions
 
     def typedValDef(vdef: ValDef): ValDef = {
+      //println("==> begin typedValDef: " + showCode(vdef))
+      //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+      //println("---")
       val sym = vdef.symbol
       val valDefTyper = {
         val maybeConstrCtx =
@@ -1949,7 +1952,11 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
           else context
         newTyper(maybeConstrCtx.makeNewScope(vdef, sym, mirror = typerMirror))
       }
-      valDefTyper.typedValDefImpl(vdef)
+      val res = valDefTyper.typedValDefImpl(vdef)
+      //println("---")
+      //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+      //println("<== end typedValDef: " + showCode(vdef))
+      res
     }
 
     // use typedValDef instead. this version is called after creating a new context for the ValDef
@@ -2307,12 +2314,24 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     }
 
     def typedBlock(block0: Block, mode: Mode, pt: Type): Block = {
+      //println("===> typing block: " + show(block0))
+      //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+      //println("---")
       val syntheticPrivates = new ListBuffer[Symbol]
       try {
+        println("block-0")
+        println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+        println("---")
+        println(s"namer.namerMirror == rootMirror: ${namer.namerMirror == rootMirror}")
         namer.enterSyms(block0.stats)
+        //println("block-1")
+        //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+        //println("---")
         val block = treeCopy.Block(block0, pluginsEnterStats(this, block0.stats), block0.expr)
         for (stat <- block.stats) enterLabelDef(stat)
-
+        //println("block-2")
+        //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+        //println("---")
         if (notAfterTyper) {
           // This is very tricky stuff, because we are navigating the Skylla and Charybdis of
           // anonymous classes and what to return from them here. On the one hand, we cannot admit
@@ -2362,16 +2381,33 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
             case _ =>
           }
         }
+        //println("block-3")
+        //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+        //println("---")
         val stats1 = if (isPastTyper) block.stats else
           block.stats.flatMap(stat => stat match {
             case vd@ValDef(_, _, _, _) if vd.symbol.isLazy =>
               namer.addDerivedTrees(Typer.this, vd)
             case _ => stat::Nil
             })
+            
+        //println("block-4")
+        //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+        //println("---")
         val stats2 = typedStats(stats1, context.owner)
+        //println("block-5")
+        //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+        //println("---")
         val expr1 = typed(block.expr, mode &~ (FUNmode | QUALmode), pt)
-        treeCopy.Block(block, stats2, expr1)
+//        println("block-6")
+//        println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+//        println("---")
+        val res = treeCopy.Block(block, stats2, expr1)
           .setType(if (treeInfo.isExprSafeToInline(block)) expr1.tpe else expr1.tpe.deconst)
+//        println("---")
+//        println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+//        println("<=== out typing block: " + show(res))
+        res
       } finally {
         // enable escaping privates checking from the outside and recycle
         // transient flag
@@ -2984,28 +3020,60 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         tree.pos.isRange && context.unit.exists && (tree.pos includes context.unit.targetPos)
       val localTarget = stats exists includesTargetPos
       def typedStat(stat: Tree): Tree = {
-        if (context.owner.isRefinementClass && !treeInfo.isDeclarationOrTypeDef(stat))
-          OnlyDeclarationsError(stat)
-        else
-          stat match {
+        if (context.owner.isRefinementClass && !treeInfo.isDeclarationOrTypeDef(stat)) {
+          //println("=======> typed Stat - inside if")
+          val res = OnlyDeclarationsError(stat)
+          //println("<======= typed Stat - inside if")
+          res
+        } else {
+          //println("=======> begin typed Stat - inside else")
+//          println("===")
+//          println(s"stat begin: ${show(stat)}")
+//          println("===")
+          stat
+          //println("=== before pattern matching ===")
+          val resp = stat match {
             case imp @ Import(_, _) =>
+              //println("===> begin case imp @ Import => inside typedStat: " + showCode(stat))
+              //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+              //println("---")
               imp.symbol.initialize
-              if (!imp.symbol.isError) {
+              val res = if (!imp.symbol.isError) {
                 context = context.make(imp, mirror = typerMirror)
                 typedImport(imp)
               } else EmptyTree
+              //println("<=== end case imp @ Import => inside typedStat: " + showCode(stat))
+              //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+              //println("---")
+              res
             case _ =>
-              if (localTarget && !includesTargetPos(stat)) {
+              //println("===> begin case _ => inside typedStat")
+              //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+              //println("---")
+              //TODO somewhere here
+              val res = if (localTarget && !includesTargetPos(stat)) {
                 // skip typechecking of statements in a sequence where some other statement includes
                 // the targetposition
                 stat
               } else {
                 val localTyper = if (inBlock || (stat.isDef && !stat.isInstanceOf[LabelDef])) {
+                  //println("using current typer")
                   this
-                } else newTyper(context.make(stat, exprOwner, mirror = typerMirror))
+                } else {
+                  val nt = newTyper(context.make(stat, exprOwner, mirror = typerMirror))
+                  //println("creating new typer")
+                  nt
+                }
                 // XXX this creates a spurious dead code warning if an exception is thrown
                 // in a constructor, even if it is the only thing in the constructor.
-                val result = checkDead(localTyper.typedByValueExpr(stat))
+                //println("before ttr")
+                //somewhere here start
+                val ttr = localTyper.typedByValueExpr(stat)
+                //somewhere here end
+                //println("before checkDead")
+                val result = checkDead(ttr)
+                
+                //println("after checkDead")
 
                 if (treeInfo.isSelfOrSuperConstrCall(result)) {
                   context.inConstructorSuffix = true
@@ -3019,7 +3087,20 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
                 )
                 result
               }
+              //println("after getting result")
+              //TODO try to remove show here (or add additional println)
+              //println("<=== end case _ => inside typedStat: " + showCode(stat))
+              //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+              //println("---")
+              res
           }
+          //println("===")
+          //println(s"stat result: ${showCode(resp)}")
+          //println("===")
+          //println("<======= end typed Stat - inside else")
+          //println()
+          resp
+        }
       }
 
       /* 'accessor' and 'accessed' are so similar it becomes very difficult to
@@ -3109,7 +3190,13 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         }
       }
 
+      //println("===> begin typing stats")
+      //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+      //println("---")
       val stats1 = stats mapConserve typedStat
+      //println("<=== end typing stats")
+      //println(s"!!!! mirror == rootMirror: ${typerMirror == rootMirror}")
+      //println("---")
       if (phase.erasedTypes) stats1
       else {
         checkNoDoubleDefs(stats1)
@@ -4009,6 +4096,13 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     }
 
     def typed1(tree: Tree, mode: Mode, pt: Type): Tree = {
+      println
+      println("==========================")
+      println("===> typed1 started")
+      println("==========================")
+      println(s"showCode(tree): ${showCode(tree)}")
+      println(s"rootMirror = typerMirror: ${rootMirror == typerMirror}")
+      
       // Lookup in the given class using the root mirror.
       def lookupInOwner(owner: Symbol, name: Name): Symbol =
         if (mode.inQualMode) typerMirror.missingHook(owner, name) else NoSymbol
@@ -4774,6 +4868,9 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
        *                  (2) Change imported symbols to selections
        */
       def typedIdent(tree: Tree, name: Name): Tree = {
+        //println()
+        //println("=====> beginning of typedIdent: " + tree)
+        //println(s"rootMirror == mirror: ${rootMirror == typerMirror}")
         // setting to enable unqualified idents in empty package (used by the repl)
         def inEmptyPackage = if (settings.exposeEmptyPackage) lookupInEmpty(name) else NoSymbol
 
@@ -4792,7 +4889,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
           case sym        => LookupSucceeded(EmptyTree, sym)
         }
         import InferErrorGen._
-        nameLookup match {
+        val res = nameLookup match {
           case LookupAmbiguous(msg)         => issue(AmbiguousIdentError(tree, name, msg))
           case LookupInaccessible(sym, msg) => issue(AccessError(tree, sym, context, msg))
           case LookupNotFound               =>
@@ -4817,6 +4914,9 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
               stabilize(tree2, pre2, mode, pt) modifyType dropIllegalStarTypes
             }) setAttachments tree.attachments
           }
+        //println("<===== ending of typedIdent: " + res)
+        //println()
+        res
         }
 
       def typedIdentOrWildcard(tree: Ident) = {
@@ -4925,8 +5025,33 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         }
       }
 
+      println
+      println("===> typed1 before getting tree.symbol")
+      //println(s"showCode(tree): ${showCode(tree)}")
+      //println(s"rootMirror = typerMirror: ${rootMirror == typerMirror}")
       val sym: Symbol = tree.symbol
-      if ((sym ne null) && (sym ne NoSymbol)) sym.initialize
+      println
+      println("===> typed1 before sym.initialize")
+      println(s"showCode(tree): ${showCode(tree)}")
+      //println(s"showCode(tree): ${showCode(tree)}")
+      //println(s"rootMirror = typerMirror: ${rootMirror == typerMirror}")
+      
+//      if ((sym ne null) && (sym.name != null)) println(s"sym.name: ${sym.name.toString()}")
+      
+      if ((sym ne null) && (sym ne NoSymbol)) {
+        println(s"sym.owner.enclosingRootClass == rootMirror.RootClass: ${sym.owner.enclosingRootClass == rootMirror.RootClass}")
+        sym.initialize
+      } else (println("sym is null or NoSymbol"))
+      
+      println
+      println("===> typed1 after sym.initialize")
+      println(s"showCode(tree): ${showCode(tree)}")
+      if ((sym ne null) && (sym ne NoSymbol)) {
+      println(s"sym.owner.enclosingRootClass == rootMirror.RootClass: ${sym.owner.enclosingRootClass == rootMirror.RootClass}")
+      } else (println("sym is null or NoSymbol"))
+      
+      //println(s"showCode(tree): ${showCode(tree)}")
+      println(s"rootMirror = typerMirror: ${rootMirror == typerMirror}")
 
       def typedPackageDef(pdef0: PackageDef) = {
         val pdef = treeCopy.PackageDef(pdef0, pdef0.pid, pluginsEnterStats(this, pdef0.stats))
@@ -5220,14 +5345,20 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         case _                                  => abort(s"unexpected type-representing tree: ${tree.getClass}\n$tree")
       }
 
-      def typedMemberDef(tree: MemberDef): Tree = tree match {
-        case tree: ValDef     => typedValDef(tree)
-        case tree: DefDef     => defDefTyper(tree).typedDefDef(tree)
-        case tree: ClassDef   => newTyper(context.makeNewScope(tree, sym, mirror = typerMirror)).typedClassDef(tree)
-        case tree: ModuleDef  => newTyper(context.makeNewScope(tree, sym.moduleClass, mirror = typerMirror)).typedModuleDef(tree)
-        case tree: TypeDef    => typedTypeDef(tree)
-        case tree: PackageDef => typedPackageDef(tree)
-        case _                => abort(s"unexpected member def: ${tree.getClass}\n$tree")
+      def typedMemberDef(tree: MemberDef): Tree = {
+        //println
+        //println("===> typedMemberDef started")
+        //println(s"showCode(tree): ${showCode(tree)}")
+        //println(s"rootMirror = typerMirror: ${rootMirror == typerMirror}")
+        tree match {
+          case tree: ValDef     => typedValDef(tree)
+          case tree: DefDef     => defDefTyper(tree).typedDefDef(tree)
+          case tree: ClassDef   => newTyper(context.makeNewScope(tree, sym, mirror = typerMirror)).typedClassDef(tree)
+          case tree: ModuleDef  => newTyper(context.makeNewScope(tree, sym.moduleClass, mirror = typerMirror)).typedModuleDef(tree)
+          case tree: TypeDef    => typedTypeDef(tree)
+          case tree: PackageDef => typedPackageDef(tree)
+          case _                => abort(s"unexpected member def: ${tree.getClass}\n$tree")
+        }
       }
 
       // Trees not allowed during pattern mode.
@@ -5271,20 +5402,35 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       }
 
       // begin typed1
-      tree match {
+      //println("before - in typed1: " + show(tree))
+      //println
+      //println("===> typed1 before getting res")
+      //println(s"showCode(tree): ${showCode(tree)}")
+      //println(s"rootMirror = typerMirror: ${rootMirror == typerMirror}")
+      val res = tree match {
         case tree: TypTree   => typedTypTree(tree)
         case tree: MemberDef => typedMemberDef(tree)
         case _               => typedInAnyMode(tree)
       }
+      //println("after - in typed1: " + show(res))
+      res
     }
 
     def typed(tree: Tree, mode: Mode, pt: Type): Tree = {
+      println
+      //println("===> typed started")
+      //println(s"showCode(tree): ${showCode(tree)}")
+      //println(s"rootMirror = typerMirror: ${rootMirror == typerMirror}")
       lastTreeToTyper = tree
       def body = (
         if (printTypings && !phase.erasedTypes && !noPrintTyping(tree))
           typingStack.nextTyped(tree, mode, pt, context)(typedInternal(tree, mode, pt))
-        else
-          typedInternal(tree, mode, pt)
+        else {
+          //println("before typedInternal: " + show(tree))
+          val res = typedInternal(tree, mode, pt)
+          //println("after typedInternal: " + show(res))
+          res
+        }
       )
       val startByType = if (Statistics.canEnable) Statistics.pushTimer(byTypeStack, byTypeNanos(tree.getClass)) else null
       if (Statistics.canEnable) Statistics.incCounter(visitsByType, tree.getClass)
@@ -5293,6 +5439,10 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     }
 
     private def typedInternal(tree: Tree, mode: Mode, pt: Type): Tree = {
+      //println
+      //println("===> typedInternal started")
+      //println(s"showCode(tree): ${showCode(tree)}")
+      //println(s"rootMirror = typerMirror: ${rootMirror == typerMirror}")
       val ptPlugins = pluginsPt(pt, this, tree, mode)
       def retypingOk = (
             context.retyping
@@ -5310,7 +5460,9 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
           ptPlugins // SI-5022 don't widen pt for patterns as types flow from it to the case body.
         else
           dropExistential(ptPlugins) // FIXME: document why this is done.
+        //println("before typed1: " + show(tree) + "   " + showRaw(tree))
         val tree1: Tree = if (alreadyTyped) tree else typed1(tree, mode, ptWild)
+        //println("after typed1: " + show(tree1) + "   " + showRaw(tree))
         if (shouldPrint)
           typingStack.showTyped(tree1)
 
@@ -5366,7 +5518,17 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       ret
     }
 
-    def typedByValueExpr(tree: Tree, pt: Type = WildcardType): Tree = typed(tree, EXPRmode | BYVALmode, pt)
+    def typedByValueExpr(tree: Tree, pt: Type = WildcardType): Tree = {
+      //println("=======> start typedByValueExpr")
+      //tree.symbol
+      //show(tree)
+      //println("!!! show(tree): " + show(tree))
+      //println("!!! showCode(tree): " + showCode(tree))
+      //println("before typed")
+      val res = typed(tree, EXPRmode | BYVALmode, pt)
+      //println("<======= end typedByValueExpr")
+      res
+    }
 
     def typedPos(pos: Position, mode: Mode, pt: Type)(tree: Tree) = typed(atPos(pos)(tree), mode, pt)
     def typedPos(pos: Position)(tree: Tree) = typed(atPos(pos)(tree))

@@ -20,6 +20,7 @@ private[reflect] trait SymbolLoaders { self: SymbolTable =>
   class TopClassCompleter(clazz: Symbol, module: Symbol) extends SymLoader with FlagAssigningCompleter {
     markFlagsCompleted(clazz, module)(mask = ~TopLevelPickledFlags)
     override def complete(sym: Symbol) = {
+      //if (sym.name.toString().contains("checkV")) println("===> TopClassCompleter - complete - begin")
       debugInfo("completing "+sym+"/"+clazz.fullName)
       assert(sym == clazz || sym == module || sym == module.moduleClass)
       slowButSafeEnteringPhaseNotLaterThan(picklerPhase) {
@@ -64,6 +65,7 @@ private[reflect] trait SymbolLoaders { self: SymbolTable =>
    */
   class LazyPackageType extends LazyType with FlagAgnosticCompleter {
     override def complete(sym: Symbol) {
+      //println("===> LazyPackageType - complete - begin")
       assert(sym.isPackageClass)
       sym setInfo new ClassInfoType(List(), new PackageScope(sym), sym)
         // override def safeToString = pkgClass.toString
@@ -131,11 +133,18 @@ private[reflect] trait SymbolLoaders { self: SymbolTable =>
         currentMirror.tryJavaClass(path) match {
           case Some(cls) =>
             val loadingMirror = currentMirror.mirrorDefining(cls)
+            println("-")
+            println(s"currentMirror == rootMirror: ${currentMirror == rootMirror}")
+            println(s"loadingMirror == rootMirror: ${loadingMirror == rootMirror}")
             val (_, module) =
               if (loadingMirror eq currentMirror) {
+                println(s"Same mirror: $name")
+//                if (((currentMirror eq rootMirror) && (name.toString() == "Int"))) {
+//                  throw new Exception("check it!!!")
+//                }
                 initAndEnterClassAndModule(pkgClass, name.toTypeName, new TopClassCompleter(_, _))
               } else {
-                println(s"Resolving other mirror: $name")
+                println(s"==> Resolving other mirror: $name")
                 val origOwner = loadingMirror.packageNameToScala(pkgClass.fullName)
                 val origClazz = origOwner.info decl name.toTypeName
                 val origModule = origOwner.info decl name.toTermName
@@ -158,6 +167,11 @@ private[reflect] trait SymbolLoaders { self: SymbolTable =>
                 // therefore we use enterIfNew rather than just enter
                 enterIfNew(clazz)
                 enterIfNew(module)
+                val encRC = clazz.enclosingRootClass
+                println(s"<== Resolving other mirror: $name")
+                println(s"Resolving other mirror - clazz.enclosingRootClass $encRC")
+                println(s"Resolving other mirror - encRC == currentMirror.RootClass ${encRC == currentMirror.RootClass}")
+                println(s"Resolving other mirror - encRC == rootMirror.RootClass ${encRC == rootMirror.RootClass}")
                 (clazz, module)
               }
             debugInfo(s"created $module/${module.moduleClass} in $pkgClass")

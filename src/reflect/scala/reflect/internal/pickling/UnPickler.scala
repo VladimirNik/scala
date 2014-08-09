@@ -690,6 +690,7 @@ abstract class UnPickler {
         case e: MissingRequirementError => throw toTypeError(e)
       }
       override def complete(sym: Symbol) : Unit = {
+        //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> LazyTypeRef (UnPickler, line 693) - complete - begin")
         completeInternal(sym)
         if (!isCompilerUniverse) markAllCompleted(sym)
       }

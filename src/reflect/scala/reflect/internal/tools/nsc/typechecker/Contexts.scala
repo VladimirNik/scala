@@ -62,12 +62,50 @@ trait Contexts { self: Analyzer =>
     global.NoSymbol,
     mirror.RootClass.info.decls, mirror)
   }.set(ReportErrors | AmbiguousErrors | MacrosEnabled | ImplicitsEnabled | EnrichmentEnabled)
+  
+  def typecheckContext(mirror: Mirror) = {
+    def completeImportsList(mirror: Mirror) = {
+      // It becomes tricky to create dedicated objects for other symbols because
+      // of initialization order issues.
+      val JavaLangPackage = mirror.getPackage("java.lang")
+      val JavaLangPackageClass = JavaLangPackage.moduleClass.asClass
+      val ScalaPackage = mirror.getPackage("scala")
+      val ScalaPackageClass = ScalaPackage.moduleClass.asClass
+//      val RuntimePackage = mirror.getPackage("scala.runtime")
+//      val RuntimePackageClass = RuntimePackage.moduleClass.asClass
+      val PredefModule = mirror.requiredModule[scala.Predef.type]
 
-  def typecheckContext(mirror: Mirror) =
-    (typecheckContextBase(mirror) /: RootImports.completeList)((c, sym) => c.make(gen.mkWildcardImport(sym), mirror = mirror))
+      JavaLangPackage :: ScalaPackage :: PredefModule :: Nil
+    }
+    
+    println("========================================")
+    println("========== typecheckContext ============")
+    println("========================================")
+    val ris = RootImports.completeList
+    //REFLECT-TODO sym printing
+    val res = (typecheckContextBase(mirror) /: completeImportsList(mirror))((c, sym) => 
+      { 
+        println("----------------")
+        println(s"sym: $sym")
+        val gi = gen.mkWildcardImport(sym) 
+        println(s"gen.mkWildcardImport(sym): ${showCode(gi)}")
+        println(s"gi.symbol: ${gi.symbol}")
+        println(s"gi.symbol.owner.enclosingRootClass == rootMirror.RootClass: ${gi.symbol.owner.enclosingRootClass == rootMirror.RootClass}") //false
+        val r = c.make(gi, mirror = mirror)
+        println(s"c.mirror == rootMirror: ${c.mirror == rootMirror}") //false
+        println(s"r.mirror == rootMirror: ${r.mirror == rootMirror}") //false
+        println(s"sym.owner.enclosingRootClass == rootMirror.RootClass: ${sym.owner.enclosingRootClass == rootMirror.RootClass}") //true
+        println("----------------")
+        r
+      }
+    )
+    println("=========================================")
+    res
+//    (typecheckContextBase(mirror) /: RootImports.javaList)((c, sym) => c.make(gen.mkWildcardImport(sym), mirror = mirror))
+  }
 
-    //TODO-REFLECT check this (try to remove) - if there are usage in reflect
-  def typecheckContext: Context = typecheckContext(rootMirror)
+  //TODO-REFLECT check this (try to remove) - if there are usage in reflect
+//  def typecheckContext: Context = typecheckContext(rootMirror)
 
   private lazy val allUsedSelectors =
     mutable.Map[ImportInfo, Set[ImportSelector]]() withDefaultValue Set()
@@ -688,7 +726,13 @@ trait Contexts { self: Analyzer =>
     }
 
     /** Is `sym` accessible as a member of `pre` in current context? */
+    //TODO check results of isAccessible
     def isAccessible(sym: Symbol, pre: Type, superAccess: Boolean = false): Boolean = {
+      println
+      println("------------------------------------")
+      println("--------- isAccessible -------------")
+      println("------------------------------------")
+      println(s"sym: ${sym}")
       lastAccessCheckDetails = ""
       // Console.println("isAccessible(%s, %s, %s)".format(sym, pre, superAccess))
 
@@ -740,29 +784,67 @@ trait Contexts { self: Analyzer =>
           }
         }
       }
-
-      (pre == NoPrefix) || {
+      //println(s"pre == NoPrefix: ${pre == NoPrefix}") //false
+      val res = (pre == NoPrefix) || {
         val ab = sym.accessBoundary(sym.owner)
-
-        (  (ab.isTerm || ab == mirror.RootClass)
-        || (accessWithin(ab) || accessWithinLinked(ab)) &&
-             (  !sym.isLocalToThis
+        val enclRootCl = sym.owner.enclosingRootClass
+        val symEnclRootCl = sym.enclosingRootClass
+        
+        //println(s"sym: $sym") //class Int
+        //println(s"sym.enclosingRootClass: $symEnclRootCl") //package <root>
+        //println(s"sym.owner: ${sym.owner}") //package scala
+        //println(s"ab: $ab") //package <root>
+        //println(s"enclRootCl: $enclRootCl") //package <root>
+        //println(s"ab == enclRootCl: ${ab == enclRootCl}") //true
+        //println(s"ab == rootMirror.RootClass: ${ab == rootMirror.RootClass}") //!!! true
+        //println(s"ab.equals(enclRootCl): ${ab.equals(enclRootCl)}") //true
+        //println(s"ab eq enclRootCl: ${ab eq enclRootCl}") //true
+        //println(s"enclRootCl == symEnclRootCl: ${enclRootCl == symEnclRootCl}") //true
+        //println(s"symEnclRootCl == mirror.RootClass: ${symEnclRootCl == mirror.RootClass}") //false
+        //println(s"mirror.RootClass.isRoot: ${mirror.RootClass.isRoot}")
+        //println
+        //println(s"mirror.RootClass: ${mirror.RootClass}")
+        val A = (ab.isTerm || ab == mirror.RootClass)
+        //println("A's components:")
+        //println(s"ab.isTerm: ${ab.isTerm}") //false
+        //println(s"ab == mirror.RootClass: ${ab == mirror.RootClass}") //false, true!!!
+        println(s"mirror.RootClass == rootMirror.RootClass: ${mirror.RootClass == rootMirror.RootClass}")
+        println(s"rootMirror == mirror: ${rootMirror == mirror}") //false - mirror is correct
+        println(s"sym.owner.enclosingRootClass == rootMirror.RootClass: ${sym.owner.enclosingRootClass == rootMirror.RootClass}")
+        //println(s"sym.owner: ${sym.owner}")
+        //see sym.owner: package scala
+        //see accessBoundary == sym.owner.enclosingRootClass
+        //if accessBoundary is sym.owner.enclosingRootClass: TRUE
+        //see enclosingRootClass impl
+        //check ==
+        val B = (accessWithin(ab) || accessWithinLinked(ab))
+        val C = (  !sym.isLocalToThis
              || sym.owner.isImplClass // allow private local accesses to impl classes
              || sym.isProtected && isSubThisType(pre, sym.owner)
              || pre =:= sym.owner.thisType
              )
-        || sym.isProtected &&
-             (  superAccess
+        val D = sym.isProtected
+             
+        val E = (  superAccess
              || pre.isInstanceOf[ThisType]
              || phase.erasedTypes
              || (sym.overrideChain exists isProtectedAccessOK)
                 // that last condition makes protected access via self types work.
              )
-        )
+        //println(s"val A = $A") //false, true!!!
+        //println(s"val B = $B") //false
+        //println(s"val C = $C") //true
+        //println(s"val D = $D") //false
+        //println(s"val E = $E") //false, (true)
+        (  A || B && C || D && E )
         // note: phase.erasedTypes disables last test, because after addinterfaces
         // implementation classes are not in the superclass chain. If we enable the
         // test, bug780 fails.
       }
+      println("isAccessible: " + sym.name + ": " + res)
+      println("------------------------------------")
+      println()
+      res
     }
 
     //
@@ -980,8 +1062,27 @@ trait Contexts { self: Analyzer =>
     def importedAccessibleSymbol(imp: ImportInfo, name: Name): Symbol =
       importedAccessibleSymbol(imp, name, requireExplicit = false)
 
-    private def importedAccessibleSymbol(imp: ImportInfo, name: Name, requireExplicit: Boolean): Symbol =
-      imp.importedSymbol(name, requireExplicit) filter (s => isAccessible(s, imp.qual.tpe, superAccess = false))
+    //TODO-REFLECTED in imp.importedSymbol we get Int from incorrectMirror
+    //TODO-REFLECTED here requireExplicit is false, isAccessible is false becase of different RootClass in rootMirror and customMirror
+    private def importedAccessibleSymbol(imp: ImportInfo, name: Name, requireExplicit: Boolean): Symbol = {
+      println
+      println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+      println("!!!!!!!!!!!!!!!!!! importedAccessibleSymbol !!!!!!!!!!!!!!!!!!")
+      println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+      println(s"name.toString(): ${name.toString()}")
+      val iis = imp.importedSymbol(name, requireExplicit)
+      println(s"mirror == rootMirror: ${mirror == rootMirror}") //false
+      println(s"imp.tree: ${imp.tree}")
+      //false
+      println(s"imp.tree.symbol.owner.enclosingRootClass == rootMirror.RootClass ${imp.tree.symbol.owner.enclosingRootClass == rootMirror.RootClass}")
+      println(s"iis: $iis")
+      //false
+      println(s"iis.owner.enclosingRootClass == rootMirror.RootClass ${iis.owner.enclosingRootClass == rootMirror.RootClass}")
+      val res = iis filter (s => isAccessible(s, imp.qual.tpe, superAccess = false))
+      println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+      println
+      res
+    }
 
     /** Is `sym` defined in package object of package `pkg`?
      *  Since sym may be defined in some parent of the package object,
@@ -1037,6 +1138,13 @@ trait Contexts { self: Analyzer =>
      *  the search continuing as long as no qualifying name is found.
      */
     def lookupSymbol(name: Name, qualifies: Symbol => Boolean): NameLookup = {
+      println()
+      println("=====================================================")
+      println("=============== start lookupSymbol ==================")
+      println("=====================================================")
+      if (name.containsName("Int")) println("lookupSymbol: Searching for: " + name)
+      println(s"rootMirror == this.mirror: ${rootMirror == this.mirror}")
+      
       var lookupError: NameLookup  = null       // set to non-null if a definite error is encountered
       var inaccessible: NameLookup = null       // records inaccessible symbol for error reporting in case none is found
       var defSym: Symbol           = NoSymbol   // the directly found symbol
@@ -1125,6 +1233,34 @@ trait Contexts { self: Analyzer =>
       def sameDepth      = imp1.depth == imp2.depth
       def imp1Explicit   = imp1 isExplicitImport name
       def imp2Explicit   = imp2 isExplicitImport name
+      
+      println("=======================================================================================")
+      println("============================== checking imports! ======================================")
+      println("=======================================================================================")
+      
+      imports foreach { imp => {
+          println("=========================")
+          val tr = imp.tree
+          val tai = tr.asInstanceOf[Import].expr
+          println("current import:")
+          println(s"showCode(imp.tree): ${showCode(tr)}")
+          println(s"showCode(tai): ${showCode(tai)}")
+          tr foreach {
+            t => {
+              println("----------------")
+              println(s"  showCode(t): ${showCode(t)}")
+              val s = tr.symbol
+              println("  s.owner.enclosingRootClass == rootMirror.RootClass: " + (s.owner.enclosingRootClass == rootMirror.RootClass))
+              println("")
+              println("  tai.expr.symbol.owner.enclosingRootClass == rootMirror.RootClass: " + (tai.symbol.owner.enclosingRootClass == rootMirror.RootClass))
+              println("----------------")
+            }
+          }
+          println("=========================")
+        }
+      }
+      
+      println("=======================================================================================")
 
       def lookupImport(imp: ImportInfo, requireExplicit: Boolean) =
         importedAccessibleSymbol(imp, name, requireExplicit) filter qualifies
@@ -1147,13 +1283,35 @@ trait Contexts { self: Analyzer =>
         || (unit.isJava && imp.isExplicitImport(name) && imp.depth == symbolDepth)
       )
 
+      val neImpSymExists = !impSym.exists
+      val importsNonEmpty = imports.nonEmpty
+      val depOk = depthOk(imports.head)
+      //println("!impSym.exists: " + neImpSymExists) //true
+      //println("imports: " + imports) //imports: List(import scala.this.Predef._, import scala._, import java.this.lang._)
+      //println("imports: " + importsNonEmpty) //true
+      //println("depthOk: "  + depOk) //true
+      //println("!impSym.exists && imports.nonEmpty && depthOk(imports.head) is " + (neImpSymExists && importsNonEmpty && depOk)) //true
+
       while (!impSym.exists && imports.nonEmpty && depthOk(imports.head)) {
+        //here we obtain impSym
+        println("---> before lookupImport")
+        //def imp1 = imports.head
+        
+        //root mirrors are not equals - false
+        //println("impSym.owner.enclosingRootClass == rootMirror.RootClass: " + (impSym.owner.enclosingRootClass == rootMirror.RootClass))
         impSym = lookupImport(imp1, requireExplicit = false)
+        //println("<--- after lookupImport")
         if (!impSym.exists)
           imports = imports.tail
       }
 
+      //println("== after impSym init")
+      //println(s"defSym.exists: ${defSym.exists}")
+      //println(s"impSym.exists: ${impSym.exists}")
+      
+      //it's just a checking...
       if (defSym.exists && impSym.exists) {
+        //if (name.containsName("Int")) println("lookup - 1")
         // imported symbols take precedence over package-owned symbols in different compilation units.
         if (isPackageOwnedInDifferentUnit(defSym))
           defSym = NoSymbol
@@ -1165,10 +1323,13 @@ trait Contexts { self: Analyzer =>
           return ambiguousDefnAndImport(defSym.alternatives.head.owner, imp1)
       }
 
+      //println("==> impSym result: " + impSym)
       // At this point only one or the other of defSym and impSym might be set.
-      if (defSym.exists)
+      val res = if (defSym.exists) {
+        //if (name.containsName("Int")) println("lookup - 2")
         finishDefSym(defSym, pre)
-      else if (impSym.exists) {
+      } else if (impSym.exists) {
+        //if (name.containsName("Int")) println("lookup - 3")
         // We continue walking down the imports as long as the tail is non-empty, which gives us:
         //   imports  ==  imp1 :: imp2 :: _
         // And at least one of the following is true:
@@ -1211,8 +1372,14 @@ trait Contexts { self: Analyzer =>
         }
         // optimization: don't write out package prefixes
         finish(resetPos(imp1.qual.duplicate), impSym)
-      }
-      else finish(EmptyTree, NoSymbol)
+      } else {
+        //if (name.containsName("Int")) println("lookup - 4")
+        finish(EmptyTree, NoSymbol) }
+      //if (name.containsName("Int")) println("lookup finish: " + res)
+      println("=====================================================")
+      println("=====================================================")
+      println
+      res
     }
 
     /**
@@ -1335,18 +1502,70 @@ trait Contexts { self: Analyzer =>
 
     /** If requireExplicit is true, wildcard imports are not considered. */
     def importedSymbol(name: Name, requireExplicit: Boolean): Symbol = {
+      //println
+      //println("--->")
+      println("---> def importedSymbol")
+      //println(s"name: $name")
+      //println("tree.symbol: " + tree.symbol)
+      //!!!! here is false
+      //tree.symbol.enclosingRootClass == rootMirror.RootClass: false
+      println("tree.symbol.owner.enclosingRootClass == rootMirror.RootClass: " + (tree.symbol.owner.enclosingRootClass == rootMirror.RootClass))
+      println("rootMirror.RootClass: " + rootMirror.RootClass)
+      
+      //!!!! here is true
+      //!!!! TODO-REFLECTION - see what happens during tree.symbol invokation and tree.symbol.info
+      //are there some init in tree.symbol.info
+      //are there some inits in tree.symbol.info.asIns...[ImportType].expr.symbol
+      //imptype.expr.symbol.enclosingRootClass == rootMirror.RootClass: true
+      if (tree != null && tree.symbol != null && tree.symbol.info.isInstanceOf[ImportType]) {
+        //imptype.expr.symbol.enclosingRootClass == rootMirror.RootClass: true
+        val imptype = tree.symbol.info.asInstanceOf[ImportType]
+        //println("imptype.expr.symbol.owner.enclosingRootClass == rootMirror.RootClass: " + (imptype.expr.symbol.owner.enclosingRootClass == rootMirror.RootClass))
+        val t = tree.asInstanceOf[Import].expr
+        //showCode(t): scala
+        //println(s"showCode(t): ${showCode(t)}")
+        //t.symbol.enclosingRootClass == rootMirror.RootClass: true
+        //println("t.symbol.owner.enclosingRootClass == rootMirror.RootClass: " + (t.symbol.owner.enclosingRootClass == rootMirror.RootClass))
+      }
+      
+      //qual is an expr from ImportType(expr)
+      //qual: scala
+      println(s"qual: $qual")
+      println(s"qual: $qual")
+      //qual.tpe: scala.type
+      //println(s"qual.tpe: ${qual.tpe}")
+      //println(s"qual.symbol: ${qual.symbol}")
+      //!!!! here is true
+      //qual.symbol.enclosingRootClass == rootMirror.RootClass: true
+      println("qual.symbol.owner.enclosingRootClass == rootMirror.RootClass: " + (qual.symbol.owner.enclosingRootClass == rootMirror.RootClass))
+      //println(s"show(qual.tpe): ${show(qual.tpe)}")
+      //println(s"showRaw(qual.tpe): ${showRaw(qual.tpe)}")
+      //showRaw(tree): Import(Ident(scala), 
+      //                 List(ImportSelector(termNames.WILDCARD, -1, null, -1)))
+      //println(s"showRaw(tree): ${showRaw(tree)}")
+      //showCode(tree): import scala._
+      //println(s"showCode(tree): ${showCode(tree)}")
+      //showRaw(qual): Ident(scala)
+      //println(s"showRaw(qual): ${showRaw(qual)}")
+      //showCode(qual): scala
+      //println(s"showCode(qual): ${showCode(qual)}")
       var result: Symbol = NoSymbol
       var renamed = false
       var selectors = tree.selectors
       def current = selectors.head
       while ((selectors ne Nil) && result == NoSymbol) {
-        if (current.rename == name.toTermName)
+        if (current.rename == name.toTermName) {
+          //println("111 here we get result")
           result = qual.tpe.nonLocalMember( // new to address #2733: consider only non-local members for imports
             if (name.isTypeName) current.name.toTypeName else current.name)
-        else if (current.name == name.toTermName)
+        } else if (current.name == name.toTermName)
           renamed = true
-        else if (current.name == nme.WILDCARD && !renamed && !requireExplicit)
+        else if (current.name == nme.WILDCARD && !renamed && !requireExplicit) {
+          //TODO-REFLECT find what's in qual.tpe.nonLocalMember(...)
+          //println("222 here we get result")
+          //we use this branch
           result = qual.tpe.nonLocalMember(name)
+        }
 
         if (result == NoSymbol)
           selectors = selectors.tail
@@ -1360,8 +1579,13 @@ trait Contexts { self: Analyzer =>
       //      check inside the above loop, as I believe that
       //      this always represents a mistake on the part of
       //      the caller.
-      if (definitions isImportable result) result
+      val res = if (definitions isImportable result) result
       else NoSymbol
+      println("res: " + res)
+//      println("<---")
+      println("<---")
+      println
+      res
     }
     private def selectorString(s: ImportSelector): String = {
       if (s.name == nme.WILDCARD && s.rename == null) "_"
@@ -1390,6 +1614,7 @@ trait Contexts { self: Analyzer =>
   }
 
   type ImportType = global.ImportType
+  //here is an object (global.ImportType - from case class)
   val ImportType = global.ImportType
 }
 

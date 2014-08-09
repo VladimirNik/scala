@@ -284,8 +284,13 @@ trait Namers extends MethodSynthesis {
      *  Can be overridden by analyzer plugins (see AnalyzerPlugins.pluginsEnterSym for more details)
      */
     def standardEnterSym(tree: Tree): Context = {
+      //println("begin standardEnterSym...")
+      //println(s"rootMirror == namerMirror: ${rootMirror == namerMirror}")
+      //todo add checking for mirror of this context
+      //todo add parameter to context.make to Import
       def dispatch() = {
         var returnContext = this.context
+        println(s"returnContext in dispatch - begin (returnContext.mirror == rootMirror): ${returnContext.mirror == rootMirror}")
         tree match {
           case tree @ PackageDef(_, _)                       => enterPackage(tree)
           case tree @ ClassDef(_, _, _, _)                   => enterClassDef(tree)
@@ -296,15 +301,18 @@ trait Namers extends MethodSynthesis {
           case DocDef(_, defn)                               => enterSym(defn)
           case tree @ Import(_, _)                           =>
             assignSymbol(tree)
-            returnContext = context.make(tree)
+            returnContext = context.make(tree, mirror = namerMirror)
           case _ =>
         }
+        println(s"returnContext in dispatch - end (returnContext.mirror == rootMirror): ${returnContext.mirror == rootMirror}")
         returnContext
       }
-      tree.symbol match {
+      val res = tree.symbol match {
         case NoSymbol => try dispatch() catch typeErrorHandler(tree, this.context)
         case sym      => enterExistingSym(sym)
       }
+      //println("end standardEnterSym...")
+      res
     }
 
     /** Creates a new symbol and assigns it to the tree, returning the symbol
@@ -502,12 +510,20 @@ trait Namers extends MethodSynthesis {
     }
 
     def enterSyms(trees: List[Tree]): Namer = {
-      trees.foldLeft(this: Namer) { (namer, t) =>
+      //println("---> start enterSyms")
+      //println(s"namerMirror == rootMirror: ${namerMirror == rootMirror}")
+      val res = trees.foldLeft(this: Namer) { (namer, t) =>
         val ctx = namer enterSym t
+        //println("---")
+        //println(s"showCode: ${showCode(t)}")
+        //println(s"ctx.mirror == rootMirror: ${ctx.mirror == rootMirror}")
+        //println("---")
         // for Import trees, enterSym returns a changed context, so we need a new namer
         if (ctx eq namer.context) namer
         else newNamer(ctx)
       }
+      //println("<--- finish enterSyms")
+      res
     }
     def applicableTypeParams(owner: Symbol): List[Symbol] =
       if (owner.isTerm || owner.isPackageClass) Nil
@@ -636,6 +652,7 @@ trait Namers extends MethodSynthesis {
 
       sym setInfo {
         mkTypeCompleter(copyDef) { sym =>
+          //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> mkTypeCompleter (Namers, line 639) - doComplete impl begin")
           assignParamTypes()
           lazyType complete sym
         }
@@ -773,7 +790,14 @@ trait Namers extends MethodSynthesis {
       NoSymbol
     }
 
-    def monoTypeCompleter(tree: Tree) = mkTypeCompleter(tree) { sym =>
+    def monoTypeCompleter(tree: Tree) = {
+      //if (tree.isInstanceOf[ValDef] && (tree.asInstanceOf[ValDef].name != null) && tree.asInstanceOf[ValDef].name.toString().contains("checkV")) {
+      //  println(s"!!!!!!!!!!!!!!!!!!!!!!!!! CREATION OF monoTypeCompleter !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+      //  println(s"rootMirror == namerMirror: ${rootMirror == namerMirror}")
+      //}
+      mkTypeCompleter(tree) { sym =>
+      //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> monoTypeCompleter (Namers, line 778) - completeImpl fun - begin")
+      //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println(s"rootMirror == namerMirror: ${rootMirror == namerMirror}")
       // this early test is there to avoid infinite baseTypes when
       // adding setters and getters --> bug798
       // It is a def in an attempt to provide some insulation against
@@ -804,9 +828,11 @@ trait Namers extends MethodSynthesis {
         }
       }
     }
+    }
 
     def moduleClassTypeCompleter(tree: ModuleDef) = {
       mkTypeCompleter(tree) { sym =>
+        //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> moduleClassTypeCompleter (Namers, line 811) - completeImpl fun - begin")
         val moduleSymbol = tree.symbol
         assert(moduleSymbol.moduleClass == sym, moduleSymbol.moduleClass)
         moduleSymbol.info // sets moduleClass info as a side effect.
@@ -815,6 +841,7 @@ trait Namers extends MethodSynthesis {
 
     /* Explicit isSetter required for bean setters (beanSetterSym.isSetter is false) */
     def accessorTypeCompleter(tree: ValDef, isSetter: Boolean) = mkTypeCompleter(tree) { sym =>
+      //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> accessorTypeCompleter (Namers, line 820) - completeImpl fun - begin")
       logAndValidate(sym) {
         sym setInfo {
           val tp = if (isSetter) MethodType(List(sym.newSyntheticValueParam(typeSig(tree))), UnitTpe)
@@ -825,6 +852,7 @@ trait Namers extends MethodSynthesis {
     }
 
     def selfTypeCompleter(tree: Tree) = mkTypeCompleter(tree) { sym =>
+      //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> selfTypeCompleter (Namers, line 831) - completeImpl fun - begin")
       val selftpe = typer.typedType(tree).tpe
       sym setInfo {
         if (selftpe.typeSymbol isNonBottomSubClass sym.owner) selftpe
@@ -1680,13 +1708,17 @@ trait Namers extends MethodSynthesis {
 
   def mkTypeCompleter(t: Tree)(c: Symbol => Unit) = new LockingTypeCompleter with FlagAgnosticCompleter {
     val tree = t
-    def completeImpl(sym: Symbol) = c(sym)
+    def completeImpl(sym: Symbol) = {
+      //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> mkTypeCompleter (Namers, line 1684) - completeImpl - begin")
+      c(sym)
+    }
   }
 
   trait LockingTypeCompleter extends TypeCompleter {
     def completeImpl(sym: Symbol): Unit
 
     override def complete(sym: Symbol) = {
+      //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> LockingTypeCompleter (Namers, line 1690) - complete - begin")
       _lockedCount += 1
       try completeImpl(sym)
       finally _lockedCount -= 1
@@ -1717,6 +1749,7 @@ trait Namers extends MethodSynthesis {
     }
 
     def completeImpl(sym: Symbol) = {
+      //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> PolyTypeCompleter (Namers, line 1721) - completeImpl - begin")
       // @M an abstract type's type parameters are entered.
       // TODO: change to isTypeMember ?
       if (defnSym.isAbstractType)

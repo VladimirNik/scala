@@ -28,6 +28,7 @@ trait ExistentialsAndSkolems {
       override val typeParams = tparams
       val typeSkolems  = typeParams map (_.newTypeSkolem setInfo this)
       override def complete(sym: Symbol) {
+        //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> ExistentialsAndSkolems (ExistentialsAndSkolems, line 31) - complete - begin")
         // The info of a skolem is the skolemized info of the
         // actual type parameter of the skolem
         sym setInfo sym.deSkolemize.info.substSym(typeParams, typeSkolems)

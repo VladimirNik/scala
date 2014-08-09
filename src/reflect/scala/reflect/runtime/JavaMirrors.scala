@@ -27,9 +27,12 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
   private lazy val mirrors = new WeakHashMap[ClassLoader, WeakReference[JavaMirror]]()
 
   private def createMirror(owner: Symbol, cl: ClassLoader): Mirror = {
+    println("*** createMirror start ***")
     val jm = new JavaMirror(owner, cl)
     mirrors(cl) = new WeakReference(jm)
+    println("*** before jm.init() ***")
     jm.init()
+    println("*** createMirror end ***")
     jm
   }
 
@@ -63,14 +66,23 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
     import runDefinitions._
 
     override lazy val RootPackage = (new RootPackage with SynchronizedTermSymbol).markFlagsCompleted(mask = AllFlags)
-    override lazy val RootClass = (new RootClass with SynchronizedModuleClassSymbol).markFlagsCompleted(mask = AllFlags)
+    override lazy val RootClass = {
+      println("RootClass init started...")
+      println(s"init RootClass: mirror $this"); 
+      val res = (new RootClass with SynchronizedModuleClassSymbol).markFlagsCompleted(mask = AllFlags)
+      println("RootClass init finished...")
+      res
+    }
     override lazy val EmptyPackage = (new EmptyPackage with SynchronizedTermSymbol).markFlagsCompleted(mask = AllFlags)
     override lazy val EmptyPackageClass = (new EmptyPackageClass with SynchronizedModuleClassSymbol).markFlagsCompleted(mask = AllFlags)
 
     /** The lazy type for root.
      */
     override lazy val rootLoader = new LazyType with FlagAgnosticCompleter {
-      override def complete(sym: Symbol) = sym setInfo new LazyPackageType
+      override def complete(sym: Symbol) = {
+        if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> rootLoader Completer - complete - begin")
+        sym setInfo new LazyPackageType
+      }
     }
 
     // reflective mirrors can't know the exhaustive list of available packages
@@ -658,6 +670,7 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
     private class TypeParamCompleter(jtvar: jTypeVariable[_ <: GenericDeclaration]) extends LazyType with FlagAgnosticCompleter {
       override def load(sym: Symbol) = complete(sym)
       override def complete(sym: Symbol) = {
+        //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> JavaMirror's TypeParamCompleter (line 661) - complete - begin")
         sym setInfo TypeBounds.upper(glb(jtvar.getBounds.toList map typeToScala map objToAny))
         markAllCompleted(sym)
       }
@@ -737,6 +750,7 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
       }
 
       override def complete(sym: Symbol): Unit = {
+        //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> JavaMirror's Completer (line-740) - complete - begin")
         load(sym)
         completeRest()
         markAllCompleted(clazz, module)
@@ -790,6 +804,7 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
 
       class LazyPolyType(override val typeParams: List[Symbol]) extends LazyType with FlagAgnosticCompleter {
         override def complete(sym: Symbol) {
+          //if ((sym.name != null) && (sym.name.toString().contains("checkV"))) println("===> LazyPolyType Completer (line 794) - complete - begin")
           completeRest()
           markAllCompleted(clazz, module)
         }

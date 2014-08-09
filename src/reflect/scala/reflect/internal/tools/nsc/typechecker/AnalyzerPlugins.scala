@@ -401,9 +401,14 @@ trait AnalyzerPlugins { self: Analyzer =>
   })
 
   /** @see MacroPlugin.pluginsEnterSym */
-  def pluginsEnterSym(namer: Namer, tree: Tree): Context =
-    if (macroPlugins.isEmpty) namer.standardEnterSym(tree)
-    else invoke(new NonCumulativeOp[Context] {
+  def pluginsEnterSym(namer: Namer, tree: Tree): Context = {
+    //println("===> begin pluginsEnterSym")
+    val res = if (macroPlugins.isEmpty) {
+      //println("if... namer.standardEnterSym(tree)")
+      namer.standardEnterSym(tree)
+    } else {
+      //println("if... new NonCumulativeOp[Context]")
+      invoke(new NonCumulativeOp[Context] {
       def position = tree.pos
       def description = "enter a symbol for this tree"
       def default = namer.standardEnterSym(tree)
@@ -416,6 +421,10 @@ trait AnalyzerPlugins { self: Analyzer =>
         else None
       }
     })
+    }
+    //println("<=== end pluginsEnterSym")
+    res
+  }
 
   /** @see MacroPlugin.pluginsEnsureCompanionObject */
   def pluginsEnsureCompanionObject(namer: Namer, cdef: ClassDef, creator: ClassDef => Tree = companionModuleDef(_)): Symbol = invoke(new NonCumulativeOp[Symbol] {

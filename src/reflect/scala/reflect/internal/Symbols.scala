@@ -1404,6 +1404,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      *  ensuring that symbol is initialized (i.e. type is completed).
      */
     def info: Type = try {
+      //if (name.toString().contains("checkV")) println("starting info")
       var cnt = 0
       while (validTo == NoPeriod) {
         //if (settings.debug.value) System.out.println("completing " + this);//DEBUG
@@ -1426,7 +1427,10 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
         try {
           assertCorrectThread()
           phase = phaseOf(infos.validFrom)
+          //TODO: check checkV somewhere here
+          if (name.toString().contains("checkV")) println("before tp.complete(this)")
           tp.complete(this)
+          if (name.toString().contains("checkV")) println("after tp.complete(this)")
         } finally {
           unlock()
           phase = current

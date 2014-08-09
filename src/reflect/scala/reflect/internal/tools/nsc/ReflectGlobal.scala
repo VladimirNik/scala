@@ -405,14 +405,104 @@ class TypecheckerImpl extends JavaUniverse with ReflectGlobal with TypecheckerAp
 
   //typechecker method
   def typecheckTree(tree: Tree, mirror: Mirror = rootMirror) = {
+    def printSymbolMirrorRels(newTree: Tree, marker: String) {
+      println()
+      println(marker)
+      println("--------------------------------------------------")
+      println(s"showCode(newTree): ${showCode(newTree)}")
+      try {
+      println(s"showRaw(newTree, printMirrors = true): ${showRaw(newTree, printMirrors = true)}")
+      } catch {
+        case e => println("showRaw exception")
+      }
+      newTree.foreach(t => {
+        println("----");
+        //println(s"showCode(t): ${showCode(t)}")
+        println(s"show(t): ${show(t)}")
+        try {
+        if (t.symbol ne null) println(s"t.symbol.owner.enclosingRootClass == rootMirror.RootClass: ${t.symbol.owner.enclosingRootClass == rootMirror.RootClass}")
+        else println(s"t.symbol is null")
+        //      println(s"--> t.symbol: ${t.symbol}");
+        } catch {
+          case exc => println("Exception")
+        }
+        println("----")
+      })
+      println("---------------------------------------------------")
+    } 
+    
+    def difContextMirrorAndRootMirrorRootClass(context: Context, message: String) {
+      println
+      println(message + ":")
+      println("context.mirror.RootClass == rootMirror.RootClass: " + context.mirror.RootClass == rootMirror.RootClass)
+      println
+    }
+    
+    def checkContextImports(context: Context, message: String) {
+      println(message)
+      println("=======================================")
+      println("======= checkContextImports ===========")
+      println("=======================================")
+      val imports = context.imports
+      imports foreach { imp =>
+        {
+          println("=========================")
+          val tr = imp.tree
+          val tai = tr.asInstanceOf[Import].expr
+          println("current import:")
+          val showCodetr = showCode(tr)
+          println(s"showCode(imp.tree): ${showCodetr}")
+          println(s"showCode(tai): ${showCode(tai)}")
+          println(s"tai.symbol: ${tai.symbol}")
+//          if (showCodetr.toString().contains("Predef")) {
+//            val typeSymbol = tai.tpe.typeSymbol
+//            println(s"---> type: ${showRaw(tai.tpe)}")
+//            println(s"---> typeSymbol: $typeSymbol")
+//            println(s"---> typeSymbol.owner.enclosingRootClass == rootMirror.RootClass: ${typeSymbol.owner.enclosingRootClass == rootMirror.RootClass}")
+//            println(s"---> typeSymbol == tai.symbol: ${typeSymbol == tai.symbol}")
+//          }
+          tr foreach {
+            t =>
+              {
+                println("----------------")
+                println(s"  showCode(t): ${showCode(t)}")
+                val s = tr.symbol
+                println("  s.owner.enclosingRootClass == rootMirror.RootClass: " + (s.owner.enclosingRootClass == rootMirror.RootClass))
+                println("")
+                println("  tai.symbol.owner.enclosingRootClass == rootMirror.RootClass: " + (tai.symbol.owner.enclosingRootClass == rootMirror.RootClass))
+                println("----------------")
+              }
+          }
+          println("=========================")
+        }
+      }
+      println("======================================")
+    }
+    
+    println("======================== typecheck tree ===========================")
     val newTree = tree.duplicate
+//    printSymbolMirrorRels(newTree, "1")
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = newTree
     val context = typecheckContext(mirror)
+//    checkContextImports(context, "1") //here imports are ok
+//    difContextMirrorAndRootMirrorRootClass(context, "context (1)")
+//    println
     val namer = newNamer(context)
     val newCont = namer.enterSym(newTree)
+    checkContextImports(newCont, "2")
+//    difContextMirrorAndRootMirrorRootClass(newCont, "newCont (2)")
+//    printSymbolMirrorRels(newTree, "2")
+    //println("context in typecheck tree: " + newCont)
+    //println("scope in typecheck tree: " + newCont.scope)
     val typer = newTyper(newCont)
-    typer.typed(newTree)
+//    difContextMirrorAndRootMirrorRootClass(newCont, "newCont (3)")
+    //println("before typecheck tree: " + show(newTree))
+    val res = typer.typed(newTree)
+//    difContextMirrorAndRootMirrorRootClass(newCont, "newCont (4)")
+//    printSymbolMirrorRels(newTree, "3")
+    //println("after typecheck tree: " + show(newTree))
+    res
   }
   
   def typecheckTree(tree: Tree, classLoader: ClassLoader): Tree = typecheckTree(tree, runtimeMirror(classLoader))
