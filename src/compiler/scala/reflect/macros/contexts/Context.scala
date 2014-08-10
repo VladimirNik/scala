@@ -3,8 +3,7 @@ package contexts
 
 import scala.tools.nsc.Global
 
-abstract class Context extends scala.reflect.macros.blackbox.Context
-                          with scala.reflect.macros.whitebox.Context
+abstract class Context extends scala.reflect.moved.macros.contexts.Context
                           with Aliases
                           with Enclosures
                           with Names
@@ -20,11 +19,16 @@ abstract class Context extends scala.reflect.macros.blackbox.Context
 
   val universe: Global
 
-  val mirror: universe.Mirror = universe.rootMirror
+  override val mirror: universe.Mirror = universe.rootMirror
 
   val callsiteTyper: universe.analyzer.Typer
 
   val prefix: Expr[PrefixType]
 
   val expandee: Tree
+  
+  //TODO-REFLECT refactor (there are 2 implementations in parents
+//  override def eval[T](expr: Expr[T]): T = super[Evals].eval(expr)
+//  override lazy val internal: ContextInternalApi = super[Internals].internal
+//  override def parse(code: String): Tree = super[Parsers].parse(code) 
 }

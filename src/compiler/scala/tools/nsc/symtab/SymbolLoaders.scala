@@ -8,18 +8,19 @@ package symtab
 
 import java.io.IOException
 import scala.compat.Platform.currentTime
-import scala.tools.nsc.util.{ ClassPath }
+import scala.reflect.internal.tools.nsc.util.{ ClassPath }
 import classfile.ClassfileParser
 import scala.reflect.internal.MissingRequirementError
 import scala.reflect.internal.util.Statistics
 import scala.reflect.io.{ AbstractFile, NoAbstractFile }
+import scala.reflect.internal.tools.nsc.ReflectSymbolLoaders
 
 /** This class ...
  *
  *  @author  Martin Odersky
  *  @version 1.0
  */
-abstract class SymbolLoaders {
+abstract class SymbolLoaders extends ReflectSymbolLoaders {
   val symbolTable: symtab.SymbolTable {
     def settings: Settings
   }
@@ -265,7 +266,8 @@ abstract class SymbolLoaders {
     }
   }
 
-  class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader with FlagAssigningCompleter {
+  class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader with FlagAssigningCompleter
+      with super[ReflectSymbolLoaders].ClassfileLoader {
     private object classfileParser extends {
       val symbolTable: SymbolLoaders.this.symbolTable.type = SymbolLoaders.this.symbolTable
     } with ClassfileParser {

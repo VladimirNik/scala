@@ -9,10 +9,12 @@ package nsc
 package transform
 package patmat
 
+import scala.reflect.internal.tools.nsc.transform.patmat.{ ScalacPatternExpanders => RScalacPatternExpanders }
+
 /** This is scalac-specific logic layered on top of the scalac-agnostic
  *  "matching products to patterns" logic defined in PatternExpander.
  */
-trait ScalacPatternExpanders {
+trait ScalacPatternExpanders extends RScalacPatternExpanders {  
   val global: Global
 
   import global._
@@ -26,6 +28,10 @@ trait ScalacPatternExpanders {
     def expectedTypes     = typedPatterns map (_.tpe)
     def unexpandedFormals = extractor.varargsTypes
   }
+
+  //TODO-REFLECT wrapper to simplify reflect
+  override def patternsUnexpandedFormals(sel: Tree, args: List[Tree]) = alignPatterns(sel, args).unexpandedFormals
+
   trait ScalacPatternExpander extends PatternExpander[Tree, Type] {
     def NoPattern = EmptyTree
     def NoType    = global.NoType

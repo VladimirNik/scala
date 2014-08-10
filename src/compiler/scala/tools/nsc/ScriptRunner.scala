@@ -7,8 +7,10 @@ package scala
 package tools.nsc
 
 import io.{ Directory, File, Path }
+import scala.reflect.internal.tools.nsc.io.Jar
 import java.io.IOException
-import scala.tools.nsc.reporters.{Reporter,ConsoleReporter}
+import scala.reflect.internal.tools.nsc.reporters.Reporter
+import scala.tools.nsc.reporters.ConsoleReporter
 import util.Exceptional.unwrap
 
 /** An object that runs Scala code in script files.
@@ -124,7 +126,7 @@ class ScriptRunner extends HasCompileSocket {
 
           compile match {
             case Some(compiledPath) =>
-              try io.Jar.create(jarFile, compiledPath, mainClass)
+              try Jar.create(jarFile, compiledPath, mainClass)
               catch { case _: Exception => jarFile.delete() }
 
               if (jarOK) {

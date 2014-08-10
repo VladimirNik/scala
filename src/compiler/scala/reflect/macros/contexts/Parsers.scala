@@ -7,7 +7,7 @@ trait Parsers {
   self: Context =>
   import global._
 
-  def parse(code: String) = {
+  override def parse(code: String) = {
     val sreporter = new StoreReporter()
     val unit = new CompilationUnit(newSourceFile(code, "<macro>")) { override def reporter = sreporter }
     val parser = newUnitParser(unit)

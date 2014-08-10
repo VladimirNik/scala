@@ -6,6 +6,7 @@
 package scala.tools.nsc
 
 import GenericRunnerCommand._
+import scala.reflect.internal.tools.nsc.io.Jar
 
 /** A command for ScriptRunner */
 class GenericRunnerCommand(
@@ -30,7 +31,7 @@ extends CompilerCommand(args, settings) {
   override def ok = _ok
   private def guessHowToRun(target: String): GenericRunnerCommand.HowToRun = {
     if (!ok) Error
-    else if (io.Jar.isJarOrZip(target)) AsJar
+    else if (Jar.isJarOrZip(target)) AsJar
     else if (util.ScalaClassLoader.classExists(settings.classpathURLs, target)) AsObject
     else {
       val f = io.File(target)

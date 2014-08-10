@@ -7,7 +7,7 @@ package scala.tools.nsc
 package interpreter
 
 import io.VirtualDirectory
-import settings.MutableSettings
+import scala.reflect.internal.tools.nsc.settings.MutableSettings
 import scala.reflect.io.{ AbstractFile, PlainDirectory, Directory }
 import scala.collection.generic.Clearable
 

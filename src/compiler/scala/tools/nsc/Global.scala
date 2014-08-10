@@ -13,8 +13,10 @@ import java.util.UUID._
 import scala.compat.Platform.currentTime
 import scala.collection.{ mutable, immutable }
 import io.{ SourceReader, AbstractFile, Path }
-import reporters.{ Reporter, ConsoleReporter }
-import util.{ ClassPath, MergedClassPath, StatisticsInfo, returning, stackTraceString }
+import scala.reflect.internal.tools.nsc.reporters.Reporter
+import reporters.ConsoleReporter
+import scala.reflect.internal.tools.nsc.util.{ ClassPath, MergedClassPath }
+import util.{ StatisticsInfo, returning, stackTraceString }
 import scala.reflect.ClassTag
 import scala.reflect.internal.util.{ OffsetPosition, SourceFile, NoSourceFile, BatchSourceFile, ScriptSourceFile }
 import scala.reflect.internal.pickling.{ PickleBuffer, PickleFormat }
@@ -35,21 +37,26 @@ import backend.opt.{ Inliners, InlineExceptionHandlers, ConstantOptimization, Cl
 import backend.icode.analysis._
 import scala.language.postfixOps
 import scala.tools.nsc.ast.{TreeGen => AstTreeGen}
+import scala.reflect.internal.tools.nsc.Properties
+import scala.reflect.internal.tools.nsc.ReflectGlobal
 
 class Global(var currentSettings: Settings, var reporter: Reporter)
-    extends SymbolTable
+    extends ReflectGlobal
     with CompilationUnits
     with Plugins
     with PhaseAssembly
     with Trees
     with Printers
-    with DocComments
-    with Positions { self =>
+    with Positions
+    with QuasiquotesImpl { self =>
 
   // the mirror --------------------------------------------------
 
   override def isCompilerUniverse = true
   override val useOffsetPositions = !currentSettings.Yrangepos
+
+  override def isAfterUncurryPhase = isAtPhaseAfter(currentRun.uncurryPhase)
+  override def notAfterTyperPhase = phase.id <= currentRun.typerPhase.id
 
   type RuntimeClass = java.lang.Class[_]
   implicit val RuntimeClassTag: ClassTag[RuntimeClass] = ClassTag[RuntimeClass](classOf[RuntimeClass])
@@ -76,8 +83,9 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   override def settings = currentSettings
 
-  /** Switch to turn on detailed type logs */
-  var printTypings = settings.Ytyperdebug.value
+  //TODO-REFLECT moved to ReflectGlobal
+//  /** Switch to turn on detailed type logs */
+//  var printTypings = settings.Ytyperdebug.value
 
   def this(reporter: Reporter) =
     this(new Settings(err => reporter.error(null, err)), reporter)
@@ -99,15 +107,25 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   type ThisPlatform = JavaPlatform { val global: Global.this.type }
   lazy val platform: ThisPlatform  = new GlobalPlatform
 
-  type PlatformClassPath = ClassPath[AbstractFile]
+  //TODO-REFLECT - moved to ReflectGlobal
+//  type PlatformClassPath = ClassPath[AbstractFile]
   type OptClassPath = Option[PlatformClassPath]
 
   def classPath: PlatformClassPath = platform.classPath
 
   // sub-components --------------------------------------------------
 
+  //TODO-REFLECT fix (override object results in duplicate method in class file)
+//  /** Tree generation, usually based on existing symbols. */
+//  override object gen extends {
+//    val global: Global.this.type = Global.this
+//  } with AstTreeGen {
+//    def mkAttributedCast(tree: Tree, pt: Type): Tree =
+//      typer.typed(mkCast(tree, pt))
+//  }
+
   /** Tree generation, usually based on existing symbols. */
-  override object gen extends {
+  override lazy val gen = new {
     val global: Global.this.type = Global.this
   } with AstTreeGen {
     def mkAttributedCast(tree: Tree, pt: Type): Tree =
@@ -121,8 +139,14 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
     def source = currentUnit.source
   }
 
+  //TODO-REFLECT fix (override object results in duplicate method in class file)
+//  /** Fold constants */
+//  override object constfold extends {
+//    val global: Global.this.type = Global.this
+//  } with ConstantFolder
+
   /** Fold constants */
-  object constfold extends {
+  val constfold = new {
     val global: Global.this.type = Global.this
   } with ConstantFolder
 
@@ -162,43 +186,46 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
     val global: Global.this.type = Global.this
   } with StatisticsInfo
 
-  /** Print tree in detailed form */
-  object nodePrinters extends {
-    val global: Global.this.type = Global.this
-  } with NodePrinters {
-    var lastPrintedPhase: Phase = NoPhase
-    var lastPrintedSource: String = ""
-    infolevel = InfoLevel.Verbose
+  //TODO-REFLECT problem with CompilationUnit
+  //should be od
+//  /** Print tree in detailed form */
+//  override object nodePrinters extends {
+//    val global: Global.this.type = Global.this
+//  } with NodePrinters {
+//    var lastPrintedPhase: Phase = NoPhase
+//    var lastPrintedSource: String = ""
+//    infolevel = InfoLevel.Verbose
+//
+//    def showUnit(unit: CompilationUnit) {
+//      print(" // " + unit.source)
+//      if (unit.body == null) println(": tree is null")
+//      else {
+//        val source = util.stringFromWriter(w => newTreePrinter(w) print unit.body)
+//
+//        // treePrinter show unit.body
+//        if (lastPrintedSource == source)
+//          println(": tree is unchanged since " + lastPrintedPhase)
+//        else {
+//          lastPrintedPhase = phase.prev // since we're running inside "exitingPhase"
+//          lastPrintedSource = source
+//          println("")
+//          println(source)
+//          println("")
+//        }
+//      }
+//    }
+//  }
 
-    def showUnit(unit: CompilationUnit) {
-      print(" // " + unit.source)
-      if (unit.body == null) println(": tree is null")
-      else {
-        val source = util.stringFromWriter(w => newTreePrinter(w) print unit.body)
-
-        // treePrinter show unit.body
-        if (lastPrintedSource == source)
-          println(": tree is unchanged since " + lastPrintedPhase)
-        else {
-          lastPrintedPhase = phase.prev // since we're running inside "exitingPhase"
-          lastPrintedSource = source
-          println("")
-          println(source)
-          println("")
-        }
-      }
-    }
-  }
-
-  def withInfoLevel[T](infolevel: nodePrinters.InfoLevel.Value)(op: => T) = {
-    val saved = nodePrinters.infolevel
-    try {
-      nodePrinters.infolevel = infolevel
-      op
-    } finally {
-      nodePrinters.infolevel = saved
-    }
-  }
+  //TODO-REFLECT
+//  def withInfoLevel[T](infolevel: nodePrinters.InfoLevel.Value)(op: => T) = {
+//    val saved = nodePrinters.infolevel
+//    try {
+//      nodePrinters.infolevel = infolevel
+//      op
+//    } finally {
+//      nodePrinters.infolevel = saved
+//    }
+//  }
 
   /** Representing ASTs as graphs */
   object treeBrowsers extends {
@@ -210,9 +237,10 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   // ------------ Hooks for interactive mode-------------------------
 
-  /** Called every time an AST node is successfully typechecked in typerPhase.
-   */
-  def signalDone(context: analyzer.Context, old: Tree, result: Tree) {}
+  //TODO-REFLECT moved to ReflectGlobal
+//  /** Called every time an AST node is successfully typechecked in typerPhase.
+//   */
+//  def signalDone(context: analyzer.Context, old: Tree, result: Tree) {}
 
   /** Called from parser, which signals hereby that a method definition has been parsed. */
   def signalParseProgress(pos: Position) {}
@@ -223,9 +251,10 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
     lastSeenContext = c
   }
 
-  /** Register top level class (called on entering the class)
-   */
-  def registerTopLevelSym(sym: Symbol) {}
+  //TODO-REFLECT moved to ReflectGlobal
+//  /** Register top level class (called on entering the class)
+//   */
+//  def registerTopLevelSym(sym: Symbol) {}
 
 // ------------------ Reporting -------------------------------------
 
@@ -238,9 +267,10 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   override def warning(msg: String)     = warning(NoPosition, msg)
   override def deprecationWarning(pos: Position, msg: String) = currentUnit.deprecationWarning(pos, msg)
 
-  def globalError(pos: Position, msg: String) = reporter.error(pos, msg)
-  def warning(pos: Position, msg: String)     = if (settings.fatalWarnings) globalError(pos, msg) else reporter.warning(pos, msg)
-  def inform(pos: Position, msg: String)      = reporter.echo(pos, msg)
+  //TODO-REFLECT moved to RelfectGlobal
+//  def globalError(pos: Position, msg: String) = reporter.error(pos, msg)
+//  def warning(pos: Position, msg: String)     = if (settings.fatalWarnings) globalError(pos, msg) else reporter.warning(pos, msg)
+//  def inform(pos: Position, msg: String)      = reporter.echo(pos, msg)
 
   // Getting in front of Predef's asserts to supplement with more info.
   // This has the happy side effect of masking the one argument forms
@@ -276,24 +306,26 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   override protected def isDeveloper = settings.developer || super.isDeveloper
 
-  /** This is for WARNINGS which should reach the ears of scala developers
-   *  whenever they occur, but are not useful for normal users. They should
-   *  be precise, explanatory, and infrequent. Please don't use this as a
-   *  logging mechanism. !!! is prefixed to all messages issued via this route
-   *  to make them visually distinct.
-   */
-  @inline final override def devWarning(msg: => String): Unit = devWarning(NoPosition, msg)
-  @inline final def devWarning(pos: Position, msg: => String) {
-    def pos_s = if (pos eq NoPosition) "" else s" [@ $pos]"
-    if (isDeveloper)
-      warning(pos, "!!! " + msg)
-    else
-      log(s"!!!$pos_s $msg") // such warnings always at least logged
-  }
+  //TODO-REFLECT moved to ReflectGlobal
+//  /** This is for WARNINGS which should reach the ears of scala developers
+//   *  whenever they occur, but are not useful for normal users. They should
+//   *  be precise, explanatory, and infrequent. Please don't use this as a
+//   *  logging mechanism. !!! is prefixed to all messages issued via this route
+//   *  to make them visually distinct.
+//   */
+//  @inline final override def devWarning(msg: => String): Unit = devWarning(NoPosition, msg)
+//  @inline final def devWarning(pos: Position, msg: => String) {
+//    def pos_s = if (pos eq NoPosition) "" else s" [@ $pos]"
+//    if (isDeveloper)
+//      warning(pos, "!!! " + msg)
+//    else
+//      log(s"!!!$pos_s $msg") // such warnings always at least logged
+//  }
 
   def informComplete(msg: String): Unit    = reporter.withoutTruncating(inform(msg))
 
-  def logError(msg: String, t: Throwable): Unit = ()
+  //TODO-REFLECT moved to ReflectGlobal
+//  def logError(msg: String, t: Throwable): Unit = ()
 
   override def shouldLogAtThisPhase = settings.log.isSetByUser && (
     (settings.log containsPhase globalPhase) || (settings.log containsPhase phase)
@@ -456,12 +488,12 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   // I only changed analyzer.
   //
   // factory for phases: namer, packageobjects, typer
-  lazy val analyzer = new {
+  override lazy val analyzer = new {
     val global: Global.this.type = Global.this
   } with Analyzer
 
   // phaseName = "patmat"
-  object patmat extends {
+  override object patmat extends {
     val global: Global.this.type = Global.this
     val runsAfter = List("typer")
     val runsRightAfter = None
@@ -525,8 +557,16 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
     val runsRightAfter = Some("tailcalls")
   } with SpecializeTypes
 
+  //TODO-REFLECT fix (override object results in duplicate method in class file)
   // phaseName = "erasure"
-  override object erasure extends {
+//  override object erasure extends {
+//    val global: Global.this.type = Global.this
+//    val runsAfter = List("explicitouter")
+//    val runsRightAfter = Some("explicitouter")
+//  } with Erasure
+
+  // phaseName = "erasure"
+  override lazy val erasure = new {
     val global: Global.this.type = Global.this
     val runsAfter = List("explicitouter")
     val runsRightAfter = Some("explicitouter")
@@ -678,7 +718,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   object icodeChecker extends icodeCheckers.ICodeChecker()
 
-  object typer extends analyzer.Typer(
+  override object typer extends analyzer.Typer(
     analyzer.NoContext.make(EmptyTree, RootClass, newScope)
   )
 
@@ -1062,7 +1102,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
   /** The currently active run
    */
   def currentRun: Run              = curRun
-  def currentUnit: CompilationUnit = if (currentRun eq null) NoCompilationUnit else currentRun.currentUnit
+  override def currentUnit: CompilationUnit = if (currentRun eq null) NoCompilationUnit else currentRun.currentUnit
   def currentSource: SourceFile    = if (currentUnit.exists) currentUnit.source else lastSeenSourceFile
   def currentFreshNameCreator      = currentUnit.fresh
 
@@ -1162,19 +1202,21 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
       inform("[running phase " + ph.name + " on " + currentRun.size +  " compilation units]")
   }
 
-  /** Collects for certain classes of warnings during this run. */
-  class ConditionalWarning(what: String, option: Settings#BooleanSetting) {
-    val warnings = mutable.LinkedHashMap[Position, String]()
-    def warn(pos: Position, msg: String) =
-      if (option) reporter.warning(pos, msg)
-      else if (!(warnings contains pos)) warnings += ((pos, msg))
-    def summarize() =
-      if (warnings.nonEmpty && (option.isDefault || settings.fatalWarnings))
-        warning("there were %d %s warning(s); re-run with %s for details".format(warnings.size, what, option.name))
-  }
+  //TODO-REFLECT moved to ReflectGlobal
+//  /** Collects for certain classes of warnings during this run. */
+//  class ConditionalWarning(what: String, option: Settings#BooleanSetting) {
+//    val warnings = mutable.LinkedHashMap[Position, String]()
+//    def warn(pos: Position, msg: String) =
+//      if (option) reporter.warning(pos, msg)
+//      else if (!(warnings contains pos)) warnings += ((pos, msg))
+//    def summarize() =
+//      if (warnings.nonEmpty && (option.isDefault || settings.fatalWarnings))
+//        warning("there were %d %s warning(s); re-run with %s for details".format(warnings.size, what, option.name))
+//  }
 
-  def newSourceFile(code: String, filename: String = "<console>") =
-    new BatchSourceFile(filename, code)
+  //TODO-REFLECT moved to ReflectGlobal
+//  def newSourceFile(code: String, filename: String = "<console>") =
+//    new BatchSourceFile(filename, code)
 
   def newCompilationUnit(code: String, filename: String = "<console>") =
     new CompilationUnit(newSourceFile(code, filename))
@@ -1190,7 +1232,7 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   /** A Run is a single execution of the compiler on a set of units.
    */
-  class Run extends RunContextApi {
+  class Run extends super[ReflectGlobal].Run {
     /** Have been running into too many init order issues with Run
      *  during erroneous conditions.  Moved all these vals up to the
      *  top of the file so at least they're not trivially null.
@@ -1199,16 +1241,17 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
     /** The currently compiled unit; set from GlobalPhase */
     var currentUnit: CompilationUnit = NoCompilationUnit
 
-    // This change broke sbt; I gave it the thrilling name of uncheckedWarnings0 so
-    // as to recover uncheckedWarnings for its ever-fragile compiler interface.
-    val deprecationWarnings0 = new ConditionalWarning("deprecation", settings.deprecation)
-    val uncheckedWarnings0 = new ConditionalWarning("unchecked", settings.unchecked)
-    val featureWarnings = new ConditionalWarning("feature", settings.feature)
-    val inlinerWarnings = new ConditionalWarning("inliner", settings.YinlinerWarnings)
-    val allConditionalWarnings = List(deprecationWarnings0, uncheckedWarnings0, featureWarnings, inlinerWarnings)
-
-    def uncheckedWarnings: List[(Position, String)] = uncheckedWarnings0.warnings.toList // used in sbt
-    def deprecationWarnings: List[(Position, String)] = deprecationWarnings0.warnings.toList // used in sbt
+    //TODO-REFLECT moved to ReflectGlobal (Typechecer's Run)
+//    // This change broke sbt; I gave it the thrilling name of uncheckedWarnings0 so
+//    // as to recover uncheckedWarnings for its ever-fragile compiler interface.
+//    val deprecationWarnings0 = new ConditionalWarning("deprecation", settings.deprecation)
+//    val uncheckedWarnings0 = new ConditionalWarning("unchecked", settings.unchecked)
+//    val featureWarnings = new ConditionalWarning("feature", settings.feature)
+//    val inlinerWarnings = new ConditionalWarning("inliner", settings.YinlinerWarnings)
+//    val allConditionalWarnings = List(deprecationWarnings0, uncheckedWarnings0, featureWarnings, inlinerWarnings)
+//
+//    def uncheckedWarnings: List[(Position, String)] = uncheckedWarnings0.warnings.toList // used in sbt
+//    def deprecationWarnings: List[(Position, String)] = deprecationWarnings0.warnings.toList // used in sbt
 
     var reportedFeature = Set[Symbol]()
 

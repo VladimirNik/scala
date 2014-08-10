@@ -595,7 +595,7 @@ object JavapClass {
     def resourceable(className: String): Boolean = cl.getResource(className.asClassResource) != null
   }
   implicit class PathOps(val p: Path) extends AnyVal {
-    import scala.tools.nsc.io.Jar
+    import scala.reflect.internal.tools.nsc.io.Jar
     def isJar = Jar isJarOrZip p
   }
   implicit class URLOps(val url: URL) extends AnyVal {
@@ -631,7 +631,7 @@ object JavapClass {
     // path prefix p, class k, jar file f
     def listFunsInJar(p: String, k: String, m: Option[String])(f: File) = {
       import java.util.jar.JarEntry
-      import scala.tools.nsc.io.Jar
+      import scala.reflect.internal.tools.nsc.io.Jar
       def maybe(e: JarEntry) = {
         val (path, name) = {
           val parts = e.getName split "/"

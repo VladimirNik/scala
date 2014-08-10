@@ -12,6 +12,7 @@ import scala.collection.{ mutable, immutable }
 import util._
 import java.util.concurrent.TimeUnit
 import scala.reflect.internal.{TreeGen => InternalTreeGen}
+import scala.reflect.internal.tools.nsc._
 
 abstract class SymbolTable extends macros.Universe
                               with Collections
@@ -32,7 +33,8 @@ abstract class SymbolTable extends macros.Universe
                               with StdNames
                               with AnnotationInfos
                               with AnnotationCheckers
-                              with Trees
+                              with ast.Trees
+                              with ast.DocComments
                               with Printers
                               with Positions
                               with TypeDebugging
@@ -48,7 +50,7 @@ abstract class SymbolTable extends macros.Universe
                               with Internals
 {
 
-  val gen = new InternalTreeGen { val global: SymbolTable.this.type = SymbolTable.this }
+  lazy val gen = new InternalTreeGen { val global: SymbolTable.this.type = SymbolTable.this }
 
   def log(msg: => AnyRef): Unit
   def deprecationWarning(pos: Position, msg: String): Unit = warning(msg)
@@ -150,7 +152,7 @@ abstract class SymbolTable extends macros.Universe
     val global: SymbolTable.this.type = SymbolTable.this
   } with util.TraceSymbolActivity
 
-  val treeInfo: TreeInfo { val global: SymbolTable.this.type }
+  val treeInfo: ast.TreeInfo { val global: SymbolTable.this.type }
 
   /** Check that the executing thread is the compiler thread. No-op here,
    *  overridden in interactive.Global. */

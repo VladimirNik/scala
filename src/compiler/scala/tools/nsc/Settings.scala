@@ -3,15 +3,17 @@
  * @author  Martin Odersky
  */
 
-package scala.tools.nsc
+package scala.tools
+package nsc
 
-import settings.MutableSettings
+import scala.reflect.internal.tools.nsc.{Settings => rSettings}
 
+//TODO-REFLECT - refactor it - this code duplicates Settings in scala.reflect.internal.tools.nsc
 /** A compatibility stub.
  */
-class Settings(errorFn: String => Unit) extends MutableSettings(errorFn) {
+class Settings(errorFn: String => Unit) extends rSettings(errorFn) {
   def this() = this(Console.println)
-
+  
   override def withErrorFn(errorFn: String => Unit): Settings = {
     val settings = new Settings(errorFn)
     copyInto(settings)

@@ -111,6 +111,7 @@ trait PatternExpander[Pattern, Type] {
     override def toString = s"$pat: $tpe"
   }
 
+  //TODO-REFLECT remove AlignedMark - required only for patmat compatibility
   /** If elementArity is...
    *    0: A perfect match between extractor and the fixed patterns.
    *       If there is a star pattern it will match any sequence.

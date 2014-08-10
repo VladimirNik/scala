@@ -7,7 +7,7 @@ package scala.tools.nsc
 
 import settings.FscSettings
 import io.Directory
-import Properties.isWin
+import scala.reflect.internal.tools.nsc.Properties.isWin
 
 /** A compiler command for the offline compiler.
  *

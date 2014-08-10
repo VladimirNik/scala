@@ -20,7 +20,8 @@ import org.apache.tools.ant.util.facade.{FacadeTaskHelper,
 
 import scala.tools.nsc.{Global, Settings, CompilerCommand}
 import scala.tools.nsc.io.{Path => SPath}
-import scala.tools.nsc.reporters.{Reporter, ConsoleReporter}
+import scala.reflect.internal.tools.nsc.reporters.Reporter
+import scala.tools.nsc.reporters.ConsoleReporter
 
 /** An Ant task to compile with the new Scala compiler (NSC).
  *

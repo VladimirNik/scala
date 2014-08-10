@@ -6,14 +6,16 @@
 package scala
 package tools.nsc
 
+import scala.reflect.internal.tools.nsc.Properties
 import io.{ File }
-import util.{ ClassPath, ScalaClassLoader }
+import scala.reflect.internal.tools.nsc.util.{ ClassPath, ScalaClassLoader }
 import Properties.{ versionString, copyrightString }
 import GenericRunnerCommand._
+import scala.reflect.internal.tools.nsc.io.Jar
 
 object JarRunner extends CommonRunner {
   def runJar(settings: GenericRunnerSettings, jarPath: String, arguments: Seq[String]): Either[Throwable, Boolean] = {
-    val jar       = new io.Jar(jarPath)
+    val jar       = new Jar(jarPath)
     val mainClass = jar.mainClass getOrElse sys.error("Cannot find main class for jar: " + jarPath)
     val jarURLs   = ClassPath expandManifestPath jarPath
     val urls      = if (jarURLs.isEmpty) File(jarPath).toURL +: settings.classpathURLs else jarURLs

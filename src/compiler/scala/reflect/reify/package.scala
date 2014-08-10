@@ -4,6 +4,7 @@ package reflect
 import scala.reflect.macros.ReificationException
 import scala.tools.nsc.Global
 
+//TODO-REFLECT package object can be removed
 package object reify {
   private def mkReifier(global1: Global)(typer: global1.analyzer.Typer, universe: global1.Tree, mirror: global1.Tree, reifee: Any, concrete: Boolean): Reifier { val global: global1.type } = {
     val typer1: typer.type = typer

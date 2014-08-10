@@ -2,7 +2,8 @@ package scala
 package reflect
 package runtime
 
-import scala.reflect.internal.{TreeInfo, SomePhase}
+import scala.reflect.internal.SomePhase
+import scala.reflect.internal.tools.nsc.ast.TreeInfo
 import scala.reflect.internal.{SymbolTable => InternalSymbolTable}
 import scala.reflect.runtime.{SymbolTable => RuntimeSymbolTable}
 import scala.reflect.api.{TreeCreator, TypeCreator, Universe}
@@ -23,10 +24,13 @@ class JavaUniverse extends InternalSymbolTable with JavaUniverseForce with Refle
 
   def log(msg: => AnyRef): Unit = if (isLogging) Console.err.println("[reflect] " + msg)
 
-  type TreeCopier = InternalTreeCopierOps
-  implicit val TreeCopierTag: ClassTag[TreeCopier] = ClassTag[TreeCopier](classOf[TreeCopier])
-  def newStrictTreeCopier: TreeCopier = new StrictTreeCopier
-  def newLazyTreeCopier: TreeCopier = new LazyTreeCopier
+  //TODO-REFLECT already defined in Trees inside SymbolTable
+//  type TreeCopier = InternalTreeCopierOps
+  //TODO-REFLECT probably this override val can be removed (see implicit)
+  implicit val TreeCopierTag: ClassTag[TreeCopier] = TreeCopierTagImpl
+  //TODO-REFLECT already defined in Trees inside SymbolTable
+//  def newStrictTreeCopier: TreeCopier = new StrictTreeCopier
+//  def newLazyTreeCopier: TreeCopier = new LazyTreeCopier
 
   def currentFreshNameCreator = globalFreshNameCreator
 

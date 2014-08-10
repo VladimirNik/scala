@@ -3,5 +3,6 @@ package runtime
 
 import scala.reflect.internal.util.Position
 import scala.util.control.ControlThrowable
+import scala.reflect.moved.macros.runtime.{ AbortMacroException => RAbortMacroException }
 
-class AbortMacroException(val pos: Position, val msg: String) extends Throwable(msg) with ControlThrowable
+class AbortMacroException(override val pos: Position, override val msg: String) extends RAbortMacroException(pos, msg)

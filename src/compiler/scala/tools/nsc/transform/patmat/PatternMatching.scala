@@ -14,6 +14,7 @@ import scala.tools.nsc.transform.Transform
 import scala.reflect.internal.util.Statistics
 import scala.reflect.internal.Types
 import scala.reflect.internal.util.Position
+import scala.reflect.internal.tools.nsc.transform.patmat.{ PatternMatching => RPatternMatching }
 
 /** Translate pattern matching.
   *
@@ -35,6 +36,7 @@ import scala.reflect.internal.util.Position
   *  - recover exhaustivity/unreachability of user-defined extractors by partitioning the types they match on using an HList or similar type-level structure
   */
 trait PatternMatching extends Transform
+                      with RPatternMatching
                       with TypingTransformers
                       with Debugging
                       with Interface
@@ -81,9 +83,13 @@ trait PatternMatching extends Transform
     }
   }
 
-  class PureMatchTranslator(val typer: analyzer.Typer, val matchStrategy: Tree) extends MatchTranslator with PureCodegen {
+  //TODO-REFLECT check that method translateMatch in super.PureMatchTranslator is overriden by MatchTranslator
+  class PureMatchTranslator(override val typer: analyzer.Typer, override val matchStrategy: Tree) extends super.PureMatchTranslator(typer, matchStrategy)
+      with MatchTranslator with PureCodegen {
     def optimizeCases(prevBinder: Symbol, cases: List[List[TreeMaker]], pt: Type) = (cases, Nil)
     def analyzeCases(prevBinder: Symbol, cases: List[List[TreeMaker]], pt: Type, suppression: Suppression): Unit = {}
+    //TODO-REFLECT refactor if required
+    override def translateMatch(match_ : Match): Tree = super[MatchTranslator].translateMatch(match_)
   }
 
   class OptimizingMatchTranslator(val typer: analyzer.Typer) extends MatchTranslator
@@ -115,21 +121,6 @@ trait Interface extends ast.TreeDSL {
   protected final def mkTRUE                   = CODE.TRUE
   protected final def mkFALSE                  = CODE.FALSE
   protected final def hasStableSymbol(p: Tree) = p.hasSymbolField && p.symbol.isStable
-
-  object vpmName {
-    val one       = newTermName("one")
-    val flatMap   = newTermName("flatMap")
-    val get       = newTermName("get")
-    val guard     = newTermName("guard")
-    val isEmpty   = newTermName("isEmpty")
-    val orElse    = newTermName("orElse")
-    val outer     = newTermName("<outer>")
-    val runOrElse = newTermName("runOrElse")
-    val zero      = newTermName("zero")
-    val _match    = newTermName("__match") // don't call the val __match, since that will trigger virtual pattern matching...
-
-    def counted(str: String, i: Int) = newTermName(str + i)
-  }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // talking to userland

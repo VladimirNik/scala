@@ -2,6 +2,7 @@ package scala.tools.nsc
 
 import interpreter._
 import java.io._
+import scala.reflect.internal.tools.nsc.NewLinePrintWriter
 
 /** A compatibility stub.
  */

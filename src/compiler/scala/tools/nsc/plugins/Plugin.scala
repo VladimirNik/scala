@@ -6,7 +6,7 @@
 package scala.tools.nsc
 package plugins
 
-import scala.tools.nsc.io.{ Jar }
+import scala.reflect.internal.tools.nsc.io.Jar
 import scala.tools.nsc.util.ScalaClassLoader
 import scala.reflect.io.{ Directory, File, Path }
 import java.io.InputStream
