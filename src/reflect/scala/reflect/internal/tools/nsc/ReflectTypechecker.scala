@@ -381,7 +381,7 @@ class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with 
 
   override def isReflectTypechecker = true
 
-  //typechecker method
+  //typecheck method
   def typecheck(tree: Tree, mirror: Mirror = rootMirror) = {
     val newTree = tree.duplicate
     val compUnit = new CompilationUnit(NoSourceFile)
