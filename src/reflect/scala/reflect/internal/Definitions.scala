@@ -12,13 +12,19 @@ import scala.annotation.{ switch, meta }
 import scala.collection.{ mutable, immutable }
 import Flags._
 import scala.reflect.api.{Universe => ApiUniverse}
+import scala.collection.mutable.WeakHashMap
 
 trait Definitions extends api.StandardDefinitions {
   self: SymbolTable =>
 
-  import rootMirror.{getModuleByName, getPackage, getClassByName, getRequiredClass, getRequiredModule, getClassIfDefined, getModuleIfDefined, getPackageObject, getPackageIfDefined, getPackageObjectIfDefined, requiredClass, requiredModule}
+  //TODO-REFLECT: use metaMirror passed to DefinitionsClass
+  //import rootMirror.{getModuleByName, getPackage, getClassByName, getRequiredClass, getRequiredModule, getClassIfDefined, getModuleIfDefined, getPackageObject, getPackageIfDefined, getPackageObjectIfDefined, requiredClass, requiredModule}
 
-  object definitions extends DefinitionsClass
+  //object definitions extends DefinitionsClass
+  lazy val definitions: DefinitionsClass = new DefinitionsClass(rootMirror) {}
+
+//  def definitions(symbol: ClassSymbol): DefinitionsClass = definitions //TODO-REFLECT: change null to definitions
+  def definitions(mirror: Mirror): DefinitionsClass = null //TODO-REFLECT change to definitions
 
   /** Since both the value parameter types and the result type may
    *  require access to the type parameter symbols, we model polymorphic
@@ -45,6 +51,7 @@ trait Definitions extends api.StandardDefinitions {
   trait ValueClassDefinitions {
     self: DefinitionsClass =>
 
+    import self.metaMirror._
     import ClassfileConstants._
 
     private val nameToWeight = Map[Name, Int](
@@ -150,7 +157,12 @@ trait Definitions extends api.StandardDefinitions {
 
   }
 
-  abstract class DefinitionsClass extends DefinitionsApi with ValueClassDefinitions {
+  abstract class DefinitionsClass(val metaMirror: Mirror) extends DefinitionsApi with ValueClassDefinitions {
+
+    def this() = this(rootMirror)
+
+    import metaMirror._
+
     private var isInitialized = false
     def isDefinitionsInitialized = isInitialized
 

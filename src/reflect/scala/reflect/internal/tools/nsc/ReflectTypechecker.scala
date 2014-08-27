@@ -25,6 +25,7 @@ import scala.reflect.runtime. {ReflectSetup, JavaUniverse}
 import scala.reflect.api.Universe
 import scala.tools.util.PathResolver
 import scala.tools.nsc.Settings
+import scala.collection.mutable.WeakHashMap
 
 trait Typechecker extends SymbolTable
     with Printers
@@ -361,20 +362,34 @@ class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with 
     def units = ???
   }
 
-  //TODO-REFLECT: other methods (most of them can be reused from JavaUniverse, problem to reuse JavaUniverse is settings val)
-//  def erasurePhase = SomePhase
-//  def picklerPhase = SomePhase
-//  def currentFreshNameCreator = globalFreshNameCreator
-//  
-//  object treeInfo extends {
-//    val global: RuntimeTypechecker.this.type = RuntimeTypechecker.this
-//  } with scala.reflect.internal.tools.nsc.ast.TreeInfo
-//
-//  implicit val TreeCopierTag: ClassTag[TreeCopier] = ClassTag[TreeCopier](classOf[TreeCopier])
-//  
-//  private val isLogging = sys.props contains "scala.debug.reflect"
-//
-//  def log(msg: => AnyRef): Unit = if (isLogging) Console.err.println("[reflect] " + msg)
+  // *** Definitions ***
+  //TODO-REFLECT: cache to persist definitions for mirrors used during typecheck
+  lazy val definitionsCache = WeakHashMap[ClassSymbol, DefinitionsClass]()
+ 
+  override lazy val definitions: DefinitionsClass = {
+    val value = new DefinitionsClass(rootMirror) {}
+    definitionsCache(rootMirror.RootClass) = value
+    value
+  }
+  def createDefinitions(mirror: Mirror): DefinitionsClass = definitionsCache.getOrElseUpdate(mirror.RootClass, new DefinitionsClass(mirror){})
+  override def definitions(mirror: Mirror): DefinitionsClass = definitionsCache.getOrElse(mirror.RootClass, null) //TODO-REFLECT: change null to definitions
+
+  // *** Mirrors ****
+  //TODO-REFLECT: cache to persist definitions for mirrors used during typecheck with rootMirror init
+  lazy val mirrorsCache = {
+    val value = WeakHashMap[ClassSymbol, Mirror]()
+    value.update(rootMirror.RootClass, rootMirror)
+    value
+  }
+
+//  override lazy val rootMirror = {
+//    val value = createMirror(NoSymbol, rootClassLoader)
+//    //val value = super.rootMirror //TODO-REFLECT unfortunately super may be not be used on lazy value rootMirror
+//    mirrorsCache(value.RootClass) = value
+//    value
+//  }
+  def addMirror(mirror: Mirror) = mirrorsCache.getOrElseUpdate(mirror.RootClass, mirror)
+  override def reflectMirror(sym: ClassSymbol) = mirrorsCache.getOrElse(sym, null) //TODO-REFLECT: change null to rootMirror (as default value)
 
   //TODO-REFLECT: required for infos init (in Symbols)
   override def isCompilerUniverse = false
@@ -383,6 +398,18 @@ class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with 
 
   //typecheck method
   def typecheck(tree: Tree, mirror: Mirror = rootMirror) = {
+    //create definitions
+    println("*** Multiverse testing: ***")
+    val myDefs = createDefinitions(mirror)
+    addMirror(mirror)
+    
+    val mirrorsCount = mirrorsCache.size
+    val definitionsCount = definitionsCache.size
+
+    //println(s"myDefs == mirror.definitions: ${myDefs == definitions}")
+    println(s"mirrorsCount: $mirrorsCount")
+    println(s"definitionsCount: $definitionsCount")
+    println("*** *** ***")
     val newTree = tree.duplicate
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = newTree

@@ -49,7 +49,7 @@ abstract class SymbolTable extends macros.Universe
                               with FreshNames
                               with Internals
 {
-
+  def reflectMirror(sym: ClassSymbol) = rootMirror
   lazy val gen = new InternalTreeGen { val global: SymbolTable.this.type = SymbolTable.this }
 
   def log(msg: => AnyRef): Unit

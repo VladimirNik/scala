@@ -8,6 +8,7 @@ trait PatternMatching {
 //  val vpmName = global.analyzer.vpmName
 
   class PureMatchTranslator(val typer: analyzer.Typer, val matchStrategy: Tree) {
+    //TODO-REFLECT this method is used in Typers only if settings.Xexperimental is true
     def translateMatch(match_ : Match): Tree = ???
   }
 }
