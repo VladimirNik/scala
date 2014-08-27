@@ -389,7 +389,7 @@ class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with 
 //    value
 //  }
   def addMirror(mirror: Mirror) = mirrorsCache.getOrElseUpdate(mirror.RootClass, mirror)
-  override def reflectMirror(sym: ClassSymbol) = mirrorsCache.getOrElse(sym, null) //TODO-REFLECT: change null to rootMirror (as default value)
+  override def reflectMirror(sym: =>ClassSymbol) = mirrorsCache.getOrElse(sym, null) //TODO-REFLECT: change null to rootMirror (as default value)
 
   //TODO-REFLECT: required for infos init (in Symbols)
   override def isCompilerUniverse = false
