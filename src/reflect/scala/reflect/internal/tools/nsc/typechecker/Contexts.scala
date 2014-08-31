@@ -56,14 +56,14 @@ trait Contexts { self: Analyzer =>
   }
   
   //TODO-REFLECT: only for test purposes
-  def typecheckContextBase(mirror: Mirror) = {
+  def typecheckerContextBase(mirror: Mirror) = {
     NoContext.make(
     Template(List(), noSelfType, List()) setSymbol global.NoSymbol setType global.NoType,
     global.NoSymbol,
     mirror.RootClass.info.decls, mirror)
   }.set(ReportErrors | AmbiguousErrors | MacrosEnabled | ImplicitsEnabled | EnrichmentEnabled)
 
-  def typecheckContext(mirror: Mirror) = {
+  def typecheckerContext(mirror: Mirror) = {
     def completeImportsList(mirror: Mirror) = {
       val JavaLangPackage = mirror.getPackage("java.lang")
       val JavaLangPackageClass = JavaLangPackage.moduleClass.asClass
@@ -72,7 +72,7 @@ trait Contexts { self: Analyzer =>
       val PredefModule = mirror.requiredModule[scala.Predef.type]
       JavaLangPackage :: ScalaPackage :: PredefModule :: Nil
     }
-    (typecheckContextBase(mirror) /: completeImportsList(mirror))((c, sym) => c.make(gen.mkWildcardImport(sym), mirror = mirror))
+    (typecheckerContextBase(mirror) /: completeImportsList(mirror))((c, sym) => c.make(gen.mkWildcardImport(sym), mirror = mirror))
   }
 
   private lazy val allUsedSelectors =

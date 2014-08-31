@@ -413,7 +413,7 @@ class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with 
     val newTree = tree.duplicate
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = newTree
-    val context = typecheckContext(mirror)
+    val context = typecheckerContext(mirror)
     val namer = newNamer(context)
     val newCont = namer.enterSym(newTree)
     val typer = newTyper(newCont)
