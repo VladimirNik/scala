@@ -26,6 +26,7 @@ import scala.reflect.api.Universe
 import scala.tools.util.PathResolver
 import scala.tools.nsc.Settings
 import scala.collection.mutable.WeakHashMap
+import scala.reflect.runtime.JavaMirrors
 
 trait Typechecker extends SymbolTable
     with Printers
@@ -284,12 +285,14 @@ trait PatternMatchingImpl extends PatternMatching {
 
 trait TypecheckerApi {
   self: Universe =>
-  def typecheck(tree: Tree, mirror: Mirror = rootMirror): Tree
-  def typecheck(tree: Tree, classLoader: ClassLoader): Tree
+  def typecheck(tree: Tree, mirror: Mirror): Tree
+  //TODO-REFLECT: remove method, added for simplicity
+  def typecheck(tree: Tree, classLoader: ClassLoader): Tree = ???
 }
 
-class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with TypecheckerApi {
-
+//class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with TypecheckerApi {
+trait RuntimeTypechecker extends TypecheckerRequirements {
+  self: JavaMirrors =>
   import analyzer._
 
   override object typer extends analyzer.Typer(
@@ -304,11 +307,13 @@ class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with 
 	val global: RuntimeTypechecker.this.type = RuntimeTypechecker.this
   } with PatternMatchingImpl with ScalacPatternExpanders with TreeAndTypeAnalysis{}
 
+  //TODO-REFLECT: reporter is implemented in JavaUniverse, try to remove it
   var reporter: Reporter = new Reporter {
     protected def info0(pos: Position, msg: String, severity: Severity, force: Boolean): Unit = () //???
   }
 
-  override lazy val settings: Settings = new Settings
+  //TODO-REFLECT settings implementation is moved to JavaUniverse
+  //override lazy val settings: Settings = new Settings
 
   def currentRun: Run = new Run{}
 
@@ -397,9 +402,11 @@ class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with 
   override def isReflectTypechecker = true
 
   //typecheck method
-  def typecheck(tree: Tree, mirror: Mirror = rootMirror) = {
+  override def typecheck(tree: Tree, mirror: Mirror) = {
     //create definitions
-    println("*** Multiverse testing: ***")
+    //println("*** Multiverse testing: ***")
+    //println(s"isCompilerUniverse: $isCompilerUniverse")
+    //println(s"isReflectTypechecer: $isReflectTypechecker")
     val myDefs = createDefinitions(mirror)
     addMirror(mirror)
     
@@ -407,9 +414,9 @@ class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with 
     val definitionsCount = definitionsCache.size
 
     //println(s"myDefs == mirror.definitions: ${myDefs == definitions}")
-    println(s"mirrorsCount: $mirrorsCount")
-    println(s"definitionsCount: $definitionsCount")
-    println("*** *** ***")
+    //println(s"mirrorsCount: $mirrorsCount")
+    //println(s"definitionsCount: $definitionsCount")
+    //println("*** *** ***")
     val newTree = tree.duplicate
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = newTree
@@ -420,5 +427,6 @@ class RuntimeTypechecker extends JavaUniverse with TypecheckerRequirements with 
     typer.typed(newTree)
   }
 
-  def typecheck(tree: Tree, classLoader: ClassLoader): Tree = typecheck(tree, runtimeMirror(classLoader))
+  //TODO-REFLECT remove method, added for simplicity
+  override def typecheck(tree: Tree, classLoader: ClassLoader): Tree = typecheck(tree, runtimeMirror(classLoader))
 }
