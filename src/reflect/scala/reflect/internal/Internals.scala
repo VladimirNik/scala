@@ -92,9 +92,14 @@ trait Internals extends api.Internals {
     def isSkolem(symbol: Symbol): Boolean = symbol.isSkolem
     def deSkolemize(symbol: Symbol): Symbol = symbol.deSkolemize
     def initialize(symbol: Symbol): symbol.type = symbol.initialize
-    def fullyInitialize(symbol: Symbol): symbol.type = definitions.fullyInitializeSymbol(symbol).asInstanceOf[symbol.type]
-    def fullyInitialize(tp: Type): tp.type = definitions.fullyInitializeType(tp).asInstanceOf[tp.type]
-    def fullyInitialize(scope: Scope): scope.type = definitions.fullyInitializeScope(scope).asInstanceOf[scope.type]
+    def fullyInitialize(symbol: Symbol): symbol.type = definitionsBySym(symbol).fullyInitializeSymbol(symbol).asInstanceOf[symbol.type]
+    def fullyInitialize(tp: Type): tp.type = definitionsBySym(tp.typeSymbol).fullyInitializeType(tp).asInstanceOf[tp.type]
+    def fullyInitialize(scope: Scope): scope.type = if (scope.isEmpty) {
+      definitions.fullyInitializeScope(scope).asInstanceOf[scope.type]
+    } else {
+      //TODO-REFLECT-DEFS - what can we get from scope?
+      definitionsBySym(scope.elems.sym).fullyInitializeScope(scope).asInstanceOf[scope.type]
+    }
     def flags(symbol: Symbol): FlagSet = symbol.flags
     def attachments(symbol: Symbol): Attachments { type Pos = Position } = symbol.attachments
     def updateAttachment[T: ClassTag](symbol: Symbol, attachment: T): symbol.type = symbol.updateAttachment(attachment)

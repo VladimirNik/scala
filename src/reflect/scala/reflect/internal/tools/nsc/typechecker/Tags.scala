@@ -6,10 +6,11 @@ trait Tags {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
 
   trait Tag {
     self: Typer =>
+    import defs._
 
     private val runDefinitions = currentRun.runDefinitions
     import runDefinitions._

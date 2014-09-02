@@ -9,7 +9,7 @@ import scala.annotation.tailrec
 
 trait TypeComparers {
   self: SymbolTable =>
-  import definitions._
+//  import definitions._
   import TypesStats._
 
   private final val LogPendingSubTypesThreshold = TypeConstants.DefaultLogThreshhold
@@ -350,19 +350,25 @@ trait TypeComparers {
 
   // @assume tp1.isHigherKinded || tp2.isHigherKinded
   def isHKSubType(tp1: Type, tp2: Type, depth: Depth): Boolean = {
-    def isSub(ntp1: Type, ntp2: Type) = (ntp1.withoutAnnotations, ntp2.withoutAnnotations) match {
-      case (TypeRef(_, AnyClass, _), _)                                     => false                    // avoid some warnings when Nothing/Any are on the other side
-      case (_, TypeRef(_, NothingClass, _))                                 => false
-      case (pt1: PolyType, pt2: PolyType)                                   => isPolySubType(pt1, pt2)  // @assume both .isHigherKinded (both normalized to PolyType)
-      case (_: PolyType, MethodType(ps, _)) if ps exists (_.tpe.isWildcard) => false                    // don't warn on HasMethodMatching on right hand side
-      case _                                                                =>                          // @assume !(both .isHigherKinded) thus cannot be subtypes
-        def tp_s(tp: Type): String = f"$tp%-20s ${util.shortClassOfInstance(tp)}%s"
-        devWarning(s"HK subtype check on $tp1 and $tp2, but both don't normalize to polytypes:\n  tp1=${tp_s(ntp1)}\n  tp2=${tp_s(ntp2)}")
-        false
+    def isSub(ntp1: Type, ntp2: Type) = {
+      val defs1 = definitionsBySym(ntp1.typeSymbol)
+      val defs2 = definitionsBySym(ntp2.typeSymbol)
+      (ntp1.withoutAnnotations, ntp2.withoutAnnotations) match {
+        case (TypeRef(_, defs1.AnyClass, _), _)                                     => false                    // avoid some warnings when Nothing/Any are on the other side
+        case (_, TypeRef(_, defs2.NothingClass, _))                                 => false
+        case (pt1: PolyType, pt2: PolyType)                                   => isPolySubType(pt1, pt2)  // @assume both .isHigherKinded (both normalized to PolyType)
+        case (_: PolyType, MethodType(ps, _)) if ps exists (_.tpe.isWildcard) => false                    // don't warn on HasMethodMatching on right hand side
+        case _                                                                =>                          // @assume !(both .isHigherKinded) thus cannot be subtypes
+          def tp_s(tp: Type): String = f"$tp%-20s ${util.shortClassOfInstance(tp)}%s"
+          devWarning(s"HK subtype check on $tp1 and $tp2, but both don't normalize to polytypes:\n  tp1=${tp_s(ntp1)}\n  tp2=${tp_s(ntp2)}")
+          false
+      }
     }
 
-    (    tp1.typeSymbol == NothingClass       // @M Nothing is subtype of every well-kinded type
-      || tp2.typeSymbol == AnyClass           // @M Any is supertype of every well-kinded type (@PP: is it? What about continuations plugin?)
+    val defs1 = definitionsBySym(tp1.typeSymbol)
+    val defs2 = definitionsBySym(tp2.typeSymbol)
+    (    tp1.typeSymbol == defs1.NothingClass       // @M Nothing is subtype of every well-kinded type
+      || tp2.typeSymbol == defs2.AnyClass           // @M Any is supertype of every well-kinded type (@PP: is it? What about continuations plugin?)
       || isSub(tp1.normalize, tp2.normalize) && annotationsConform(tp1, tp2)  // @M! normalize reduces higher-kinded case to PolyType's
     )
   }
@@ -459,8 +465,9 @@ trait TypeComparers {
         else if (sym2.isRefinementClass) retry(tp1, sym2.info)
         else fourthTry
       )
+      val defs = definitionsBySym(sym2)
       sym2 match {
-        case SingletonClass                   => tp1.isStable || fourthTry
+        case defs.SingletonClass                   => tp1.isStable || fourthTry
         case _: ClassSymbol                   => classOnRight
         case _: TypeSymbol if sym2.isDeferred => abstractTypeOnRight(tp2.bounds.lo) || fourthTry
         case _: TypeSymbol                    => retry(tp1.normalize, tp2.normalize)
@@ -535,6 +542,8 @@ trait TypeComparers {
             else if (sym1.isModuleClass) moduleOnLeft
             else sym1.isRefinementClass && retry(sym1.info, tp2)
           )
+          val defs = definitionsBySym(sym1)
+          import defs._
           sym1 match {
             case NothingClass                     => true
             case NullClass                        => nullOnLeft
@@ -555,7 +564,9 @@ trait TypeComparers {
 
   def isWeakSubType(tp1: Type, tp2: Type) =
     tp1.dealiasWiden match {
-      case TypeRef(_, sym1, _) if isNumericValueClass(sym1) =>
+      case TypeRef(_, sym1, _) if definitionsBySym(sym1).isNumericValueClass(sym1) =>
+        val defs = definitionsBySym(sym1)
+        import defs._
         tp2.deconst.dealias match {
           case TypeRef(_, sym2, _) if isNumericValueClass(sym2) =>
             isNumericSubClass(sym1, sym2)
@@ -566,7 +577,7 @@ trait TypeComparers {
         }
       case tv1 @ TypeVar(_, _) =>
         tp2.deconst.dealias match {
-          case TypeRef(_, sym2, _) if isNumericValueClass(sym2) =>
+          case TypeRef(_, sym2, _) if definitionsBySym(sym2).isNumericValueClass(sym2) =>
             tv1.registerBound(tp2, isLowerBound = false, isNumericBound = true)
           case _ =>
             isSubType(tp1, tp2)
@@ -576,7 +587,7 @@ trait TypeComparers {
     }
 
   def isNumericSubType(tp1: Type, tp2: Type) = (
-    isNumericSubClass(primitiveBaseClass(tp1.dealiasWiden), primitiveBaseClass(tp2.dealias))
+    definitionsBySym(tp1.typeSymbol).isNumericSubClass(primitiveBaseClass(tp1.dealiasWiden), primitiveBaseClass(tp2.dealias))
    )
 
   /** If the given type has a primitive class among its base classes,
@@ -585,7 +596,7 @@ trait TypeComparers {
   private def primitiveBaseClass(tp: Type): Symbol = {
     @tailrec def loop(bases: List[Symbol]): Symbol = bases match {
       case Nil     => NoSymbol
-      case x :: xs => if (isPrimitiveValueClass(x)) x else loop(xs)
+      case x :: xs => if (definitionsBySym(x).isPrimitiveValueClass(x)) x else loop(xs)
     }
     loop(tp.baseClasses)
   }

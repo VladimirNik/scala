@@ -9,7 +9,7 @@ trait Erasure {
 
   val global: SymbolTable
   import global._
-  import definitions._
+//  import definitions._
 
   /** An extractor object for generic arrays */
   object GenericArray {
@@ -37,31 +37,39 @@ trait Erasure {
      *  then Some((N, T)) where N is the number of Array constructors enclosing `T`,
      *  otherwise None. Existentials on any level are ignored.
      */
-    def unapply(tp: Type): Option[(Int, Type)] = tp.dealiasWiden match {
-      case TypeRef(_, ArrayClass, List(arg)) =>
-        genericCore(arg) match {
-          case NoType =>
-            unapply(arg) match {
-              case Some((level, core)) => Some((level + 1, core))
-              case None => None
-            }
-          case core =>
-            Some((1, core))
-        }
-      case ExistentialType(tparams, restp) =>
-        unapply(restp)
-      case _ =>
-        None
+    def unapply(tp: Type): Option[(Int, Type)] = {
+      val defs = definitionsBySym(tp.typeSymbol)
+      import defs._
+      tp.dealiasWiden match {
+        case TypeRef(_, ArrayClass, List(arg)) =>
+          genericCore(arg) match {
+            case NoType =>
+              unapply(arg) match {
+                case Some((level, core)) => Some((level + 1, core))
+                case None => None
+              }
+            case core =>
+              Some((1, core))
+          }
+        case ExistentialType(tparams, restp) =>
+          unapply(restp)
+        case _ =>
+          None
+      }
     }
   }
 
   /** Arrays despite their finality may turn up as refined type parents,
    *  e.g. with "tagged types" like Array[Int] with T.
    */
-  protected def unboundedGenericArrayLevel(tp: Type): Int = tp match {
-    case GenericArray(level, core) if !(core <:< AnyRefTpe) => level
-    case RefinedType(ps, _) if ps.nonEmpty                  => logResult(s"Unbounded generic level for $tp is")((ps map unboundedGenericArrayLevel).max)
-    case _                                                  => 0
+  protected def unboundedGenericArrayLevel(tp: Type): Int = {
+    val defs = definitionsBySym(tp.typeSymbol)
+    import defs._
+    tp match {
+      case GenericArray(level, core) if !(core <:< AnyRefTpe) => level
+      case RefinedType(ps, _) if ps.nonEmpty                  => logResult(s"Unbounded generic level for $tp is")((ps map unboundedGenericArrayLevel).max)
+      case _                                                  => 0
+    }
   }
 
   // @M #2585 when generating a java generic signature that includes
@@ -82,6 +90,8 @@ trait Erasure {
   def erasedValueClassArg(tref: TypeRef): Type = {
     assert(!phase.erasedTypes)
     val clazz = tref.sym
+    val defs = definitionsBySym(clazz)
+    import defs._
     if (valueClassIsParametric(clazz)) {
       val underlying = tref.memberType(clazz.derivedValueClassUnbox).resultType
       boxingErasure(underlying)
@@ -113,47 +123,51 @@ trait Erasure {
 
     protected def eraseDerivedValueClassRef(tref: TypeRef): Type = erasedValueClassArg(tref)
 
-    def apply(tp: Type): Type = tp match {
-      case ConstantType(_) =>
-        tp
-      case st: ThisType if st.sym.isPackageClass =>
-        tp
-      case st: SubType =>
-        apply(st.supertype)
-      case tref @ TypeRef(pre, sym, args) =>
-        if (sym == ArrayClass)
-          if (unboundedGenericArrayLevel(tp) == 1) ObjectTpe
-          else if (args.head.typeSymbol.isBottomClass) arrayType(ObjectTpe)
-          else typeRef(apply(pre), sym, args map applyInArray)
-        else if (sym == AnyClass || sym == AnyValClass || sym == SingletonClass) ObjectTpe
-        else if (sym == UnitClass) BoxedUnitTpe
-        else if (sym.isRefinementClass) apply(mergeParents(tp.parents))
-        else if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
-        else if (sym.isClass) eraseNormalClassRef(tref)
-        else apply(sym.info asSeenFrom (pre, sym.owner)) // alias type or abstract type
-      case PolyType(tparams, restpe) =>
-        apply(restpe)
-      case ExistentialType(tparams, restpe) =>
-        apply(restpe)
-      case mt @ MethodType(params, restpe) =>
-        MethodType(
-          cloneSymbolsAndModify(params, ErasureMap.this),
-          if (restpe.typeSymbol == UnitClass) UnitTpe
-          // this replaces each typeref that refers to an argument
-          // by the type `p.tpe` of the actual argument p (p in params)
-          else apply(mt.resultType(mt.paramTypes)))
-      case RefinedType(parents, decls) =>
-        apply(mergeParents(parents))
-      case AnnotatedType(_, atp) =>
-        apply(atp)
-      case ClassInfoType(parents, decls, clazz) =>
-        ClassInfoType(
-          if (clazz == ObjectClass || isPrimitiveValueClass(clazz)) Nil
-          else if (clazz == ArrayClass) ObjectTpe :: Nil
-          else removeLaterObjects(parents map this),
-          decls, clazz)
-      case _ =>
-        mapOver(tp)
+    def apply(tp: Type): Type = {
+      val defs = definitionsBySym(tp.typeSymbol)
+      import defs._
+      tp match {
+        case ConstantType(_) =>
+          tp
+        case st: ThisType if st.sym.isPackageClass =>
+          tp
+        case st: SubType =>
+          apply(st.supertype)
+        case tref @ TypeRef(pre, sym, args) =>
+          if (sym == ArrayClass)
+            if (unboundedGenericArrayLevel(tp) == 1) ObjectTpe
+            else if (args.head.typeSymbol.isBottomClass) arrayType(ObjectTpe)
+            else typeRef(apply(pre), sym, args map applyInArray)
+          else if (sym == AnyClass || sym == AnyValClass || sym == SingletonClass) ObjectTpe
+          else if (sym == UnitClass) BoxedUnitTpe
+          else if (sym.isRefinementClass) apply(mergeParents(tp.parents))
+          else if (sym.isDerivedValueClass) eraseDerivedValueClassRef(tref)
+          else if (sym.isClass) eraseNormalClassRef(tref)
+          else apply(sym.info asSeenFrom (pre, sym.owner)) // alias type or abstract type
+        case PolyType(tparams, restpe) =>
+          apply(restpe)
+        case ExistentialType(tparams, restpe) =>
+          apply(restpe)
+        case mt @ MethodType(params, restpe) =>
+          MethodType(
+            cloneSymbolsAndModify(params, ErasureMap.this),
+            if (restpe.typeSymbol == UnitClass) UnitTpe
+            // this replaces each typeref that refers to an argument
+            // by the type `p.tpe` of the actual argument p (p in params)
+            else apply(mt.resultType(mt.paramTypes)))
+        case RefinedType(parents, decls) =>
+          apply(mergeParents(parents))
+        case AnnotatedType(_, atp) =>
+          apply(atp)
+        case ClassInfoType(parents, decls, clazz) =>
+          ClassInfoType(
+            if (clazz == ObjectClass || isPrimitiveValueClass(clazz)) Nil
+            else if (clazz == ArrayClass) ObjectTpe :: Nil
+            else removeLaterObjects(parents map this),
+            decls, clazz)
+        case _ =>
+          mapOver(tp)
+      }
     }
 
     def applyInArray(tp: Type): Type = tp match {
@@ -209,6 +223,8 @@ trait Erasure {
       specialScalaErasure(tp)
 
   def specialConstructorErasure(clazz: Symbol, tpe: Type): Type = {
+    val defs = definitionsBySym(clazz)
+    import defs._
     tpe match {
       case PolyType(tparams, restpe) =>
         specialConstructorErasure(clazz, restpe)
@@ -251,8 +267,9 @@ trait Erasure {
     /** In java, always take the first parent.
      *  An intersection such as `Object with Trait` erases to Object.
      */
+    //TODO-REFLECT-DEFS can't add custom definitions here
     def mergeParents(parents: List[Type]): Type =
-      if (parents.isEmpty) ObjectTpe
+      if (parents.isEmpty) definitions.ObjectTpe
       else parents.head
   }
 
@@ -280,9 +297,12 @@ trait Erasure {
   }
 
   object boxingErasure extends ScalaErasureMap {
-    override def eraseNormalClassRef(tref: TypeRef) =
+    override def eraseNormalClassRef(tref: TypeRef) = {
+      val defs = definitionsBySym(tref.sym)
+      import defs._
       if (isPrimitiveValueClass(tref.sym)) boxedClass(tref.sym).tpe
       else super.eraseNormalClassRef(tref)
+    }
     override def eraseDerivedValueClassRef(tref: TypeRef) =
       super.eraseNormalClassRef(tref)
   }
@@ -299,7 +319,9 @@ trait Erasure {
    *    not Object, the dominator is Tc.                                        <--- @PP: "which is not Object" not in spec.
    *  - Otherwise, the dominator is the first element of the span.
    */
+  //TODO-REFLECT-DEFS in this method in some cases I can't use custom definitions
   def intersectionDominator(parents: List[Type]): Type = {
+    import definitions._
     if (parents.isEmpty) ObjectTpe
     else {
       val psyms = parents map (_.typeSymbol)
@@ -331,6 +353,8 @@ trait Erasure {
    *   - For a type parameter   : A type bounds type consisting of the erasures of its bounds.
    */
   def transformInfo(sym: Symbol, tp: Type): Type = {
+    val defs = definitionsBySym(sym)
+    import defs._
     if (sym == Object_asInstanceOf)
       sym.info
     else if (sym == Object_isInstanceOf || sym == ArrayClass)

@@ -47,7 +47,7 @@ trait Macros extends MacroRuntimes with Traces with Helpers {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
   import treeInfo.{isRepeatedParamType => _, _}
   import MacrosStats._
 
@@ -137,7 +137,8 @@ trait Macros extends MacroRuntimes with Traces with Helpers {
   object MacroImplBinding {
     def pickleAtom(obj: Any): Tree =
       obj match {
-        case list: List[_] => Apply(Ident(ListModule), list map pickleAtom)
+        //TODO-REFLECT-DEFS - can't get correct definitions
+        case list: List[_] => Apply(Ident(definitions.ListModule), list map pickleAtom)
         case s: String => Literal(Constant(s))
         case d: Double => Literal(Constant(d))
         case b: Boolean => Literal(Constant(b))
@@ -146,7 +147,8 @@ trait Macros extends MacroRuntimes with Traces with Helpers {
 
     def unpickleAtom(tree: Tree): Any =
       tree match {
-        case Apply(list @ Ident(_), args) if list.symbol == ListModule => args map unpickleAtom
+        //TODO-REFLECT-DEFS - can't get correct definitions
+        case Apply(list @ Ident(_), args) if list.symbol == definitions.ListModule => args map unpickleAtom
         case Literal(Constant(s: String)) => s
         case Literal(Constant(d: Double)) => d
         case Literal(Constant(b: Boolean)) => b
@@ -173,11 +175,15 @@ trait Macros extends MacroRuntimes with Traces with Helpers {
       }
 
       def signature: List[List[Fingerprint]] = {
-        def fingerprint(tpe: Type): Fingerprint = tpe.dealiasWiden match {
-          case TypeRef(_, RepeatedParamClass, underlying :: Nil) => fingerprint(underlying)
-          case ExprClassOf(_) => LiftedTyped
-          case TreeType() => LiftedUntyped
-          case _ => Other
+        def fingerprint(tpe: Type): Fingerprint = {
+          val defs = definitionsBySym(tpe.typeSymbol)
+          import defs._
+          tpe.dealiasWiden match {
+            case TypeRef(_, RepeatedParamClass, underlying :: Nil) => fingerprint(underlying)
+            case ExprClassOf(_) => LiftedTyped
+            case TreeType() => LiftedUntyped
+            case _ => Other
+          }
         }
 
         val transformed = transformTypeTagEvidenceParams(macroImplRef, (param, tparam) => tparam)
@@ -255,11 +261,11 @@ trait Macros extends MacroRuntimes with Traces with Helpers {
 
   def bindMacroImpl(macroDef: Symbol, macroImplRef: Tree): Unit = {
     val pickle = MacroImplBinding.pickle(macroImplRef)
-    macroDef withAnnotation AnnotationInfo(MacroImplAnnotation.tpe, List(pickle), Nil)
+    macroDef withAnnotation AnnotationInfo(definitionsBySym(macroDef).MacroImplAnnotation.tpe, List(pickle), Nil)
   }
 
   def loadMacroImplBinding(macroDef: Symbol): Option[MacroImplBinding] =
-    macroDef.getAnnotation(MacroImplAnnotation) collect {
+    macroDef.getAnnotation(definitionsBySym(macroDef).MacroImplAnnotation) collect {
       case AnnotationInfo(_, List(pickle), _) => MacroImplBinding.unpickle(pickle)
     }
 
@@ -280,32 +286,35 @@ trait Macros extends MacroRuntimes with Traces with Helpers {
         runtimeType = runtimeType.substituteTypes(macroImpl.typeParams, targs map (_.tpe))
 
         // Step III. Transform c.prefix.value.XXX to this.XXX and implParam.value.YYY to defParam.YYY
-        def unsigma(tpe: Type): Type =
-          transformTypeTagEvidenceParams(macroImplRef, (param, tparam) => NoSymbol) match {
-            case (implCtxParam :: Nil) :: implParamss =>
-              val implToDef = flatMap2(implParamss, macroDdef.vparamss)(map2(_, _)((_, _))).toMap
-              object UnsigmaTypeMap extends TypeMap {
-                def apply(tp: Type): Type = tp match {
-                  case TypeRef(pre, sym, args) =>
-                    val pre1 = pre match {
-                      case SingleType(SingleType(SingleType(NoPrefix, c), prefix), value) if c == implCtxParam && prefix == MacroContextPrefix && value == ExprValue =>
-                        ThisType(macroDdef.symbol.owner)
-                      case SingleType(SingleType(NoPrefix, implParam), value) if value == ExprValue =>
-                        implToDef get implParam map (defParam => SingleType(NoPrefix, defParam.symbol)) getOrElse pre
-                      case _ =>
-                        pre
-                    }
-                    val args1 = args map mapOver
-                    TypeRef(pre1, sym, args1)
-                  case _ =>
-                    mapOver(tp)
+        def unsigma(tpe: Type): Type = {
+            val defs = definitionsBySym(tpe.typeSymbol)
+            import defs._
+            transformTypeTagEvidenceParams(macroImplRef, (param, tparam) => NoSymbol) match {
+              case (implCtxParam :: Nil) :: implParamss =>
+                val implToDef = flatMap2(implParamss, macroDdef.vparamss)(map2(_, _)((_, _))).toMap
+                object UnsigmaTypeMap extends TypeMap {
+                  def apply(tp: Type): Type = tp match {
+                    case TypeRef(pre, sym, args) =>
+                      val pre1 = pre match {
+                        case SingleType(SingleType(SingleType(NoPrefix, c), prefix), value) if c == implCtxParam && prefix == MacroContextPrefix && value == ExprValue =>
+                          ThisType(macroDdef.symbol.owner)
+                        case SingleType(SingleType(NoPrefix, implParam), value) if value == ExprValue =>
+                          implToDef get implParam map (defParam => SingleType(NoPrefix, defParam.symbol)) getOrElse pre
+                        case _ =>
+                          pre
+                      }
+                      val args1 = args map mapOver
+                      TypeRef(pre1, sym, args1)
+                    case _ =>
+                      mapOver(tp)
+                  }
                 }
-              }
-
-              UnsigmaTypeMap(tpe)
-            case _ =>
-              tpe
-          }
+  
+                UnsigmaTypeMap(tpe)
+              case _ =>
+                tpe
+            }
+        }
 
         unsigma(runtimeType)
       case _ =>
@@ -400,7 +409,7 @@ trait Macros extends MacroRuntimes with Traces with Helpers {
           // wrap argss in c.Expr if necessary (i.e. if corresponding macro impl param is of type c.Expr[T])
           // expand varargs (nb! varargs can apply to any parameter section, not necessarily to the last one)
           val trees = map3(argss, paramss, signature)((args, defParams, implParams) => {
-            val isVarargs = isVarArgsList(defParams)
+            val isVarargs = definitions(typer.context.mirror).isVarArgsList(defParams)
             if (isVarargs) {
               if (defParams.length > args.length + 1) MacroTooFewArgumentsError(expandee)
             } else {

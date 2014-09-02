@@ -13,7 +13,7 @@ import scala.reflect.internal.util.StringOps.{ countAsString, countElementsAsStr
 trait Kinds {
   self: SymbolTable =>
 
-  import definitions._
+//  import definitions._
 
   private type SymPair = ((Symbol, Symbol)) // ((Argument, Parameter))
 
@@ -151,6 +151,9 @@ trait Kinds {
         log("checkKindBoundsHK supplied: "+ arg +" with params "+ hkargs +" from "+ owner)
         log("checkKindBoundsHK under params: "+ underHKParams +" with args "+ withHKArgs)
       }
+
+      val defs = definitionsBySym(arg)
+      import defs._
 
       if (!sameLength(hkargs, hkparams)) {
         // Any and Nothing are kind-overloaded
@@ -326,7 +329,13 @@ trait Kinds {
     private[internal] object StringState {
       def empty: StringState = StringState(Seq())
     }
-    def FromParams(tparams: List[Symbol]): Type = GenPolyType(tparams, AnyTpe)
+    def FromParams(tparams: List[Symbol]): Type = {
+      //TODO-REFLECT-DEFS - can't find required tpe for all cases (only when tparam is not empty)
+      val anyTpe = if (tparams.isEmpty)
+        definitions.AnyTpe
+      else definitionsBySym(tparams(0)).AnyTpe
+      GenPolyType(tparams, anyTpe)
+    }
     def Wildcard: Type                          = WildcardType
   }
   class ProperTypeKind(val bounds: TypeBounds) extends Kind {

@@ -36,7 +36,7 @@ trait TypeDiagnostics {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
 
   /** For errors which are artifacts of the implementation: such messages
    *  indicate that the restriction may be lifted in the future.
@@ -153,7 +153,7 @@ trait TypeDiagnostics {
     def hasParams         = tree.tpe.paramSectionCount > 0
     def preResultString   = if (hasParams) ": " else " of type "
 
-    def patternMessage    = "pattern " + tree.tpe.finalResultType + valueParamsString(tree.tpe)
+    def patternMessage    = "pattern " + tree.tpe.finalResultType + definitionsBySym(sym).valueParamsString(tree.tpe)
     def exprMessage       = "expression of type " + tree.tpe
     def overloadedMessage = s"overloaded method $sym with alternatives:\n" + alternativesString(tree)
     def moduleMessage     = "" + sym
@@ -216,7 +216,7 @@ trait TypeDiagnostics {
                 val suggest = if (isSubtype) "+" else "-"
                 val reqsym  = req.typeSymbol
                 def isJava  = reqsym.isJavaDefined
-                def isScala = reqsym hasTransOwner ScalaPackageClass
+                def isScala = reqsym hasTransOwner definitionsBySym(reqsym).ScalaPackageClass
 
                 val explainFound = "%s %s %s%s, but ".format(
                   arg, op, reqArg,
@@ -270,7 +270,7 @@ trait TypeDiagnostics {
   // For found/required errors where AnyRef would have sufficed:
   // explain in greater detail.
   def explainAnyVsAnyRef(found: Type, req: Type): String = {
-    if (AnyRefTpe <:< req) notAnyRefMessage(found) else ""
+    if (definitionsBySym(req.typeSymbol).AnyRefTpe <:< req) notAnyRefMessage(found) else ""
   }
 
   // TODO - figure out how to avoid doing any work at all
@@ -307,6 +307,8 @@ trait TypeDiagnostics {
   }
 
   case class TypeDiag(tp: Type, sym: Symbol) extends Ordered[TypeDiag] {
+    val defs = definitionsBySym(sym)
+    import defs._
     // save the name because it will be mutated until it has been
     // distinguished from the other types in the same error message
     private val savedName = sym.name
@@ -435,6 +437,7 @@ trait TypeDiagnostics {
 
   trait TyperDiagnostics {
     self: Typer =>
+    import defs._
 
     private def contextError(context0: Analyzer#Context, pos: Position, msg: String) = context0.error(pos, msg)
     private def contextError(context0: Analyzer#Context, pos: Position, err: Throwable) = context0.error(pos, err)

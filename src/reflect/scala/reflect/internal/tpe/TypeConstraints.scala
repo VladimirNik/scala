@@ -8,7 +8,7 @@ import generic.Clearable
 
 private[internal] trait TypeConstraints {
   self: SymbolTable =>
-  import definitions._
+//  import definitions._
 
   /** A log of type variable with their original constraints. Used in order
     *  to undo constraints in the case of isSubType/isSameType failure.
@@ -61,8 +61,9 @@ private[internal] trait TypeConstraints {
   /** @PP: Unable to see why these apparently constant types should need vals
     *  in every TypeConstraint, I lifted them out.
     */
-  private lazy val numericLoBound = IntTpe
-  private lazy val numericHiBound = intersectionType(List(ByteTpe, CharTpe), ScalaPackageClass)
+  //TODO-REFLECT can't add Definitions here
+  private lazy val numericLoBound = definitions.IntTpe
+  private lazy val numericHiBound = intersectionType(List(definitions.ByteTpe, definitions.CharTpe), definitions.ScalaPackageClass)
 
   /** A class expressing upper and lower bounds constraints of type variables,
     * as well as their instantiations.
@@ -95,6 +96,8 @@ private[internal] trait TypeConstraints {
     def avoidWiden: Boolean = avoidWidening
 
     def addLoBound(tp: Type, isNumericBound: Boolean = false) {
+      val defs = definitionsBySym(tp.typeSymbol)
+      import defs._
       // For some reason which is still a bit fuzzy, we must let Nothing through as
       // a lower bound despite the fact that Nothing is always a lower bound.  My current
       // supposition is that the side-effecting type constraint accumulation mechanism
@@ -125,6 +128,8 @@ private[internal] trait TypeConstraints {
     }
 
     def addHiBound(tp: Type, isNumericBound: Boolean = false) {
+      val defs = definitionsBySym(tp.typeSymbol)
+      import defs._
       // My current test case only demonstrates the need to let Nothing through as
       // a lower bound, but I suspect the situation is symmetrical.
       val mustConsider = tp.typeSymbol match {
@@ -210,6 +215,8 @@ private[internal] trait TypeConstraints {
           }
         })
         if (!cyclic) {
+          val defs = definitionsBySym(bound.typeSymbol)
+          import defs._
           if (up) {
             if (bound.typeSymbol != AnyClass) {
               debuglog(s"$tvar addHiBound $bound.instantiateTypeParams($tparams, $tvars)")

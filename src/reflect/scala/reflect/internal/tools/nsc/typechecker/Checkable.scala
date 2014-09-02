@@ -47,7 +47,7 @@ trait Checkable {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
   import CheckabilityChecker.{ isNeverSubType, isNeverSubClass }
 
   /** The applied type of class 'to' after inferring anything
@@ -96,9 +96,11 @@ trait Checkable {
        uncheckedOk(arg)                                 // @unchecked T
     || isUnwarnableTypeArgSymbol(arg.typeSymbolDirect)  // has to be direct: see pos/t1439
   )
-  private def uncheckedOk(tp: Type) = tp hasAnnotation UncheckedClass
+  private def uncheckedOk(tp: Type) = tp hasAnnotation definitionsBySym(tp.typeSymbol).UncheckedClass
 
   private def typeArgsInTopLevelType(tp: Type): List[Type] = {
+    val defs = definitionsBySym(tp.typeSymbol)
+    import defs.ArrayClass
     val tps = tp match {
       case RefinedType(parents, _)              => parents flatMap typeArgsInTopLevelType
       case TypeRef(_, ArrayClass, arg :: Nil)   => typeArgsInTopLevelType(arg)
@@ -112,6 +114,8 @@ trait Checkable {
   private class CheckabilityChecker(val X: Type, val P: Type) {
     def Xsym = X.typeSymbol
     def Psym = P.typeSymbol
+    val defs = definitionsBySym(Xsym)
+    import defs.{AnyClass, classExistentialType}
     def XR   = if (Xsym == AnyClass) classExistentialType(Psym) else propagateKnownTypes(X, Psym)
     // sadly the spec says (new java.lang.Boolean(true)).isInstanceOf[scala.Boolean]
     def P1   = X matchesPattern P
@@ -205,7 +209,7 @@ trait Checkable {
     private def isEffectivelyFinal(sym: Symbol): Boolean = (
       // initialization important
       sym.initialize.isEffectivelyFinalOrNotOverridden || (
-        settings.future && isTupleSymbol(sym) // SI-7294 step into the future and treat TupleN as final.
+        settings.future && definitionsBySym(sym).isTupleSymbol(sym) // SI-7294 step into the future and treat TupleN as final.
       )
     )
 
@@ -244,14 +248,18 @@ trait Checkable {
 
     def isUncheckable(P0: Type) = !isCheckable(P0)
 
-    def isCheckable(P0: Type): Boolean = (
-      uncheckedOk(P0) || (P0.widen match {
-        case TypeRef(_, NothingClass | NullClass | AnyValClass, _) => false
-        case RefinedType(_, decls) if !decls.isEmpty               => false
-        case RefinedType(parents, _)                               => parents forall isCheckable
-        case p                                                     => new CheckabilityChecker(AnyTpe, p) isCheckable
-      })
-    )
+    def isCheckable(P0: Type): Boolean = {
+      val defs = definitionsBySym(P0.typeSymbol)
+      import defs._
+      (
+        uncheckedOk(P0) || (P0.widen match {
+          case TypeRef(_, NothingClass | NullClass | AnyValClass, _) => false
+          case RefinedType(_, decls) if !decls.isEmpty               => false
+          case RefinedType(parents, _)                               => parents forall isCheckable
+          case p                                                     => new CheckabilityChecker(AnyTpe, p) isCheckable
+        })
+       )
+    }
 
     /** TODO: much better error positions.
      *  Kind of stuck right now because they just pass us the one tree.
@@ -267,6 +275,8 @@ trait Checkable {
 
       def PString = if (P eq P0) P.toString else s"$P (the underlying of $P0)"
 
+      val defs = definitionsBySym(P.typeSymbol)
+      import defs._
       P match {
         // Prohibit top-level type tests for these, but they are ok nested (e.g. case Foldable[Nothing] => ... )
         case TypeRef(_, NothingClass | NullClass | AnyValClass, _) =>

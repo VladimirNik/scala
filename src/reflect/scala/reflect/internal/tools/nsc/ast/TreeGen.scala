@@ -18,7 +18,7 @@ abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
   val global: TypecheckerRequirements
 
   import global._
-  import definitions._
+//  import definitions._
 
   /** Builds a fully attributed, synthetic wildcard import node.
    */
@@ -50,7 +50,7 @@ abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
 
   // wrap the given expression in a SoftReference so it can be gc-ed
   def mkSoftRef(expr: Tree): Tree = atPos(expr.pos) {
-    val constructor = SoftReferenceClass.info.nonPrivateMember(nme.CONSTRUCTOR).suchThat(_.paramss.flatten.size == 1)
+    val constructor = definitionsBySym(expr.symbol).SoftReferenceClass.info.nonPrivateMember(nme.CONSTRUCTOR).suchThat(_.paramss.flatten.size == 1)
     NewFromConstructor(constructor, expr)
   }
 
@@ -69,11 +69,13 @@ abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
   def mkRuntimeCall(meth: Name, args: List[Tree]): Tree =
     mkRuntimeCall(meth, Nil, args)
 
+  //TODO-REFLECT-DEFS - can't get required info for ScalaRunTimeModule all time
   def mkRuntimeCall(meth: Name, targs: List[Type], args: List[Tree]): Tree =
-    mkMethodCall(ScalaRunTimeModule, meth, targs, args)
+    mkMethodCall(definitions.ScalaRunTimeModule, meth, targs, args)
 
+  //TODO-REFLECT-DEFS - can't get required info for ScalaRunTimeModule all time
   def mkSysErrorCall(message: String): Tree =
-    mkMethodCall(Sys_error, List(Literal(Constant(message))))
+    mkMethodCall(definitions.Sys_error, List(Literal(Constant(message))))
 
   /** A creator for a call to a scala.reflect.Manifest or ClassManifest factory method.
    *
@@ -83,17 +85,22 @@ abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
    *  @param    args          value arguments
    *  @return   the tree
    */
+    //TODO-REFLECT-DEFS - can't get required info for ScalaRunTimeModule if tparg is empty
   def mkManifestFactoryCall(full: Boolean, constructor: String, tparg: Type, args: List[Tree]): Tree =
-    mkMethodCall(
-      if (full) FullManifestModule else PartialManifestModule,
-      newTermName(constructor),
-      List(tparg),
-      args
-    )
+    {
+      val defs = definitionsBySym(tparg.typeSymbol)
+      import defs._
+      mkMethodCall(
+        if (full) FullManifestModule else PartialManifestModule,
+        newTermName(constructor),
+        List(tparg),
+        args
+      )
+    }
 
   /** Make a synchronized block on 'monitor'. */
   def mkSynchronized(monitor: Tree, body: Tree): Tree =
-    Apply(Select(monitor, Object_synchronized), List(body))
+    Apply(Select(monitor, definitionsBySym(monitor.symbol).Object_synchronized), List(body))
 
   def mkAppliedTypeForCase(clazz: Symbol): Tree = {
     val numParams = clazz.typeParams.size
@@ -111,7 +118,7 @@ abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
     atPos(tree.pos) { Typed(tree, Ident(tpnme.WILDCARD_STAR)) }
 
   def paramToArg(vparam: Symbol): Tree =
-    paramToArg(Ident(vparam), isRepeatedParamType(vparam.tpe))
+    paramToArg(Ident(vparam), definitionsBySym(vparam).isRepeatedParamType(vparam.tpe))
 
   def paramToArg(vparam: ValDef): Tree =
     paramToArg(Ident(vparam.name), treeInfo.isRepeatedParamType(vparam.tpt))
@@ -128,6 +135,8 @@ abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
    *  apply the element type directly.
    */
   def mkWrapArray(tree: Tree, elemtp: Type) = {
+    val defs = definitionsBySym(elemtp.typeSymbol)
+    import defs._
     mkMethodCall(
       PredefModule,
       wrapArrayMethodName(elemtp),
@@ -162,11 +171,14 @@ abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
   /** Generate a cast for tree Tree representing Array with
    *  elem type elemtp to expected type pt.
    */
-  def mkCastArray(tree: Tree, elemtp: Type, pt: Type) =
+  def mkCastArray(tree: Tree, elemtp: Type, pt: Type) = {
+    val defs = definitionsBySym(elemtp.typeSymbol)
+    import defs._
     if (elemtp.typeSymbol == AnyClass && isPrimitiveValueType(tree.tpe.typeArgs.head))
       mkCast(mkRuntimeCall(nme.toObjectArray, List(tree)), pt)
     else
       mkCast(tree, pt)
+  }
 
   /** Translate names in Select/Ident nodes to type names.
    */

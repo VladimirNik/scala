@@ -5,7 +5,7 @@ trait GenTrees {
   self: Reifier =>
 
   import global._
-  import definitions._
+//  import definitions._
 
   // unfortunately, these are necessary to reify AnnotatedTypes
   // I'd gladly get rid of them, but I don't fancy making a metaprogramming API that doesn't work with annotated types
@@ -87,7 +87,7 @@ trait GenTrees {
         // see `Metalevels` for more info about metalevel breaches
         // and about how we deal with splices that contain them
         val isMetalevelBreach = splicee exists (sub => sub.hasSymbolField && sub.symbol != NoSymbol && sub.symbol.metalevel > 0)
-        val isRuntimeEval = splicee exists (sub => sub.hasSymbolField && sub.symbol == ExprSplice)
+        val isRuntimeEval = splicee exists (sub => sub.hasSymbolField && sub.symbol == definitionsBySym(sub.symbol).ExprSplice)
         if (isMetalevelBreach || isRuntimeEval) {
           // we used to convert dynamic splices into runtime evals transparently, but we no longer do that
           // why? see comments in `Metalevels`

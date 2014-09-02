@@ -19,7 +19,7 @@ trait ContextErrors {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
 
   sealed abstract class AbsTypeError extends Throwable {
     def errPos: Position
@@ -100,6 +100,9 @@ trait ContextErrors {
   }
 
   def notAnyRefMessage(found: Type): String = {
+    val defs = definitionsBySym(found.typeSymbol)
+    import defs._
+
     val tp        = found.widen
     def name      = tp.typeSymbol.nameString
     def parents   = tp.parents filterNot isTrivialTopType
@@ -130,6 +133,8 @@ trait ContextErrors {
 
     object TyperErrorGen {
       implicit val contextTyperErrorGen: Context = infer.getContext
+      val defs = definitions(contextTyperErrorGen.mirror)
+      import defs._
 
       def UnstableTreeError(tree: Tree) = {
         def addendum = {
@@ -407,7 +412,7 @@ trait ContextErrors {
 
       //typedFunction
       def MaxFunctionArityError(fun: Tree) = {
-        issueNormalTypeError(fun, "implementation restricts functions to " + definitions.MaxFunctionArity + " parameters")
+        issueNormalTypeError(fun, "implementation restricts functions to " + MaxFunctionArity + " parameters")
         setError(fun)
       }
 
@@ -550,7 +555,7 @@ trait ContextErrors {
 
       //doTypedApply - patternMode
       def TooManyArgsPatternError(fun: Tree) =
-        NormalTypeError(fun, "too many arguments for unapply pattern, maximum = "+definitions.MaxTupleArity)
+        NormalTypeError(fun, "too many arguments for unapply pattern, maximum = "+MaxTupleArity)
 
       def BlackboxExtractorExpansion(fun: Tree) =
         NormalTypeError(fun, "extractor macros can only be whitebox")
@@ -1191,7 +1196,7 @@ trait ContextErrors {
   trait ImplicitsContextErrors {
     self: ImplicitSearch =>
 
-    import definitions._
+//    import definitions._
 
     def AmbiguousImplicitError(info1: ImplicitInfo, info2: ImplicitInfo,
                                pre1: String, pre2: String, trailer: String)
@@ -1205,6 +1210,8 @@ trait ContextErrors {
           val found :: req :: _ = pt.typeArgs
           def explanation = {
             val sym = found.typeSymbol
+            val defs = definitionsBySym(sym)
+            import defs._
             // Explain some common situations a bit more clearly. Some other
             // failures which have nothing to do with implicit conversions
             // per se, but which manifest as implicit conversion conflicts

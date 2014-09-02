@@ -9,7 +9,7 @@ abstract class DefaultMacroCompiler extends Resolvers
   import global._
   import analyzer._
   import treeInfo._
-  import definitions._
+//  import definitions._
   val runDefinitions = currentRun.runDefinitions
   import runDefinitions.{Predef_???, _}
 
@@ -70,6 +70,7 @@ abstract class DefaultMacroCompiler extends Resolvers
     }
 
     def reportMostAppropriateFailure() = {
+      import typer.defs._
       typer.silent(_.typedTypeConstructor(maybeBundleRef)) match {
         case SilentResultValue(result) if looksLikeMacroBundleType(result.tpe) =>
           val bundle = result.tpe.typeSymbol

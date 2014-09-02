@@ -21,7 +21,7 @@ trait Namers extends MethodSynthesis {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
 
   var _lockedCount = 0
   def lockedCount = this._lockedCount
@@ -56,6 +56,9 @@ trait Namers extends MethodSynthesis {
 
   abstract class Namer(val context: Context) extends MethodSynth with NamerContextErrors { thisNamer =>
     val namerMirror = context.mirror
+    val defs = definitions(namerMirror)
+    import defs._    
+
     //val namerMirror: Mirror = if (useContextMirror) context.mirror else rootMirror
 
     // overridden by the presentation compiler

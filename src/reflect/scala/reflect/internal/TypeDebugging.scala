@@ -12,7 +12,7 @@ import util._
 trait TypeDebugging {
   self: SymbolTable =>
 
-  import definitions._
+//  import definitions._
 
   /** There's a whole lot of implementation detail which is nothing but noise when
    *  you are trying to see what's going on. This is my attempt to filter it out.
@@ -24,17 +24,21 @@ trait TypeDebugging {
     }
     def skipRefTree(t: RefTree) = t match {
       case Select(Select(Ident(nme.ROOTPKG), nme.scala_), name) if skipScalaName(name) => true
-      case Select(sel, name) if sel.symbol == ScalaPackage && skipScalaName(name)      => true
+      case Select(sel, name) if sel.symbol == definitionsBySym(sel.symbol).ScalaPackage && skipScalaName(name)      => true
       case Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR)              => true
       case Ident(nme.ROOTPKG)                                                          => true
       case _                                                                           => skipSym(t.symbol)
     }
-    def skipSym(sym: Symbol): Boolean = sym match {
-      case null                    => false
-      case NothingClass | AnyClass => true
-      case PredefModule            => true
-      case ObjectClass             => true
-      case _                       => sym.hasPackageFlag
+    def skipSym(sym: Symbol): Boolean = {
+      val defs = definitionsBySym(sym)
+      import defs._
+      sym match {
+        case null                    => false
+        case NothingClass | AnyClass => true
+        case PredefModule            => true
+        case ObjectClass             => true
+        case _                       => sym.hasPackageFlag
+      }
     }
     def skipType(tpe: Type): Boolean = (tpe eq null) || skipSym(tpe.typeSymbolDirect)
 

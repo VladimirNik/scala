@@ -17,7 +17,7 @@ trait Unapplies extends ast.TreeDSL {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
   import CODE.{ CASE => _, _ }
   import treeInfo.{ isRepeatedParamType, isByNameParamType }
 
@@ -38,7 +38,7 @@ trait Unapplies extends ast.TreeDSL {
   /** Filters out unapplies with multiple (non-implicit) parameter lists,
    *  as they cannot be used as extractors
    */
-  def unapplyMember(tp: Type): Symbol = directUnapplyMember(tp) filter (sym => !hasMultipleNonImplicitParamLists(sym))
+  def unapplyMember(tp: Type): Symbol = directUnapplyMember(tp) filter (sym => !definitionsBySym(tp.typeSymbol).hasMultipleNonImplicitParamLists(sym))
 
   object HasUnapply {
     def unapply(tp: Type): Option[Symbol] = unapplyMember(tp).toOption
@@ -97,7 +97,7 @@ trait Unapplies extends ast.TreeDSL {
   def caseModuleDef(cdef: ClassDef): ModuleDef = {
     val params = constrParamss(cdef)
     def inheritFromFun = !cdef.mods.hasAbstractFlag && cdef.tparams.isEmpty && (params match {
-      case List(ps) if ps.length <= MaxFunctionArity => true
+      case List(ps) if ps.length <= definitions.MaxFunctionArity => true
       case _ => false
     })
     def createFun = {
@@ -149,7 +149,8 @@ trait Unapplies extends ast.TreeDSL {
       case _                                                          => nme.unapply
     }
     val cparams   = List(ValDef(Modifiers(PARAM | SYNTHETIC), unapplyParamName, classType(cdef, tparams), EmptyTree))
-    val ifNull    = if (constrParamss(cdef).head.isEmpty) FALSE else REF(NoneModule)
+    //TODO-REFLECT-DEFS - I think we can't get symbol based on cdef here
+    val ifNull    = if (constrParamss(cdef).head.isEmpty) FALSE else REF(definitionsBySym(cdef.symbol).NoneModule)
     val body      = nullSafe({ case Ident(x) => caseClassUnapplyReturnValue(x, cdef) }, ifNull)(Ident(unapplyParamName))
 
     atPos(cdef.pos.focus)(

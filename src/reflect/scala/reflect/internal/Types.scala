@@ -85,7 +85,7 @@ trait Types
   with tpe.FindMembers
   with util.Collections { self: SymbolTable =>
 
-  import definitions._
+//  import definitions._
   import TypesStats._
 
   private var explainSwitch = false
@@ -268,7 +268,7 @@ trait Types
     def takesTypeArgs: Boolean = this.isHigherKinded
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
-    final def isStable: Boolean = definitions isStable this
+    final def isStable: Boolean = definitionsBySym(typeSymbol) isStable this
 
     /** Is this type dangerous (i.e. it might contain conflicting
      *  type information when empty, so that it can be constructed
@@ -276,7 +276,7 @@ trait Types
      *  type of the form T_1 with T_n { decls }, where one of the
      *  T_i (i > 1) is an abstract type.
      */
-    final def isVolatile: Boolean = definitions isVolatile this
+    final def isVolatile: Boolean = definitionsBySym(typeSymbol) isVolatile this
 
     /** Is this type a structural refinement type (it ''refines'' members that have not been inherited) */
     def isStructuralRefinement: Boolean = false
@@ -399,7 +399,8 @@ trait Types
     /** For a class with nonEmpty parents, the first parent.
      *  Otherwise some specific fixed top type.
      */
-    def firstParent = if (parents.nonEmpty) parents.head else ObjectTpe
+    //TODO-REFLECT-DEFS is correct to use here typeSymbol?
+    def firstParent = if (parents.nonEmpty) parents.head else definitionsBySym(this.typeSymbol).ObjectTpe
 
     /** For a typeref or single-type, the prefix of the normalized type (@see normalize).
      *  NoType for all other types. */
@@ -436,7 +437,7 @@ trait Types
 
     /** For a curried/nullary method or poly type its non-method result type,
      *  the type itself for all other types */
-    final def finalResultType: Type = definitions finalResultType this
+    final def finalResultType: Type = definitionsBySym(typeSymbol) finalResultType this
 
     /** For a method type, the number of its value parameter sections,
      *  0 for all other types */
@@ -654,7 +655,7 @@ trait Types
       try {
         val trivial = (
              this.isTrivial
-          || phase.erasedTypes && pre.typeSymbol != ArrayClass
+          || phase.erasedTypes && pre.typeSymbol != definitionsBySym(pre.typeSymbol).ArrayClass
           || skipPrefixOf(pre, clazz)
         )
         if (trivial) this
@@ -923,7 +924,7 @@ trait Types
      */
     override final def toString: String = {
       // see comments to internal#Symbol.typeSignature for an explanation why this initializes
-      if (!isCompilerUniverse) fullyInitializeType(this)
+      if (!isCompilerUniverse) definitionsBySym(typeSymbol).fullyInitializeType(this)
       typeToString(this)
     }
 
@@ -1323,9 +1324,10 @@ trait Types
   final class UniqueTypeBounds(lo: Type, hi: Type) extends TypeBounds(lo, hi)
 
   object TypeBounds extends TypeBoundsExtractor {
-    def empty: TypeBounds           = apply(NothingTpe, AnyTpe)
-    def upper(hi: Type): TypeBounds = apply(NothingTpe, hi)
-    def lower(lo: Type): TypeBounds = apply(lo, AnyTpe)
+    //TODO-REFLECT-DEFS can't get NothingTpe, AnyTpe, no info to get correct definitions
+    def empty: TypeBounds           = apply(definitions.NothingTpe, definitions.AnyTpe)
+    def upper(hi: Type): TypeBounds = apply(definitionsBySym(hi.typeSymbol).NothingTpe, hi)
+    def lower(lo: Type): TypeBounds = apply(lo, definitionsBySym(lo.typeSymbol).AnyTpe)
     def apply(lo: Type, hi: Type): TypeBounds = {
       unique(new UniqueTypeBounds(lo, hi)).asInstanceOf[TypeBounds]
     }
@@ -1408,9 +1410,9 @@ trait Types
       typeSymbol.isAnonOrRefinementClass && (decls exists symbolIsPossibleInRefinement)
 
     protected def shouldForceScope = settings.debug || parents.isEmpty || !decls.isEmpty
-    protected def initDecls        = fullyInitializeScope(decls)
+    protected def initDecls        = definitionsBySym(typeSymbol).fullyInitializeScope(decls)
     protected def scopeString      = if (shouldForceScope) initDecls.mkString("{", "; ", "}") else ""
-    override def safeToString      = parentsString(parents) + scopeString
+    override def safeToString      = definitionsBySym(typeSymbol).parentsString(parents) + scopeString
   }
 
   protected def computeBaseClasses(tpe: Type): List[Symbol] = {
@@ -1723,7 +1725,7 @@ trait Types
     private def classInfo(tparam: Symbol): ClassInfoType =
       tparam.owner.info.resultType match {
         case ci: ClassInfoType => ci
-        case _ => classInfo(ObjectClass) // something's wrong; fall back to safe value
+        case _ => classInfo(definitionsBySym(tparam).ObjectClass) // something's wrong; fall back to safe value
                                          // (this can happen only for erroneous programs).
       }
 
@@ -1815,7 +1817,7 @@ trait Types
    */
   abstract case class ConstantType(value: Constant) extends SingletonType with ConstantTypeApi {
     override def underlying: Type = value.tpe
-    assert(underlying.typeSymbol != UnitClass)
+    assert(underlying.typeSymbol != definitionsBySym(underlying.typeSymbol).UnitClass)
     override def isTrivial: Boolean = true
     override def deconst: Type = underlying.deconst
     override def safeToString: String =
@@ -1923,7 +1925,7 @@ trait Types
     // TypeRefs w/o type params that occur in java signatures/code are considered raw types, and are
     // represented as existential types.
     override def isHigherKinded = (typeParams ne Nil)
-    override def typeParams     = if (isDefinitionsInitialized) sym.typeParams else sym.unsafeTypeParams
+    override def typeParams     = if (definitionsBySym(sym).isDefinitionsInitialized) sym.typeParams else sym.unsafeTypeParams
     private def isRaw           = !phase.erasedTypes && isRawIfWithoutArgs(sym)
 
     override def instantiateTypeParams(formals: List[Symbol], actuals: List[Type]): Type =
@@ -1996,7 +1998,7 @@ trait Types
     if (basetypeRecursions < LogPendingBaseTypesThreshold)
       tpe.relativeInfo.baseType(clazz)
     else if (pendingBaseTypes contains tpe)
-      if (clazz == AnyClass) clazz.tpe else NoType
+      if (clazz == definitionsBySym(clazz).AnyClass) clazz.tpe else NoType
     else
       try {
         pendingBaseTypes += tpe
@@ -2122,6 +2124,8 @@ trait Types
    * @M: a higher-kinded type is represented as a TypeRef with sym.typeParams.nonEmpty, but args.isEmpty
    */
   abstract case class TypeRef(pre: Type, sym: Symbol, args: List[Type]) extends UniqueType with TypeRefApi {
+    val defs = definitionsBySym(sym)
+    import defs._
     private var trivial: ThreeValue = UNKNOWN
     override def isTrivial: Boolean = {
       if (trivial == UNKNOWN)
@@ -2355,7 +2359,7 @@ trait Types
       if (!isValidForBaseClasses(period)) {
         tpe.parentsCache = tpe.thisInfo.parents map tpe.transform
       } else if (tpe.parentsCache == null) { // seems this can happen if things are corrupted enough, see #2641
-        tpe.parentsCache = List(AnyTpe)
+        tpe.parentsCache = List(definitionsBySym(tpe.typeSymbol).AnyTpe)
       }
     }
   }
@@ -2750,9 +2754,12 @@ trait Types
   }
 
   object ArrayTypeRef {
-    def unapply(tp: Type) = tp match {
-      case TypeRef(_, ArrayClass, arg :: Nil) => Some(arg)
-      case _                                  => None
+    def unapply(tp: Type) = {
+      val defs = definitionsBySym(tp.typeSymbol)
+      tp match {
+        case TypeRef(_, defs.ArrayClass, arg :: Nil) => Some(arg)
+        case _                                  => None
+      }
     }
   }
 
@@ -2883,7 +2890,8 @@ trait Types
                                origin: Type,
     var constr: TypeConstraint
   ) extends Type {
-
+    val defs = definitionsBySym(origin.typeSymbol)
+    import defs._
     // We don't want case class equality/hashing as TypeVar-s are mutable,
     // and TypeRefs based on them get wrongly `uniqued` otherwise. See SI-7226.
     override def hashCode(): Int = System.identityHashCode(this)
@@ -3417,7 +3425,7 @@ trait Types
   /** the canonical creator for a refined type with a given scope */
   def refinedType(parents: List[Type], owner: Symbol, decls: Scope, pos: Position): Type = {
     if (phase.erasedTypes)
-      if (parents.isEmpty) ObjectTpe else parents.head
+      if (parents.isEmpty) definitionsBySym(owner).ObjectTpe else parents.head
     else {
       val clazz = owner.newRefinementClass(pos)
       val result = RefinedType(parents, decls, clazz)
@@ -3532,6 +3540,9 @@ trait Types
 
   /** A creator for type applications */
   def appliedType(tycon: Type, args: List[Type]): Type = {
+    val defs = definitionsBySym(tycon.typeSymbol)
+    import defs._
+
     if (args.isEmpty)
       return tycon //@M! `if (args.isEmpty) tycon' is crucial (otherwise we create new types in phases after typer and then they don't get adapted (??))
 
@@ -3766,7 +3777,7 @@ trait Types
     && isRawIfWithoutArgs(sym)
   )
 
-  def singletonBounds(hi: Type) = TypeBounds.upper(intersectionType(List(hi, SingletonClass.tpe)))
+  def singletonBounds(hi: Type) = TypeBounds.upper(intersectionType(List(hi, definitionsBySym(hi.typeSymbol).SingletonClass.tpe)))
 
   /**
    * A more persistent version of `Type#memberType` which does not require
@@ -3878,7 +3889,7 @@ trait Types
 
     def check(tp1: Type, tp2: Type) = (
       if (tp1.typeSymbol.isClass && tp1.typeSymbol.hasFlag(FINAL))
-        tp1 <:< tp2 || isNumericValueClass(tp1.typeSymbol) && isNumericValueClass(tp2.typeSymbol)
+        tp1 <:< tp2 || definitionsBySym(tp1.typeSymbol).isNumericValueClass(tp1.typeSymbol) && definitionsBySym(tp2.typeSymbol).isNumericValueClass(tp2.typeSymbol)
       else tp1.baseClasses forall (bc =>
         tp2.baseTypeIndex(bc) < 0 || isConsistent(tp1.baseType(bc), tp2.baseType(bc)))
     )
@@ -4305,8 +4316,8 @@ trait Types
           val tp1 = sym1.tpe
           val tp2 = sym2.tpe
           (tp1 =:= tp2 ||
-           syms1isJava && tp2.typeSymbol == ObjectClass && tp1.typeSymbol == AnyClass ||
-           syms2isJava && tp1.typeSymbol == ObjectClass && tp2.typeSymbol == AnyClass) &&
+           syms1isJava && tp2.typeSymbol == definitionsBySym(sym1).ObjectClass && tp1.typeSymbol == definitionsBySym(sym1).AnyClass ||
+           syms2isJava && tp1.typeSymbol == definitionsBySym(sym2).ObjectClass && tp2.typeSymbol == definitionsBySym(sym2).AnyClass) &&
           matchingParams(rest1, rest2, syms1isJava, syms2isJava)
       }
   }
@@ -4368,6 +4379,9 @@ trait Types
       val argss = tps map (_.normalize.typeArgs) // symbol equality (of the tp in tps) was checked using typeSymbol, which normalizes, so should normalize before retrieving arguments
       val capturedParams = new ListBuffer[Symbol]
       try {
+        val defs = definitionsBySym(sym)
+        import defs._
+
         if (sym == ArrayClass && phase.erasedTypes) {
           // special treatment for lubs of array types after erasure:
           // if argss contain one value type and some other type, the lub is Object
@@ -4459,7 +4473,7 @@ trait Types
   def isJavaVarargsAncestor(clazz: Symbol) = (
        clazz.isClass
     && clazz.isJavaDefined
-    && (clazz.info.nonPrivateDecls exists isJavaVarArgsMethod)
+    && {val defs = definitionsBySym(clazz); import defs._; clazz.info.nonPrivateDecls exists isJavaVarArgsMethod}
   )
   def inheritsJavaVarArgsMethod(clazz: Symbol) =
     clazz.thisType.baseClasses exists isJavaVarargsAncestor
@@ -4519,22 +4533,30 @@ trait Types
   }
 
   def isUnboundedGeneric(tp: Type) = tp match {
-    case t @ TypeRef(_, sym, _) => sym.isAbstractType && !(t <:< AnyRefTpe)
+    case t @ TypeRef(_, sym, _) => sym.isAbstractType && !(t <:< definitionsBySym(tp.typeSymbol).AnyRefTpe)
     case _                      => false
   }
-  def isBoundedGeneric(tp: Type) = tp match {
-    case TypeRef(_, sym, _) if sym.isAbstractType => (tp <:< AnyRefTpe)
-    case TypeRef(_, sym, _)                       => !isPrimitiveValueClass(sym)
-    case _                                        => false
+  def isBoundedGeneric(tp: Type) = {
+    val defs = definitionsBySym(tp.typeSymbol)
+    import defs._
+    tp match {
+      case TypeRef(_, sym, _) if sym.isAbstractType => (tp <:< AnyRefTpe)
+      case TypeRef(_, sym, _)                       => !isPrimitiveValueClass(sym)
+      case _                                        => false
+    }
   }
   // Add serializable to a list of parents, unless one of them already is
   def addSerializable(ps: Type*): List[Type] = (
     if (ps exists typeIsSubTypeOfSerializable) ps.toList
-    else (ps :+ SerializableTpe).toList
+    //TODO-REFLECT-DEfS - can't get SerializableTpe from correct definition
+    else (ps :+ definitions.SerializableTpe).toList
   )
 
   /** Adds the @uncheckedBound annotation if the given `tp` has type arguments */
   final def uncheckedBounds(tp: Type): Type = {
+    val defs = definitionsBySym(tp.typeSymbol)
+    import defs._
+
     if (tp.typeArgs.isEmpty || UncheckedBoundsClass == NoSymbol) tp // second condition for backwards compatibilty with older scala-reflect.jar
     else tp.withAnnotation(AnnotationInfo marker UncheckedBoundsClass.tpe)
   }
@@ -4542,15 +4564,18 @@ trait Types
   /** Members of the given class, other than those inherited
    *  from Any or AnyRef.
    */
-  def nonTrivialMembers(clazz: Symbol): Scope = clazz.info.members filterNot isUniversalMember
+  def nonTrivialMembers(clazz: Symbol): Scope = clazz.info.members filterNot definitionsBySym(clazz).isUniversalMember
 
   /** Members which can be imported into other scopes.
    */
-  def importableMembers(pre: Type): Scope = pre.members filter isImportable
+  def importableMembers(pre: Type): Scope = pre.members filter definitionsBySym(pre.typeSymbol).isImportable
 
-  def objToAny(tp: Type): Type =
+  def objToAny(tp: Type): Type = {
+    val defs = definitionsBySym(tp.typeSymbol)
+    import defs._
     if (!phase.erasedTypes && tp.typeSymbol == ObjectClass) AnyTpe
     else tp
+  }
 
   val shorthands = Set(
     "scala.collection.immutable.List",
@@ -4576,9 +4601,9 @@ trait Types
   private[scala] val typeHasAnnotations = (tp: Type) => tp.annotations ne Nil
   private[scala] val boundsContainType = (bounds: TypeBounds, tp: Type) => bounds containsType tp
   private[scala] val typeListIsEmpty = (ts: List[Type]) => ts.isEmpty
-  private[scala] val typeIsSubTypeOfSerializable = (tp: Type) => tp <:< SerializableTpe
-  private[scala] val typeIsNothing = (tp: Type) => tp.typeSymbolDirect eq NothingClass
-  private[scala] val typeIsAny = (tp: Type) => tp.typeSymbolDirect eq AnyClass
+  private[scala] val typeIsSubTypeOfSerializable = (tp: Type) => tp <:< definitionsBySym(tp.typeSymbol).SerializableTpe
+  private[scala] val typeIsNothing = (tp: Type) => tp.typeSymbolDirect eq definitionsBySym(tp.typeSymbol).NothingClass
+  private[scala] val typeIsAny = (tp: Type) => tp.typeSymbolDirect eq definitionsBySym(tp.typeSymbol).AnyClass
   private[scala] val typeIsHigherKinded = (tp: Type) => tp.isHigherKinded
 
   /** The maximum depth of type `tp` */

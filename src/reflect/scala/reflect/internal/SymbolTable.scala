@@ -308,7 +308,7 @@ abstract class SymbolTable extends macros.Universe
     }
     // enter decls of parent classes
     for (p <- container.parentSymbols) {
-      if (p != definitions.ObjectClass) {
+      if (p != definitionsBySym(container).ObjectClass) {
         openPackageModule(p, dest)
       }
     }
@@ -320,15 +320,18 @@ abstract class SymbolTable extends macros.Universe
   def arrayToRepeated(tp: Type): Type = tp match {
     case MethodType(params, rtpe) =>
       val formals = tp.paramTypes
-      assert(formals.last.typeSymbol == definitions.ArrayClass, formals)
+      val flts = formals.last.typeSymbol
+      val defs = definitionsBySym(flts)
+
+      assert(flts == defs.ArrayClass, formals)
       val method = params.last.owner
       val elemtp = formals.last.typeArgs.head match {
-        case RefinedType(List(t1, t2), _) if (t1.typeSymbol.isAbstractType && t2.typeSymbol == definitions.ObjectClass) =>
+        case RefinedType(List(t1, t2), _) if (t1.typeSymbol.isAbstractType && t2.typeSymbol == defs.ObjectClass) =>
           t1 // drop intersection with Object for abstract types in varargs. UnCurry can handle them.
         case t =>
           t
       }
-      val newParams = method.newSyntheticValueParams(formals.init :+ definitions.javaRepeatedType(elemtp))
+      val newParams = method.newSyntheticValueParams(formals.init :+ defs.javaRepeatedType(elemtp))
       MethodType(newParams, rtpe)
     case PolyType(tparams, rtpe) =>
       PolyType(tparams, arrayToRepeated(rtpe))

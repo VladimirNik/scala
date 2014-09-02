@@ -18,7 +18,7 @@ abstract class TreeInfo {
   val global: SymbolTable
 
   import global._
-  import definitions.{ isTupleSymbol, isVarArgsList, isCastSymbol, ThrowableClass, TupleClass, uncheckedStableClass, isBlackboxMacroBundleType, isWhiteboxContextType }
+  //import definitions.{ isTupleSymbol, isVarArgsList, isCastSymbol, ThrowableClass, TupleClass, uncheckedStableClass, isBlackboxMacroBundleType, isWhiteboxContextType }
 
   /* Does not seem to be used. Not sure what it does anyway.
   def isOwnerDefinition(tree: Tree): Boolean = tree match {
@@ -121,20 +121,20 @@ abstract class TreeInfo {
    */
   def isStableMemberOf(sym: Symbol, tree: Tree, allowVolatile: Boolean): Boolean = (
     symOk(sym)       && (!sym.isTerm   || (sym.isStable && (allowVolatile || !sym.hasVolatileType))) &&
-    typeOk(tree.tpe) && (allowVolatile || !hasVolatileType(tree)) && !definitions.isByNameParamType(tree.tpe)
+    typeOk(tree.tpe) && (allowVolatile || !hasVolatileType(tree)) && !definitionsBySym(sym).isByNameParamType(tree.tpe)
   )
 
   private def isStableIdent(tree: Ident, allowVolatile: Boolean): Boolean = (
        symOk(tree.symbol)
     && tree.symbol.isStable
-    && !definitions.isByNameParamType(tree.tpe)
+    && !definitionsBySym(tree.symbol).isByNameParamType(tree.tpe)
     && (allowVolatile || !tree.symbol.hasVolatileType) // TODO SPEC: not required by spec
   )
 
   /** Is `tree`'s type volatile? (Ignored if its symbol has the @uncheckedStable annotation.)
    */
   def hasVolatileType(tree: Tree): Boolean =
-    symOk(tree.symbol) && tree.tpe.isVolatile && !tree.symbol.hasAnnotation(uncheckedStableClass)
+    symOk(tree.symbol) && tree.tpe.isVolatile && !tree.symbol.hasAnnotation(definitionsBySym(tree.symbol).uncheckedStableClass)
 
   /** Is `tree` either a non-volatile type,
    *  or a path that does not include any of:
@@ -214,7 +214,7 @@ abstract class TreeInfo {
       }
       def isWarnableSymbol = {
         val sym = tree.symbol
-        (sym == null) || !(sym.isModule || sym.isLazy || definitions.isByNameParamType(sym.tpe_*)) || {
+        (sym == null) || !(sym.isModule || sym.isLazy || definitionsBySym(sym).isByNameParamType(sym.tpe_*)) || {
           debuglog("'Pure' but side-effecting expression in statement position: " + tree)
           false
         }
@@ -244,7 +244,7 @@ abstract class TreeInfo {
 
     if (plen == alen) foreach2(params, args)(f)
     else if (params.isEmpty) return fail()
-    else if (isVarArgsList(params)) {
+    else if (definitionsBySym(params.head).isVarArgsList(params)) {
       val plenInit = plen - 1
       if (alen == plenInit) {
         if (alen == 0) Nil        // avoid calling mismatched zip
@@ -324,9 +324,9 @@ abstract class TreeInfo {
 
   /** Strips layers of `.asInstanceOf[T]` / `_.$asInstanceOf[T]()` from an expression */
   def stripCast(tree: Tree): Tree = tree match {
-    case TypeApply(sel @ Select(inner, _), _) if isCastSymbol(sel.symbol) =>
+    case TypeApply(sel @ Select(inner, _), _) if definitionsBySym(sel.symbol).isCastSymbol(sel.symbol) =>
       stripCast(inner)
-    case Apply(TypeApply(sel @ Select(inner, _), _), Nil) if isCastSymbol(sel.symbol) =>
+    case Apply(TypeApply(sel @ Select(inner, _), _), Nil) if definitionsBySym(sel.symbol).isCastSymbol(sel.symbol) =>
       stripCast(inner)
     case t =>
       t
@@ -503,7 +503,7 @@ abstract class TreeInfo {
 
   /** Is tpt a vararg type of the form T* ? */
   def isRepeatedParamType(tpt: Tree) = tpt match {
-    case TypeTree()                                                          => definitions.isRepeatedParamType(tpt.tpe)
+    case TypeTree()                                                          => definitionsBySym(tpt.symbol).isRepeatedParamType(tpt.tpe)
     case AppliedTypeTree(Select(_, tpnme.REPEATED_PARAM_CLASS_NAME), _)      => true
     case AppliedTypeTree(Select(_, tpnme.JAVA_REPEATED_PARAM_CLASS_NAME), _) => true
     case _                                                                   => false
@@ -518,7 +518,7 @@ abstract class TreeInfo {
 
   /** Is tpt a by-name parameter type of the form => T? */
   def isByNameParamType(tpt: Tree) = tpt match {
-    case TypeTree()                                                 => definitions.isByNameParamType(tpt.tpe)
+    case TypeTree()                                                 => definitionsBySym(tpt.symbol).isByNameParamType(tpt.tpe)
     case AppliedTypeTree(Select(_, tpnme.BYNAME_PARAM_CLASS_NAME), _) => true
     case _                                                          => false
   }
@@ -535,7 +535,7 @@ abstract class TreeInfo {
   def isLeftAssoc(operator: Name) = operator.nonEmpty && (operator.endChar != ':')
 
   /** a Match(Typed(_, tpt), _) must be translated into a switch if isSwitchAnnotation(tpt.tpe) */
-  def isSwitchAnnotation(tpe: Type) = tpe hasAnnotation definitions.SwitchClass
+  def isSwitchAnnotation(tpe: Type) = tpe hasAnnotation definitionsBySym(tpe.typeSymbol).SwitchClass
 
   /** can this type be a type pattern */
   def mayBeTypePat(tree: Tree): Boolean = tree match {
@@ -630,7 +630,7 @@ abstract class TreeInfo {
   private def isSimpleThrowable(tp: Type): Boolean = tp match {
     case TypeRef(pre, sym, args) =>
       (pre == NoPrefix || pre.widen.typeSymbol.isStatic) &&
-      (sym isNonBottomSubClass ThrowableClass) &&  /* bq */ !sym.isTrait
+      (sym isNonBottomSubClass definitionsBySym(sym).ThrowableClass) &&  /* bq */ !sym.isTrait
     case _ =>
       false
   }
@@ -907,8 +907,10 @@ abstract class TreeInfo {
 
     def unapply(tree: Tree) = refPart(tree) match {
       case ref: RefTree => {
+        val defs = definitionsBySym(ref.symbol)
+        import defs.{isBlackboxMacroBundleType, isWhiteboxContextType, isMacroBundleType}
         val qual = ref.qualifier
-        val isBundle = definitions.isMacroBundleType(qual.tpe)
+        val isBundle = isMacroBundleType(qual.tpe)
         val isBlackbox =
           if (isBundle) isBlackboxMacroBundleType(qual.tpe)
           else ref.symbol.paramss match {

@@ -27,6 +27,7 @@ trait ExprUtils {
 
   def literal(x: Double) = Expr[Double](Literal(Constant(x)))(TypeTag.Double)
 
+  //TODO-REFLECT-DEFS - can't add custom definitions here
   def literal(x: String) = Expr[String](Literal(Constant(x)))(TypeTag[String](definitions.StringClass.toTypeConstructor))
 
   def literal(x: Char) = Expr[Char](Literal(Constant(x)))(TypeTag.Char)

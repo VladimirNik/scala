@@ -15,7 +15,7 @@ class FastTrack[MacrosAndAnalyzer <: Macros with Analyzer](val macros: MacrosAnd
 
   import macros._
   import global._
-  import definitions._
+//  import definitions._
   import scala.language.implicitConversions
   import treeInfo.Applied
 
@@ -44,6 +44,7 @@ class FastTrack[MacrosAndAnalyzer <: Macros with Analyzer](val macros: MacrosAnd
   }
 
   /** A map from a set of pre-established macro symbols to their implementations. */
+    //TODO-REFLECT-DEFS - can't pass definitions here
   private val fastTrackCache = perRunCaches.newGeneric[Map[Symbol, FastTrackEntry]] {
     val runDefinitions = currentRun.runDefinitions
     import runDefinitions._
@@ -54,8 +55,8 @@ class FastTrack[MacrosAndAnalyzer <: Macros with Analyzer](val macros: MacrosAnd
       makeBlackbox(           ApiUniverseReify) { case Applied(_, ttag :: Nil, (expr :: _) :: _)  => c => c.materializeExpr(c.prefix.tree, EmptyTree, expr) },
       makeBlackbox(            StringContext_f) { case _                                          => _.interpolate },
       makeBlackbox(ReflectRuntimeCurrentMirror) { case _                                          => c => currentMirror(c).tree },
-      makeWhitebox(  QuasiquoteClass_api_apply) { case _                                          => _.expandQuasiquote },
-      makeWhitebox(QuasiquoteClass_api_unapply) { case _                                          => _.expandQuasiquote }
+      makeWhitebox(  definitions.QuasiquoteClass_api_apply) { case _                                          => _.expandQuasiquote },
+      makeWhitebox(definitions.QuasiquoteClass_api_unapply) { case _                                          => _.expandQuasiquote }
     )
   }
 }

@@ -6,7 +6,7 @@ trait GenUtils {
 
   import global._
   import treeInfo._
-  import definitions._
+//  import definitions._
   private val runDefinitions = currentRun.runDefinitions
   import runDefinitions._
 

@@ -20,7 +20,7 @@ trait TreeDSL {
   val global: SymbolTable
 
   import global._
-  import definitions._
+//  import definitions._
 
   object CODE {
     // Add a null check to a Tree => Tree function
@@ -45,6 +45,10 @@ trait TreeDSL {
     def fn(lhs: Tree, op: Symbol, args: Tree*)  = Apply(Select(lhs, op), args.toList)
 
     class TreeMethods(target: Tree) {
+      //TODO-REFLECT-DEFS I'm not sure that target has correct symbol it's better pass mirror
+      val defs = definitionsBySym(target.symbol)
+      import defs._
+
       /** logical/comparison ops **/
       def OR(other: Tree) =
         if (target == EmptyTree) other
@@ -132,13 +136,14 @@ trait TreeDSL {
 
     def NEW(tpt: Tree, args: Tree*): Tree   = New(tpt, List(args.toList))
 
-    def NOT(tree: Tree)   = Select(tree, Boolean_not)
+    def NOT(tree: Tree)   = Select(tree, definitionsBySym(tree.symbol).Boolean_not)
     def AND(guards: Tree*) = if (guards.isEmpty) EmptyTree else guards reduceLeft gen.mkAnd
 
     def IF(tree: Tree)    = new IfStart(tree, EmptyTree)
     def TRY(tree: Tree)   = new TryStart(tree, Nil, EmptyTree)
     def BLOCK(xs: Tree*)  = Block(xs.init.toList, xs.last)
-    def SOME(xs: Tree*)   = Apply(SomeClass.companionSymbol, gen.mkTuple(xs.toList))
+    //TODO-REFLECT-DEFS I can't use correct SomeClass here
+    def SOME(xs: Tree*)   = Apply(definitions.SomeClass.companionSymbol, gen.mkTuple(xs.toList))
 
     /** Typed trees from symbols. */
     def REF(sym: Symbol)            = gen.mkAttributedRef(sym)

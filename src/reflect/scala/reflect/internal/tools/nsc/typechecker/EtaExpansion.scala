@@ -90,7 +90,7 @@ trait EtaExpansion { self: Analyzer =>
           defs ++= stats
           liftoutPrefix(fun)
         case Apply(fn, args) =>
-          val byName: Int => Option[Boolean] = fn.tpe.params.map(p => definitions.isByNameParamType(p.tpe)).lift
+          val byName: Int => Option[Boolean] = fn.tpe.params.map(p => definitionsBySym(p.tpe.typeSymbol).isByNameParamType(p.tpe)).lift
           val newArgs = mapWithIndex(args) { (arg, i) =>
             // with repeated params, there might be more or fewer args than params
             liftout(arg, byName(i).getOrElse(false))
@@ -114,7 +114,7 @@ trait EtaExpansion { self: Analyzer =>
         val params: List[(ValDef, Boolean)] = paramSyms.map {
           sym =>
             val origTpe = sym.tpe
-            val isRepeated = definitions.isRepeatedParamType(origTpe)
+            val isRepeated = definitionsBySym(origTpe.typeSymbol).isRepeatedParamType(origTpe)
             // SI-4176 Don't leak A* in eta-expanded function types. See t4176b.scala
             val droppedStarTpe = if (settings.etaExpandKeepsStar) origTpe else dropIllegalStarTypes(origTpe)
             val valDef = ValDef(Modifiers(SYNTHETIC | PARAM), sym.name.toTermName, TypeTree(droppedStarTpe), EmptyTree)

@@ -9,10 +9,11 @@ trait Errors extends Traces {
 
   import global._
   import analyzer._
-  import definitions._
+//  import definitions._
   import treeInfo._
   import typer.TyperErrorGen._
   import typer.infer.InferErrorGen._
+  import typer.defs._
   import runDefinitions._
   def globalSettings = global.settings
 

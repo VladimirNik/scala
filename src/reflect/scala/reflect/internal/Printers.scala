@@ -501,10 +501,11 @@ trait Printers extends api.Printers { self: SymbolTable =>
           // Avoid printing noisy empty typebounds everywhere
           // Untyped empty bounds are not printed by printOpt,
           // but after they are typed we have to exclude Nothing/Any.
-          if ((lo.tpe eq null) || !(lo.tpe =:= definitions.NothingTpe))
+          //TODO-REFLECT-DEFS is it correct to get here typeSymbol from tpe
+          if ((lo.tpe eq null) || !(lo.tpe =:= definitionsBySym(lo.tpe.typeSymbol).NothingTpe))
             printOpt(" >: ", lo)
 
-          if ((hi.tpe eq null) || !(hi.tpe =:= definitions.AnyTpe))
+          if ((hi.tpe eq null) || !(hi.tpe =:= definitionsBySym(hi.tpe.typeSymbol).AnyTpe))
             printOpt(" <: ", hi)
 
         case ExistentialTypeTree(tpt, whereClauses) =>
@@ -1339,7 +1340,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
   }
 
   def showDecl(sym: Symbol): String = {
-    if (!isCompilerUniverse) definitions.fullyInitializeSymbol(sym)
+    if (!isCompilerUniverse) definitionsBySym(sym).fullyInitializeSymbol(sym)
     sym.defString
   }
 }

@@ -11,6 +11,7 @@ abstract class Taggers {
   private val runDefinitions = currentRun.runDefinitions
   import runDefinitions._
 
+  //TODO-REFLECT-DEFS can't pass definitions to coreTags
   val coreTags = Map(
     ByteTpe -> nme.Byte,
     ShortTpe -> nme.Short,

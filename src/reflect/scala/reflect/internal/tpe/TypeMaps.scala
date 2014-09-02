@@ -10,7 +10,7 @@ import Variance._
 
 private[internal] trait TypeMaps {
   self: SymbolTable =>
-  import definitions._
+//  import definitions._
 
   /** Normalize any type aliases within this type (@see Type#normalize).
     *  Note that this depends very much on the call to "normalize", not "dealias",
@@ -27,6 +27,8 @@ private[internal] trait TypeMaps {
   /** Remove any occurrence of type <singleton> from this type and its parents */
   object dropSingletonType extends TypeMap {
     def apply(tp: Type): Type = {
+      val defs = definitionsBySym(tp.typeSymbol)
+      import defs._
       tp match {
         case TypeRef(_, SingletonClass, _) =>
           AnyTpe
@@ -65,16 +67,20 @@ private[internal] trait TypeMaps {
     *  in method parameter position.
     */
   object dropIllegalStarTypes extends TypeMap {
-    def apply(tp: Type): Type = tp match {
-      case MethodType(params, restpe) =>
-        // Not mapping over params
-        val restpe1 = apply(restpe)
-        if (restpe eq restpe1) tp
-        else MethodType(params, restpe1)
-      case TypeRef(_, RepeatedParamClass, arg :: Nil) =>
-        seqType(arg)
-      case _ =>
-        if (etaExpandKeepsStar) tp else mapOver(tp)
+    def apply(tp: Type): Type = {
+      val defs = definitionsBySym(tp.typeSymbol)
+      import defs._
+      tp match {
+        case MethodType(params, restpe) =>
+          // Not mapping over params
+          val restpe1 = apply(restpe)
+          if (restpe eq restpe1) tp
+          else MethodType(params, restpe1)
+        case TypeRef(_, RepeatedParamClass, arg :: Nil) =>
+          seqType(arg)
+        case _ =>
+          if (etaExpandKeepsStar) tp else mapOver(tp)
+      }
     }
   }
 
@@ -88,7 +94,7 @@ private[internal] trait TypeMaps {
 
   trait KeepOnlyTypeConstraints extends AnnotationFilter {
     // filter keeps only type constraint annotations
-    def keepAnnotation(annot: AnnotationInfo) = annot matches TypeConstraintClass
+    def keepAnnotation(annot: AnnotationInfo) = annot matches definitionsBySym(annot.symbol).TypeConstraintClass
   }
 
   // todo. move these into scala.reflect.api
@@ -326,7 +332,7 @@ private[internal] trait TypeMaps {
     private var expanded = immutable.Set[Symbol]()
     def apply(tp: Type): Type = tp match {
       case TypeRef(pre, sym, List()) if isRawIfWithoutArgs(sym) =>
-        if (expanded contains sym) AnyRefTpe
+        if (expanded contains sym) definitionsBySym(sym).AnyRefTpe
         else try {
           expanded += sym
           val eparams = mapOver(typeParamsToExistentials(sym))
@@ -870,7 +876,7 @@ private[internal] trait TypeMaps {
         case -1  => None
         case pid =>
           val tp = actuals(pid)
-          if (tp.isStable && (tp.typeSymbol != NothingClass)) Some(tp)
+          if (tp.isStable && (tp.typeSymbol != definitionsBySym(param).NothingClass)) Some(tp)
           else None
       }
     }

@@ -7,7 +7,8 @@ trait Validators {
 
   import global._
   import analyzer._
-  import definitions._
+//  import definitions._
+  import typer.defs._
   import runDefinitions.{Predef_???, _}
 
   trait Validator {

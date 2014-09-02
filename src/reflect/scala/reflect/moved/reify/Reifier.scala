@@ -21,7 +21,7 @@ abstract class Reifier extends States
 
   val global: TypecheckerRequirements
   import global._
-  import definitions._
+//  import definitions._
   private val runDefinitions = currentRun.runDefinitions
   import runDefinitions._
 
@@ -87,6 +87,8 @@ abstract class Reifier extends States
         case _ =>
           throw new Error("reifee %s of type %s is not supported".format(reifee, if (reifee == null) "null" else reifee.getClass.toString))
       }
+
+      import typer.defs._
 
       // todo. why do we reset attrs?
       //

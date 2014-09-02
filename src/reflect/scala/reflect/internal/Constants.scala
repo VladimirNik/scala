@@ -13,7 +13,7 @@ import scala.annotation.switch
 trait Constants extends api.Constants {
   self: SymbolTable =>
 
-  import definitions._
+//  import definitions._
 
   final val NoTag      = 0
   final val UnitTag    = 1
@@ -62,20 +62,24 @@ trait Constants extends api.Constants {
     def isNonUnitAnyVal       = BooleanTag <= tag && tag <= DoubleTag
     def isAnyVal              = UnitTag <= tag && tag <= DoubleTag
 
-    def tpe: Type = tag match {
-      case UnitTag    => UnitTpe
-      case BooleanTag => BooleanTpe
-      case ByteTag    => ByteTpe
-      case ShortTag   => ShortTpe
-      case CharTag    => CharTpe
-      case IntTag     => IntTpe
-      case LongTag    => LongTpe
-      case FloatTag   => FloatTpe
-      case DoubleTag  => DoubleTpe
-      case StringTag  => StringTpe
-      case NullTag    => NullTpe
-      case ClazzTag   => ClassType(typeValue)
-      case EnumTag    => EnumType(symbolValue)
+    //TODO-REFLECT-DEFS: can't def these types using definitionsBySym
+    def tpe: Type = {
+      import definitions._
+      tag match {
+        case UnitTag    => UnitTpe
+        case BooleanTag => BooleanTpe
+        case ByteTag    => ByteTpe
+        case ShortTag   => ShortTpe
+        case CharTag    => CharTpe
+        case IntTag     => IntTpe
+        case LongTag    => LongTpe
+        case FloatTag   => FloatTpe
+        case DoubleTag  => DoubleTpe
+        case StringTag  => StringTpe
+        case NullTag    => NullTpe
+        case ClazzTag   => ClassType(typeValue)
+        case EnumTag    => EnumType(symbolValue)
+      }
     }
 
     /** We need the equals method to take account of tags as well as values.
@@ -177,6 +181,9 @@ trait Constants extends api.Constants {
     /** Convert constant value to conform to given type.
      */
     def convertTo(pt: Type): Constant = {
+      val defs = definitionsBySym(pt.typeSymbol)
+      import defs._
+
       val target = pt.typeSymbol
       if (target == tpe.typeSymbol)
         this
@@ -200,7 +207,7 @@ trait Constants extends api.Constants {
 
     def stringValue: String =
       if (value == null) "null"
-      else if (tag == ClazzTag) signature(typeValue)
+      else if (tag == ClazzTag) definitionsBySym(typeValue.typeSymbol).signature(typeValue)
       else value.toString()
 
     @switch def escapedChar(ch: Char): String = ch match {
@@ -221,7 +228,7 @@ trait Constants extends api.Constants {
         case NullTag   => "null"
         case StringTag => "\"" + escape(stringValue) + "\""
         case ClazzTag  =>
-          def show(tpe: Type) = "classOf[" + signature(tpe) + "]"
+          def show(tpe: Type) = "classOf[" + definitionsBySym(typeValue.typeSymbol).signature(tpe) + "]"
           typeValue match {
             case ErasedValueType(clazz, underlying) =>
               // A note on tpe_* usage here:

@@ -31,7 +31,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
   import TypersStats._
 
   final def forArgMode(fun: Tree, mode: Mode) =
@@ -111,6 +111,8 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
   //TODO-REFLECT pass here correct mirror
   abstract class Typer(context0: Context) extends TyperDiagnostics with Adaptation with Tag with PatternTyper with TyperContextErrors {
     val typerMirror = context0.mirror
+    val defs = definitions(context0.mirror)
+    import defs._
     //val typerMirror: Mirror = if (useContextMirror) context0.mirror else rootMirror
     
     import context0.unit
@@ -1401,7 +1403,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       }
 
       for (tparam <- clazz.typeParams)
-        if (tparam hasAnnotation definitions.SpecializedClass)
+        if (tparam hasAnnotation defs.SpecializedClass)
           unit.error(tparam.pos, "type parameter of value class may not be specialized")
     }
 
@@ -1961,7 +1963,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       val tpt1 = checkNoEscaping.privates(sym, typedType(vdef.tpt))
       checkNonCyclic(vdef, tpt1)
 
-      if (sym.hasAnnotation(definitions.VolatileAttr) && !sym.isMutable)
+      if (sym.hasAnnotation(defs.VolatileAttr) && !sym.isMutable)
         VolatileValueError(vdef)
 
       val rhs1 =
@@ -2252,8 +2254,8 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
 
       // @specialized should not be pickled when compiling with -no-specialize
       if (settings.nospecialization && currentRun.compiles(tdef.symbol)) {
-        tdef.symbol.removeAnnotation(definitions.SpecializedClass)
-        tdef.symbol.deSkolemize.removeAnnotation(definitions.SpecializedClass)
+        tdef.symbol.removeAnnotation(defs.SpecializedClass)
+        tdef.symbol.deSkolemize.removeAnnotation(defs.SpecializedClass)
       }
 
       val rhs1 = checkNoEscaping.privates(tdef.symbol, typedType(tdef.rhs))
@@ -2860,7 +2862,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     private def typedFunction(fun: Function, mode: Mode, pt: Type): Tree = {
       val numVparams = fun.vparams.length
       val FunctionSymbol =
-        if (numVparams > definitions.MaxFunctionArity) NoSymbol
+        if (numVparams > defs.MaxFunctionArity) NoSymbol
         else FunctionClass(numVparams)
 
       /* The Single Abstract Member of pt, unless pt is the built-in function type of the expected arity,
@@ -3430,7 +3432,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
                  *  forced during kind-arity checking, so it is guarded by additional
                  *  tests to ensure we're sufficiently far along.
                  */
-                if (args.isEmpty && canTranslateEmptyListToNil && fun.symbol.isInitialized && ListModule.hasCompleteInfo && (fun.symbol == List_apply))
+                if (args.isEmpty && canTranslateEmptyListToNil && fun.symbol.isInitialized && ListModule.hasCompleteInfo && (fun.symbol == runDefinitions.List_apply))
                   atPos(tree.pos)(gen.mkNil setType restpe)
                 else
                   constfold(treeCopy.Apply(tree, fun, args1) setType ifPatternSkipFormals(restpe))

@@ -92,7 +92,7 @@ trait Variances {
         loop(base, Covariant)
       }
       def isUncheckedVariance(tp: Type) = tp match {
-        case AnnotatedType(annots, _)    => annots exists (_ matches definitions.uncheckedVarianceClass)
+        case AnnotatedType(annots, _)    => annots exists (_ matches definitionsBySym(tp.typeSymbol).uncheckedVarianceClass)
         case _                           => false
       }
 

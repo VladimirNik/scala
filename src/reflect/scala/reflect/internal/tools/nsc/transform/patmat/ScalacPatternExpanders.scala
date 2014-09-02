@@ -14,7 +14,7 @@ trait ScalacPatternExpanders {
   val global: TypecheckerRequirements
 
   import global._
-  import definitions._
+//  import definitions._
   import treeInfo._
 
   type PatternAligned = ScalacPatternExpander#Aligned
@@ -37,11 +37,13 @@ trait ScalacPatternExpanders {
       case _                            => Patterns(patterns, NoPattern)
     }
     def elementTypeOf(tpe: Type) = {
+      val defs = definitionsBySym(tpe.typeSymbol)
+      import defs._
       val seq = repeatedToSeq(tpe)
 
       ( typeOfMemberNamedHead(seq)
           orElse typeOfMemberNamedApply(seq)
-          orElse definitions.elementType(ArrayClass, seq)
+          orElse elementType(ArrayClass, seq)
       )
     }
     def newExtractor(whole: Type, fixed: List[Type], repeated: Repeated): Extractor =
@@ -49,14 +51,19 @@ trait ScalacPatternExpanders {
 
     // Turn Seq[A] into Repeated(Seq[A], A, A*)
     def repeatedFromSeq(seqType: Type): Repeated = {
+      val defs = definitionsBySym(seqType.typeSymbol)
+      import defs.scalaRepeatedType
       val elem     = elementTypeOf(seqType)
       val repeated = scalaRepeatedType(elem)
 
       Repeated(seqType, elem, repeated)
     }
     // Turn A* into Repeated(Seq[A], A, A*)
-    def repeatedFromVarargs(repeated: Type): Repeated =
+    def repeatedFromVarargs(repeated: Type): Repeated = {
+      val defs = definitionsBySym(repeated.typeSymbol)
+      import defs._
       Repeated(repeatedToSeq(repeated), repeatedToSingle(repeated), repeated)
+    }
 
     /** In this case we are basing the pattern expansion on a case class constructor.
      *  The argument is the MethodType carried by the primary constructor.
@@ -65,7 +72,7 @@ trait ScalacPatternExpanders {
       val whole = method.finalResultType
 
       method.paramTypes match {
-        case init :+ last if isScalaRepeatedParamType(last) => newExtractor(whole, init, repeatedFromVarargs(last))
+        case init :+ last if definitionsBySym(method.typeSymbol).isScalaRepeatedParamType(last) => newExtractor(whole, init, repeatedFromVarargs(last))
         case tps                                            => newExtractor(whole, tps, NoRepeated)
       }
     }
@@ -75,6 +82,8 @@ trait ScalacPatternExpanders {
      *  it was unapplySeq, so we have to funnel that information in separately.
      */
     def unapplyMethodTypes(method: Type, isSeq: Boolean): Extractor = {
+      val defs = definitionsBySym(method.typeSymbol)
+      import defs._
       val whole    = firstParamType(method)
       val result   = method.finalResultType
       val expanded = (
@@ -94,7 +103,7 @@ trait ScalacPatternExpanders {
     /** Converts a T => (A, B, C) extractor to a T => ((A, B, CC)) extractor.
      */
     def tupleExtractor(extractor: Extractor): Extractor =
-      extractor.copy(fixed = tupleType(extractor.fixed) :: Nil)
+      extractor.copy(fixed = definitionsBySym(extractor.whole.typeSymbol).tupleType(extractor.fixed) :: Nil)
 
     private def validateAligned(tree: Tree, aligned: Aligned): Aligned = {
       import aligned._

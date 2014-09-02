@@ -8,7 +8,7 @@ trait Reshape {
   self: Reifier =>
 
   import global._
-  import definitions._
+//  import definitions._
   import treeInfo.Unapplied
   private val runDefinitions = currentRun.runDefinitions
   import runDefinitions._
@@ -92,7 +92,7 @@ trait Reshape {
             // hence we cannot reify references to them, because noone will be able to see them later
             // when implicit macros are fixed, these sneaky macros will move to corresponding companion objects
             // of, say, ClassTag or TypeTag
-            case Apply(TypeApply(_, List(tt)), _) if sym == materializeClassTag            => mkImplicitly(appliedType(ClassTagClass, tt.tpe))
+            case Apply(TypeApply(_, List(tt)), _) if sym == materializeClassTag            => mkImplicitly(appliedType(definitionsBySym(sym).ClassTagClass, tt.tpe))
             case Apply(TypeApply(_, List(tt)), List(pre)) if sym == materializeWeakTypeTag => mkImplicitly(typeRef(pre.tpe, WeakTypeTagClass, List(tt.tpe)))
             case Apply(TypeApply(_, List(tt)), List(pre)) if sym == materializeTypeTag     => mkImplicitly(typeRef(pre.tpe, TypeTagClass, List(tt.tpe)))
             case _                                                                         => original
@@ -224,7 +224,8 @@ trait Reshape {
       } else {
         def toScalaAnnotation(jann: ClassfileAnnotArg): Tree = (jann: @unchecked) match {
           case LiteralAnnotArg(const) => Literal(const)
-          case ArrayAnnotArg(arr)     => Apply(Ident(definitions.ArrayModule), arr.toList map toScalaAnnotation)
+          //TODO-REFLECT-DEFS I'm not sure that correct symbol for definitions is available here
+          case ArrayAnnotArg(arr)     => Apply(Ident(definitionsBySym(ann.symbol).ArrayModule), arr.toList map toScalaAnnotation)
           case NestedAnnotArg(ann)    => toPreTyperAnnotation(ann)
         }
 
@@ -326,7 +327,7 @@ trait Reshape {
           if (reifyDebug) println(s"reconstructed lazy val is $vdef1")
           vdef1::Nil
         case ddef: DefDef if ddef.symbol.isLazy =>
-          def hasUnitType(sym: Symbol) = (sym.tpe.typeSymbol == UnitClass) && sym.tpe.annotations.isEmpty
+          def hasUnitType(sym: Symbol) = (sym.tpe.typeSymbol == definitionsBySym(sym).UnitClass) && sym.tpe.annotations.isEmpty
           if (hasUnitType(ddef.symbol)) {
             // since lazy values of type Unit don't have val's
             // we need to create them from scratch

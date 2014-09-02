@@ -26,7 +26,7 @@ package object reify {
 
   private[reify] def mkDefaultMirrorRef(global: TypecheckerRequirements)(universe: global.Tree, typer0: global.analyzer.Typer): global.Tree = {
     import global._
-    import definitions.JavaUniverseClass
+//    import definitions.JavaUniverseClass
 
     val enclosingErasure = {
       val rClassTree = reifyEnclosingRuntimeClass(global)(typer0)
@@ -37,7 +37,7 @@ package object reify {
       rClassTree orElse Apply(Select(gen.mkAnonymousNew(Nil), sn.GetClass), Nil)
     }
     // JavaUniverse is defined in scala-reflect.jar, so we must be very careful in case someone reifies stuff having only scala-library.jar on the classpath
-    val isJavaUniverse = JavaUniverseClass != NoSymbol && universe.tpe <:< JavaUniverseClass.toTypeConstructor
+    val isJavaUniverse = typer0.defs.JavaUniverseClass != NoSymbol && universe.tpe <:< typer0.defs.JavaUniverseClass.toTypeConstructor
     if (isJavaUniverse && !enclosingErasure.isEmpty) Apply(Select(universe, nme.runtimeMirror), List(Select(enclosingErasure, sn.GetClassLoader)))
     else Select(universe, nme.rootMirror)
   }
@@ -50,7 +50,7 @@ package object reify {
 
   def reifyRuntimeClass(global: TypecheckerRequirements)(typer0: global.analyzer.Typer, tpe0: global.Type, concrete: Boolean = true): global.Tree = {
     import global._
-    import definitions._
+//    import definitions._
     import analyzer.enclosingMacroPosition
 
     // SI-7375
@@ -63,7 +63,7 @@ package object reify {
     }
 
     tpe.dealiasWiden match {
-      case TypeRef(_, ArrayClass, componentTpe :: Nil) =>
+      case TypeRef(_, typer0.defs.ArrayClass, componentTpe :: Nil) =>
         val componentErasure = reifyRuntimeClass(global)(typer0, componentTpe, concrete)
         gen.mkMethodCall(currentRun.runDefinitions.arrayClassMethod, List(componentErasure))
       case _ =>

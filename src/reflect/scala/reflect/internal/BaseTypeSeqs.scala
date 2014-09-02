@@ -28,7 +28,7 @@ import util.Statistics
  */
 trait BaseTypeSeqs {
   this: SymbolTable =>
-  import definitions._
+//  import definitions._
   import BaseTypeSeqsStats._
 
   protected def newBaseTypeSeq(parents: List[Type], elems: Array[Type]) =
@@ -154,6 +154,9 @@ trait BaseTypeSeqs {
 
   /** Create the base type sequence of a compound type wuth given tp.parents */
   def compoundBaseTypeSeq(tp: Type): BaseTypeSeq = {
+    val defs = definitionsBySym(tp.typeSymbol)
+    import defs._
+
     val tsym = tp.typeSymbol
     val parents = tp.parents
 //    Console.println("computing baseTypeSeq of " + tsym.tpe + " " + parents)//DEBUG

@@ -6,7 +6,7 @@ import Flags._
 import util._
 
 trait ReificationSupport { self: SymbolTable =>
-  import definitions._
+//  import definitions._
   import internal._
 
   class ReificationSupportImpl extends ReificationSupportApi {
@@ -162,7 +162,7 @@ trait ReificationSupport { self: SymbolTable =>
     object ScalaDot extends ScalaDotExtractor {
       def apply(name: Name): Tree = gen.scalaDot(name)
       def unapply(tree: Tree): Option[Name] = tree match {
-        case Select(id @ Ident(nme.scala_), name) if id.symbol == ScalaPackage => Some(name)
+        case Select(id @ Ident(nme.scala_), name) if id.symbol == definitionsBySym(id.symbol).ScalaPackage => Some(name)
         case _ => None
       }
     }
@@ -400,21 +400,23 @@ trait ReificationSupport { self: SymbolTable =>
       def unapply(tree: Tree): Option[Symbol] = tree match {
         case id @ Ident(name) if symbols.contains(id.symbol) && name == id.symbol.name =>
           Some(id.symbol)
-        case Select(scalapkg @ Ident(nme.scala_), name) if scalapkg.symbol == ScalaPackage =>
+        case Select(scalapkg @ Ident(nme.scala_), name) if scalapkg.symbol == definitionsBySym(scalapkg.symbol).ScalaPackage =>
           result(name)
         case Select(Select(Ident(nme.ROOTPKG), nme.scala_), name) =>
           result(name)
         case _ => None
       }
     }
-    protected object TupleClassRef extends ScalaMemberRef(TupleClass.seq)
-    protected object TupleCompanionRef extends ScalaMemberRef(TupleClass.seq.map { _.companionModule })
-    protected object UnitClassRef extends ScalaMemberRef(Seq(UnitClass))
-    protected object FunctionClassRef extends ScalaMemberRef(FunctionClass.seq)
+
+    //TODO-REFLECT-DEF here I can't get our definitions only general
+    protected object TupleClassRef extends ScalaMemberRef(definitions.TupleClass.seq)
+    protected object TupleCompanionRef extends ScalaMemberRef(definitions.TupleClass.seq.map { _.companionModule })
+    protected object UnitClassRef extends ScalaMemberRef(Seq(definitions.UnitClass))
+    protected object FunctionClassRef extends ScalaMemberRef(definitions.FunctionClass.seq)
 
     object SyntacticTuple extends SyntacticTupleExtractor {
       def apply(args: List[Tree]): Tree = {
-        require(args.isEmpty || TupleClass(args.length).exists, s"Tuples with ${args.length} arity aren't supported")
+        require(args.isEmpty || definitions.TupleClass(args.length).exists, s"Tuples with ${args.length} arity aren't supported")
         gen.mkTuple(args)
       }
 
@@ -422,7 +424,7 @@ trait ReificationSupport { self: SymbolTable =>
         case Literal(Constant(())) =>
           Some(Nil)
         case Apply(MaybeTypeTreeOriginal(SyntacticTypeApplied(MaybeSelectApply(TupleCompanionRef(sym)), targs)), args)
-          if sym == TupleClass(args.length).companionModule
+          if sym == definitionsBySym(sym).TupleClass(args.length).companionModule
           && (targs.isEmpty || targs.length == args.length) =>
           Some(args)
         case _ if tree.isTerm =>
@@ -434,7 +436,7 @@ trait ReificationSupport { self: SymbolTable =>
 
     object SyntacticTupleType extends SyntacticTupleExtractor {
       def apply(args: List[Tree]): Tree = {
-        require(args.isEmpty || TupleClass(args.length).exists, s"Tuples with ${args.length} arity aren't supported")
+        require(args.isEmpty || definitions.TupleClass(args.length).exists, s"Tuples with ${args.length} arity aren't supported")
         gen.mkTupleType(args)
       }
 
@@ -442,7 +444,7 @@ trait ReificationSupport { self: SymbolTable =>
         case MaybeTypeTreeOriginal(UnitClassRef(_)) =>
           Some(Nil)
         case MaybeTypeTreeOriginal(AppliedTypeTree(TupleClassRef(sym), args))
-          if sym == TupleClass(args.length) =>
+          if sym == definitionsBySym(sym).TupleClass(args.length) =>
           Some(args)
         case _ if tree.isType =>
           Some(tree :: Nil)
@@ -453,13 +455,14 @@ trait ReificationSupport { self: SymbolTable =>
 
     object SyntacticFunctionType extends SyntacticFunctionTypeExtractor {
       def apply(argtpes: List[Tree], restpe: Tree): Tree = {
-        require(FunctionClass(argtpes.length).exists, s"Function types with ${argtpes.length} arity aren't supported")
+        //TODO-REFLECT-DEFS here we can use definitions without mirror for checking
+        require(definitions.FunctionClass(argtpes.length).exists, s"Function types with ${argtpes.length} arity aren't supported")
         gen.mkFunctionTypeTree(argtpes, restpe)
       }
 
       def unapply(tree: Tree): Option[(List[Tree], Tree)] = tree match {
         case MaybeTypeTreeOriginal(AppliedTypeTree(FunctionClassRef(sym), args @ (argtpes :+ restpe)))
-          if sym == FunctionClass(args.length - 1) =>
+          if sym == definitionsBySym(sym).FunctionClass(args.length - 1) =>
           Some((argtpes, restpe))
         case _ => None
       }
@@ -882,10 +885,14 @@ trait ReificationSupport { self: SymbolTable =>
                      DefDef(_, nme.isDefinedAt, _, _, _, _))))),
                  Apply(Select(New(Ident(tpnme.ANON_FUN_NAME)), termNames.CONSTRUCTOR), List())),
                pf: TypeTree)
-          if pf.tpe != null && pf.tpe.typeSymbol.eq(PartialFunctionClass) &&
-             abspf.tpe != null && abspf.tpe.typeSymbol.eq(AbstractPartialFunctionClass) &&
-             ser.tpe != null && ser.tpe.typeSymbol.eq(SerializableClass) &&
-             clsMods.hasFlag(FINAL) && clsMods.hasFlag(SYNTHETIC) =>
+          if pf.tpe != null && {
+              val defs = definitionsBySym(pf.tpe.typeSymbol)
+              import defs._
+              pf.tpe.typeSymbol.eq(PartialFunctionClass) &&
+              abspf.tpe != null && abspf.tpe.typeSymbol.eq(AbstractPartialFunctionClass) &&
+              ser.tpe != null && ser.tpe.typeSymbol.eq(SerializableClass) &&
+              clsMods.hasFlag(FINAL) && clsMods.hasFlag(SYNTHETIC)
+            } =>
           Some(cases)
         case _ => None
       }

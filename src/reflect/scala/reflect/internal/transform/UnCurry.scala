@@ -9,7 +9,7 @@ trait UnCurry {
 
   val global: SymbolTable
   import global._
-  import definitions._
+//  import definitions._
 
   /** Note: changing tp.normalize to tp.dealias in this method leads to a single
    *  test failure: run/t5688.scala, where instead of the expected output
@@ -24,6 +24,8 @@ trait UnCurry {
   val uncurry: TypeMap = new TypeMap {
     def apply(tp0: Type): Type = {
       val tp = expandAlias(tp0)
+      val defs = definitionsBySym(tp.typeSymbol)
+      import defs._
       tp match {
         case MethodType(params, MethodType(params1, restpe)) =>
           // This transformation is described in UnCurryTransformer.dependentParamTypeErasure

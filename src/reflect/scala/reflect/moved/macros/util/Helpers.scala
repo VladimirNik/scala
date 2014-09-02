@@ -6,7 +6,7 @@ trait Helpers {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
 
   /** Transforms parameters lists of a macro impl.
    *  The `transform` function is invoked only for WeakTypeTag evidence parameters.
@@ -25,13 +25,17 @@ trait Helpers {
     val runDefinitions = currentRun.runDefinitions
     import runDefinitions._
 
-    val MacroContextUniverse = definitions.MacroContextUniverse
+    //TODO-REFLECT-DEFS MacroContextUniverse changed and moved
+//    val MacroContextUniverse = definitions.MacroContextUniverse
     val treeInfo.MacroImplReference(isBundle, _, _, macroImpl, _) = macroImplRef
+    //TODO-REFLECT-DEFS I'm not sure that it's correct implementation
+    val MacroContextUniverse = definitionsBySym(macroImpl).MacroContextUniverse
+
     val paramss = macroImpl.paramss
     val ContextParam = paramss match {
       case Nil | _ :+ Nil                                       => NoSymbol // no implicit parameters in the signature => nothing to do
       case _ if isBundle                                        => macroImpl.owner.tpe member nme.c
-      case (cparam :: _) :: _ if isMacroContextType(cparam.tpe) => cparam
+      case (cparam :: _) :: _ if definitionsBySym(macroImpl).isMacroContextType(cparam.tpe) => cparam
       case _                                                    => NoSymbol // no context parameter in the signature => nothing to do
     }
     def transformTag(param: Symbol): Symbol = param.tpe.dealias match {
@@ -54,6 +58,8 @@ trait Helpers {
    *  @see Metalevels.scala for more information and examples about metalevels
    */
   def increaseMetalevel(pre: Type, tp: Type): Type = {
+    val defs = definitionsBySym(pre.typeSymbol)
+    import defs._
     val runDefinitions = currentRun.runDefinitions
     import runDefinitions._
 
@@ -68,7 +74,7 @@ trait Helpers {
     val runDefinitions = currentRun.runDefinitions
     import runDefinitions._
 
-    transparentShallowTransform(RepeatedParamClass, tp) {
+    transparentShallowTransform(definitionsBySym(tp.typeSymbol).RepeatedParamClass, tp) {
       case ExprClassOf(_) => typeRef(tp.prefix, TreesTreeType, Nil)
       case tp => tp
     }
@@ -82,6 +88,8 @@ trait Helpers {
    *  @see Metalevels.scala for more information and examples about metalevels
    */
   def decreaseMetalevel(tp: Type): Type = {
+    val defs = definitionsBySym(tp.typeSymbol)
+    import defs._
     val runDefinitions = currentRun.runDefinitions
     import runDefinitions._
     transparentShallowTransform(RepeatedParamClass, tp) {

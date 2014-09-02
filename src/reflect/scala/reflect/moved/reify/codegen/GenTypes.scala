@@ -6,7 +6,7 @@ trait GenTypes {
   self: Reifier =>
 
   import global._
-  import definitions._
+//  import definitions._
   private val runDefinitions = currentRun.runDefinitions
   import runDefinitions.{ReflectRuntimeUniverse, ReflectRuntimeCurrentMirror, _}
 
@@ -105,8 +105,14 @@ trait GenTypes {
   }
 
   private def spliceAsManifest(tpe: Type): Tree = {
-    def isSynthetic(manifest: Tree) = manifest exists (sub => sub.symbol != null && (sub.symbol == FullManifestModule || sub.symbol.owner == FullManifestModule))
-    def searchForManifest(typer: analyzer.Typer): Tree =
+    def isSynthetic(manifest: Tree) =
+      manifest exists (sub => {
+        val defs = definitionsBySym(sub.symbol)
+        sub.symbol != null && (sub.symbol == defs.FullManifestModule || sub.symbol.owner == defs.FullManifestModule)
+      })
+
+    def searchForManifest(typer: analyzer.Typer): Tree = {
+      import typer.defs.{FullManifestClass, UniverseInternal}
       analyzer.inferImplicit(
         EmptyTree,
         appliedType(FullManifestClass.toTypeConstructor, List(tpe)),
@@ -126,6 +132,7 @@ trait GenTypes {
           case _ =>
             EmptyTree
         }
+    }
     val result = typer.silent(silentTyper => silentTyper.context.withMacrosDisabled(searchForManifest(silentTyper)))
     result match {
       case analyzer.SilentResultValue(result) => result

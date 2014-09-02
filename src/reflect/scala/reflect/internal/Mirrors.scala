@@ -35,7 +35,8 @@ trait Mirrors extends api.Mirrors {
     def findMemberFromRoot(fullName: Name): Symbol = {
       val segs = nme.segments(fullName.toString, fullName.isTermName)
       if (segs.isEmpty) NoSymbol
-      else definitions.findNamedMember(segs.tail, RootClass.info member segs.head)
+      //TODO-REFLECT-DEFS - check its correctness
+      else definitionsBySym(RootClass).findNamedMember(segs.tail, RootClass.info member segs.head)
     }
 
     /** Todo: organize similar to mkStatic in scala.reflect.Base */
@@ -260,11 +261,14 @@ trait Mirrors extends api.Mirrors {
         // synthetic core classes are only present in root mirrors
         // because Definitions.scala, which initializes and enters them, only affects rootMirror
         // therefore we need to enter them manually for non-root mirrors
+        //TODO-REFLECT-DEFS - clone symbols here
         definitions.syntheticCoreClasses foreach (theirSym => {
           val theirOwner = theirSym.owner
           assert(theirOwner.isPackageClass, s"theirSym = $theirSym, theirOwner = $theirOwner")
           val ourOwner = staticPackage(theirOwner.fullName).moduleClass
-          val ourSym = theirSym // just copy the symbol into our branch of the symbol table
+          //val ourSym = theirSym // just copy the symbol into our branch of the symbol table
+          val ourSym = theirSym.cloneSymbol(ourOwner) //TODO-REFLECT-DEFS clone symbol to get standalone copy
+          //TODO-REFLECT-DEFS - do we need to check for class and module while cloning?
           ourOwner.info.decls enterIfNew ourSym
         })
       }

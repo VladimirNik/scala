@@ -7,12 +7,14 @@ import util._
 import scala.collection.mutable.ListBuffer
 
 abstract class TreeGen {
+  //TODO-REFLECT-DEFS mirror passing required
   val global: SymbolTable
 
   import global._
   import definitions._
 
   def rootId(name: Name)             = Select(Ident(nme.ROOTPKG), name)
+  //TODO-REFLECT-DEFS - can't create trees with correct symbols
   def rootScalaDot(name: Name)       = Select(rootId(nme.scala_) setSymbol ScalaPackage, name)
   def scalaDot(name: Name)           = Select(Ident(nme.scala_) setSymbol ScalaPackage, name)
   def scalaAnnotationDot(name: Name) = Select(scalaDot(nme.annotation), name)
@@ -227,7 +229,7 @@ abstract class TreeGen {
 
   /** Cast `tree` to `pt`, unless tpe is a subtype of pt, or pt is Unit.  */
   def maybeMkAsInstanceOf(tree: Tree, pt: Type, tpe: Type, beforeRefChecks: Boolean = false): Tree =
-    if ((pt == UnitTpe) || (tpe <:< pt)) tree
+    if ((pt == definitionsBySym(pt.typeSymbol).UnitTpe) || (tpe <:< pt)) tree
     else atPos(tree.pos)(mkAsInstanceOf(tree, pt, any = true, wrapInApply = !beforeRefChecks))
 
   /** Apparently we smuggle a Type around as a Literal(Constant(tp))
@@ -252,22 +254,32 @@ abstract class TreeGen {
    *    var x: T = _
    *  which is appropriate to the given Type.
    */
-  def mkZero(tp: Type): Tree = tp.typeSymbol match {
-    case NothingClass => mkMethodCall(Predef_???, Nil) setType NothingTpe
-    case _            => Literal(mkConstantZero(tp)) setType tp
+  def mkZero(tp: Type): Tree = {
+    val tpSym = tp.typeSymbol 
+    val defs = definitionsBySym(tpSym)
+    import defs._
+    tpSym match {
+      case NothingClass => mkMethodCall(Predef_???, Nil) setType NothingTpe
+      case _            => Literal(mkConstantZero(tp)) setType tp
+    }
   }
 
-  def mkConstantZero(tp: Type): Constant = tp.typeSymbol match {
-    case UnitClass    => Constant(())
-    case BooleanClass => Constant(false)
-    case FloatClass   => Constant(0.0f)
-    case DoubleClass  => Constant(0.0d)
-    case ByteClass    => Constant(0.toByte)
-    case ShortClass   => Constant(0.toShort)
-    case IntClass     => Constant(0)
-    case LongClass    => Constant(0L)
-    case CharClass    => Constant(0.toChar)
-    case _            => Constant(null)
+  def mkConstantZero(tp: Type): Constant = {
+    val tpSym = tp.typeSymbol 
+    val defs = definitionsBySym(tpSym)
+    import defs._
+    tp.typeSymbol match {
+      case UnitClass    => Constant(())
+      case BooleanClass => Constant(false)
+      case FloatClass   => Constant(0.0f)
+      case DoubleClass  => Constant(0.0d)
+      case ByteClass    => Constant(0.toByte)
+      case ShortClass   => Constant(0.toShort)
+      case IntClass     => Constant(0)
+      case LongClass    => Constant(0L)
+      case CharClass    => Constant(0.toChar)
+      case _            => Constant(null)
+    }
   }
 
   /** Wrap an expression in a named argument. */

@@ -16,7 +16,7 @@ import scala.reflect.io.{ AbstractFile, NoAbstractFile }
 import Variance._
 
 trait Symbols extends api.Symbols { self: SymbolTable =>
-  import definitions._
+//  import definitions._
   import SymbolsStats._
 
   protected var ids = 0
@@ -176,6 +176,8 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
              with HasFlags
              with Annotatable[Symbol]
              with Attachable {
+    lazy val defs = definitionsBySym(initOwner)
+    import defs._
 
     // makes sure that all symbols that runtime reflection deals with are synchronized
     private def isSynchronized = this.isInstanceOf[scala.reflect.runtime.SynchronizedSymbols#SynchronizedSymbol]
@@ -1825,7 +1827,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     def isSubClass(that: Symbol) = isNonBottomSubClass(that)
 
     final def isNumericSubClass(that: Symbol): Boolean =
-      definitions.isNumericSubClass(this, that)
+      defs.isNumericSubClass(this, that)
 
     final def isWeakSubClass(that: Symbol) =
       isSubClass(that) || isNumericSubClass(that)
@@ -2862,7 +2864,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       res
     }
 
-    override def isVarargs: Boolean = definitions.isVarArgsList(paramss.flatten)
+    override def isVarargs: Boolean = defs.isVarArgsList(paramss.flatten)
 
     override def returnType: Type = {
       def loop(tpe: Type): Type =
@@ -3018,7 +3020,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
         tpePeriod = currentPeriod
 
       tpeCache = NoType // cycle marker
-      val noTypeParams = phase.erasedTypes && this != ArrayClass || unsafeTypeParams.isEmpty
+      val noTypeParams = phase.erasedTypes && this != defs.ArrayClass || unsafeTypeParams.isEmpty
       tpeCache = newTypeRef(
         if (noTypeParams) Nil
         else unsafeTypeParams map (_.typeConstructor)
@@ -3144,10 +3146,10 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     override def isConcreteClass         = !(this hasFlag ABSTRACT | TRAIT)
     override def isJavaInterface         = hasAllFlags(JAVA | TRAIT)
     override def isNestedClass           = !isTopLevel
-    override def isNumericValueClass     = definitions.isNumericValueClass(this)
+    override def isNumericValueClass     = defs.isNumericValueClass(this)
     override def isNumeric               = isNumericValueClass
     override def isPackageObjectClass    = isModuleClass && (name == tpnme.PACKAGE)
-    override def isPrimitiveValueClass   = definitions.isPrimitiveValueClass(this)
+    override def isPrimitiveValueClass   = defs.isPrimitiveValueClass(this)
     override def isPrimitive             = isPrimitiveValueClass
 
     // The corresponding interface is the last parent by convention.
@@ -3267,6 +3269,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     def anonOrRefinementString = {
       if (hasCompleteInfo) {
         val label   = if (isAnonymousClass) "$anon:" else "refinement of"
+        import defs.{parentsString, functionNBaseType, SerializableClass}
         val parents = parentsString(info.parents map functionNBaseType filterNot (_.typeSymbol == SerializableClass))
         s"<$label $parents>"
       }

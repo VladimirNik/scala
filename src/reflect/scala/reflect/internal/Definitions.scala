@@ -23,8 +23,8 @@ trait Definitions extends api.StandardDefinitions {
   //object definitions extends DefinitionsClass
   lazy val definitions: DefinitionsClass = new DefinitionsClass(rootMirror) {}
 
-//  def definitions(symbol: ClassSymbol): DefinitionsClass = definitions //TODO-REFLECT: change null to definitions
-  def definitions(mirror: Mirror): DefinitionsClass = null //TODO-REFLECT change to definitions
+  def definitionsBySym(symbol: Symbol): DefinitionsClass = definitions
+  def definitions(mirror: Mirror): DefinitionsClass = definitions
 
   /** Since both the value parameter types and the result type may
    *  require access to the type parameter symbols, we model polymorphic

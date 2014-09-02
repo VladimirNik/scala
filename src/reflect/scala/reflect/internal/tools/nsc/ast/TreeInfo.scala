@@ -14,7 +14,7 @@ package tools.nsc.ast
 abstract class TreeInfo extends scala.reflect.internal.TreeInfo {
   val global: SymbolTable
   import global._
-  import definitions._
+//  import definitions._
 
   // arg1.op(arg2) returns (arg1, op.symbol, arg2)
   object BinaryOp {
@@ -33,9 +33,13 @@ abstract class TreeInfo extends scala.reflect.internal.TreeInfo {
 
   // x.asInstanceOf[T] returns (x, typeOf[T])
   object AsInstanceOf {
-    def unapply(t: Tree): Option[(Tree, Type)] = t match {
-      case Apply(TypeApplyOp(recv, Object_asInstanceOf, tpe :: Nil), Nil) => Some((recv, tpe))
-      case _                                                              => None
+    def unapply(t: Tree): Option[(Tree, Type)] = {
+      val defs = definitionsBySym(t.symbol)
+      import defs.Object_asInstanceOf
+      t match {
+        case Apply(TypeApplyOp(recv, Object_asInstanceOf, tpe :: Nil), Nil) => Some((recv, tpe))
+        case _                                                              => None
+      }
     }
   }
 

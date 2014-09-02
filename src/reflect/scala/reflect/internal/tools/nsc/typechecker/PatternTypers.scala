@@ -37,17 +37,18 @@ trait PatternTypers {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
 
   private object FixedAndRepeatedTypes {
     def unapply(types: List[Type]) = types match {
-      case init :+ last if isRepeatedParamType(last) => Some((init, dropRepeated(last)))
+      case init :+ last if definitionsBySym(last.typeSymbol).isRepeatedParamType(last) => Some((init, definitionsBySym(last.typeSymbol).dropRepeated(last)))
       case _                                         => Some((types, NoType))
     }
   }
 
   trait PatternTyper {
     self: Typer =>
+    import defs._
 
     import TyperErrorGen._
     import infer._

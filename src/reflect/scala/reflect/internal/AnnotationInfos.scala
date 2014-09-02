@@ -14,7 +14,7 @@ import scala.language.postfixOps
 
 /** AnnotationInfo and its helpers */
 trait AnnotationInfos extends api.Annotations { self: SymbolTable =>
-  import definitions._
+//  import definitions._
   import treeInfo._
 
   // Common annotation code between Symbol and Type.
@@ -38,6 +38,9 @@ trait AnnotationInfos extends api.Annotations { self: SymbolTable =>
     }
 
     def addThrowsAnnotation(throwableSym: Symbol): Self = {
+      val defs = definitionsBySym(throwableSym)
+      import defs._
+
       val throwableTpe = if (throwableSym.isMonomorphicType) throwableSym.tpe else {
         debuglog(s"Encountered polymorphic exception `${throwableSym.fullName}` while parsing class file.")
         // in case we encounter polymorphic exception the best we can do is to convert that type to
@@ -146,6 +149,7 @@ trait AnnotationInfos extends api.Annotations { self: SymbolTable =>
       (sevenBitsMayBeZero.length + numZeros) <= 65535
     }
 
+    //TODO-REFLECT-DEFS definitions are unresolved but are not used in scala-reflect
     def sigAnnot: Type =
       if (fitsInOneString)
         definitions.ScalaSignatureAnnotation.tpe
@@ -300,7 +304,12 @@ trait AnnotationInfos extends api.Annotations { self: SymbolTable =>
      *  For instance, for scala.deprecated defaultTargets =
      *    List(getter, setter, beanGetter, beanSetter).
      */
-    def defaultTargets = symbol.annotations map (_.symbol) filter isMetaAnnotation
+    def defaultTargets = {
+      val defs = definitionsBySym(symbol)
+      import defs._
+ 
+      symbol.annotations map (_.symbol) filter isMetaAnnotation
+    }
     // Test whether the typeSymbol of atp conforms to the given class.
     def matches(clazz: Symbol) = !symbol.isInstanceOf[StubSymbol] && (symbol isNonBottomSubClass clazz)
     // All subtrees of all args are considered.
@@ -309,7 +318,12 @@ trait AnnotationInfos extends api.Annotations { self: SymbolTable =>
     /** Check whether the type or any of the arguments are erroneous */
     def isErroneous = atp.isErroneous || args.exists(_.isErroneous)
 
-    def isStatic = symbol isNonBottomSubClass StaticAnnotationClass
+    def isStatic = {
+      val defs = definitionsBySym(symbol)
+      import defs._
+
+      symbol isNonBottomSubClass StaticAnnotationClass  
+    }
 
     /** Check whether any of the arguments mention a symbol */
     def refsSymbol(sym: Symbol) = hasArgWhich(_.symbol == sym)
@@ -317,7 +331,7 @@ trait AnnotationInfos extends api.Annotations { self: SymbolTable =>
     def stringArg(index: Int) = constantAtIndex(index) map (_.stringValue)
     def intArg(index: Int)    = constantAtIndex(index) map (_.intValue)
     def symbolArg(index: Int) = argAtIndex(index) collect {
-      case Apply(fun, Literal(str) :: Nil) if fun.symbol == definitions.Symbol_apply =>
+      case Apply(fun, Literal(str) :: Nil) if fun.symbol == definitionsBySym(fun.symbol).Symbol_apply =>
         newTermName(str.stringValue)
     }
 
@@ -347,6 +361,10 @@ trait AnnotationInfos extends api.Annotations { self: SymbolTable =>
   implicit val AnnotationTag = ClassTag[AnnotationInfo](classOf[AnnotationInfo])
 
   protected[scala] def annotationToTree(ann: Annotation): Tree = {
+    //TODO-REFLECT-DEFS only symbol from tree can be used to get defs (there are sevelar similar cases below)
+    val defs = definitionsBySym(ann.symbol)
+    import defs._
+
     def reverseEngineerArgs(): List[Tree] = {
       def reverseEngineerArg(jarg: ClassfileAnnotArg): Tree = jarg match {
         case LiteralAnnotArg(const) =>
@@ -383,7 +401,10 @@ trait AnnotationInfos extends api.Annotations { self: SymbolTable =>
   }
 
   protected[scala] def treeToAnnotation(tree: Tree): Annotation = tree match {
-    case Apply(Select(New(tpt), nme.CONSTRUCTOR), args) =>
+    case apply @ Apply(Select(New(tpt), nme.CONSTRUCTOR), args) =>
+      val defs = definitionsBySym(apply.symbol)
+      import defs._
+
       def encodeJavaArg(arg: Tree): ClassfileAnnotArg = arg match {
         case Literal(const) => LiteralAnnotArg(const)
         case Apply(ArrayModule, args) => ArrayAnnotArg(args map encodeJavaArg toArray)
@@ -414,6 +435,9 @@ trait AnnotationInfos extends api.Annotations { self: SymbolTable =>
     */
   object ThrownException {
     def unapply(ann: AnnotationInfo): Option[Symbol] = {
+      val defs = definitionsBySym(ann.symbol)
+      import defs._
+
       ann match {
         case AnnotationInfo(tpe, _, _) if tpe.typeSymbol != ThrowsClass =>
           None

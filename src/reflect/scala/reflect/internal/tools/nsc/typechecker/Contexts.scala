@@ -36,6 +36,7 @@ trait Contexts { self: Analyzer =>
     override def firstImport: Option[ImportInfo] = None
     override def toString = "NoContext"
   }
+  //TODO-REFLECT-DEFS - add map of RootImports based on sym/mirror
   private object RootImports {
     // Possible lists of root imports
     val javaList         = JavaLangPackage :: Nil
@@ -1366,6 +1367,7 @@ trait Contexts { self: Analyzer =>
       //      check inside the above loop, as I believe that
       //      this always represents a mistake on the part of
       //      the caller.
+      //TODO-REFLECT-DEFS - I can't add definitions based on mirror here but this property should work correctly
       if (definitions isImportable result) result
       else NoSymbol
     }

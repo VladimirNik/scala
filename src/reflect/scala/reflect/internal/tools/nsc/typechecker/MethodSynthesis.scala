@@ -19,7 +19,7 @@ trait MethodSynthesis {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
   import CODE._
 
   /** The annotations amongst those found on the original symbol which
@@ -35,6 +35,9 @@ trait MethodSynthesis {
   }
 
   class ClassMethodSynthesis(val clazz: Symbol, localTyper: Typer) {
+    val defs = definitions(localTyper.context.mirror)
+    import defs._
+
     def mkThis = This(clazz) setPos clazz.pos.focus
     def mkThisSelect(sym: Symbol) = atPos(clazz.pos.focus)(
       if (clazz.isClass) Select(This(clazz), sym) else Ident(sym)
@@ -127,6 +130,7 @@ trait MethodSynthesis {
    */
   trait MethodSynth {
     self: Namer =>
+    import defs._
 
     import NamerErrorGen._
 

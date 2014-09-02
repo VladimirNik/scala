@@ -34,14 +34,18 @@ trait SyntheticMethods extends ast.TreeDSL {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
   import CODE._
 
-  private lazy val productSymbols    = List(Product_productPrefix, Product_productArity, Product_productElement, Product_iterator, Product_canEqual)
-  private lazy val valueSymbols      = List(Any_hashCode, Any_equals)
-  private lazy val caseSymbols       = List(Object_hashCode, Object_toString) ::: productSymbols
-  private lazy val caseValueSymbols  = Any_toString :: valueSymbols ::: productSymbols
-  private lazy val caseObjectSymbols = Object_equals :: caseSymbols
+  //TODO-REFLECT-DEFS - can't pass correct defintions to use here
+  private lazy val productSymbols    = {
+    import definitions._
+    List(Product_productPrefix, Product_productArity, Product_productElement, Product_iterator, Product_canEqual)
+  }
+  private lazy val valueSymbols      = List(definitions.Any_hashCode, definitions.Any_equals)
+  private lazy val caseSymbols       = List(definitions.Object_hashCode, definitions.Object_toString) ::: productSymbols
+  private lazy val caseValueSymbols  = definitions.Any_toString :: valueSymbols ::: productSymbols
+  private lazy val caseObjectSymbols = definitions.Object_equals :: caseSymbols
   private def symbolsToSynthesize(clazz: Symbol): List[Symbol] = {
     if (clazz.isCase) {
       if (clazz.isDerivedValueClass) caseValueSymbols
@@ -59,6 +63,9 @@ trait SyntheticMethods extends ast.TreeDSL {
   /** Add the synthetic methods to case classes.
    */
   def addSyntheticMethods(templ: Template, clazz0: Symbol, context: Context): Template = {
+    val defs = definitionsBySym(clazz0)
+    import defs._
+
     //TODO-REFLECT - original val syntheticsOk = (phase.id <= currentRun.typerPhase.id) && {
     val syntheticsOk = notAfterTyperPhase && {
       symbolsToSynthesize(clazz0) filter (_ matchingSymbol clazz0.info isSynthetic) match {

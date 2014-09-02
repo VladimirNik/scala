@@ -20,7 +20,7 @@ trait Adaptations {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
 
   trait Adaptation {
     self: Typer =>
@@ -54,7 +54,7 @@ trait Adaptations {
       // which we should be especially reluctant to insert () or auto-tuple.
       def isLeakyTarget = {
         val oneArgObject = t.symbol.paramss match {
-          case (param :: Nil) :: Nil  => ObjectClass isSubClass param.tpe.typeSymbol
+          case (param :: Nil) :: Nil  => definitionsBySym(t.symbol).ObjectClass isSubClass param.tpe.typeSymbol
           case _                      => false
         }
         // Unfortunately various "universal" methods and the manner in which

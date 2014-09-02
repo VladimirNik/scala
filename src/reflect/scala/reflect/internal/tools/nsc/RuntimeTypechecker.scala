@@ -369,14 +369,21 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
 
   // *** Definitions ***
   //TODO-REFLECT: cache to persist definitions for mirrors used during typecheck
-  lazy val definitionsCache = WeakHashMap[ClassSymbol, DefinitionsClass]()
+  lazy val definitionsCache = WeakHashMap[Symbol, DefinitionsClass](rootMirror.RootClass -> definitions)
  
   override lazy val definitions: DefinitionsClass = {
     val value = new DefinitionsClass(rootMirror) {}
     definitionsCache(rootMirror.RootClass) = value
     value
   }
-  def createDefinitions(mirror: Mirror): DefinitionsClass = definitionsCache.getOrElseUpdate(mirror.RootClass, new DefinitionsClass(mirror){})
+
+  def createDefinitions(mirror: Mirror): DefinitionsClass = definitionsCache.getOrElseUpdate(mirror.RootClass, {val defs = new DefinitionsClass(mirror){}; defs.init; defs})
+  //TODO-REFLECT-DEFS add checking for passed symbol
+  override def definitionsBySym(symbol: Symbol): DefinitionsClass = {
+    //TODO-REFLECT-DEFS check result for None symbol (result symbol should be correct) - if enclosing is not found None is returned
+    val rootSymbol = if (symbol.isRoot) symbol else symbol.enclosingRootClass
+    definitionsCache.getOrElse(rootSymbol, null) //TODO-REFLECT: change null to definitions
+  }
   override def definitions(mirror: Mirror): DefinitionsClass = definitionsCache.getOrElse(mirror.RootClass, null) //TODO-REFLECT: change null to definitions
 
   // *** Mirrors ****

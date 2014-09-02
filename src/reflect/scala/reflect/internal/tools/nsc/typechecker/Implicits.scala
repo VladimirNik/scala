@@ -29,7 +29,7 @@ trait Implicits {
   self: Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
   import ImplicitsStats._
   import typingStack.{ printTyping }
   import typeDebug._
@@ -119,6 +119,8 @@ trait Implicits {
    *              (implicit search should not try to solve them, just track their constraints)
    */
   def allViewsFrom(tp: Type, context: Context, tpars: List[Symbol]): List[(SearchResult, List[TypeConstraint])] = {
+    val defs = definitions(context.mirror)
+    import defs._
     // my untouchable typevars are better than yours (they can't be constrained by them)
     val tvars = tpars map (TypeVar untouchable _)
     val tpSubsted = tp.subst(tpars, tvars)
@@ -138,7 +140,7 @@ trait Implicits {
   private val implicitSearchId = { var id = 1 ; () => try id finally id += 1 }
 
   private def isInvalidConversionSource(tpe: Type): Boolean = tpe match {
-    case Function1(in, _) => in <:< NullClass.tpe
+    case Function1(in, _) => in <:< definitionsBySym(tpe.typeSymbol).NullClass.tpe
     case _                => false
   }
 
@@ -279,7 +281,8 @@ trait Implicits {
   /** An extractor for types of the form ? { name: (? >: argtpe <: Any*)restp }
    */
   object HasMethodMatching {
-    val dummyMethod = NoSymbol.newTermSymbol("typer$dummy") setInfo NullaryMethodType(AnyTpe)
+    //TODO-REFLECT-DEFS - can't get correct AnyTpe
+    val dummyMethod = NoSymbol.newTermSymbol("typer$dummy") setInfo NullaryMethodType(definitions.AnyTpe)
 
     def templateArgType(argtpe: Type) = new BoundedWildcardType(TypeBounds.lower(argtpe))
 
@@ -306,7 +309,8 @@ trait Implicits {
   /** An extractor for unary function types arg => res
    */
   object Function1 {
-    val Sym = FunctionClass(1)
+    //TODO-REFLECT-DEFS - can't get correct FunctionClass
+    val Sym = definitions.FunctionClass(1)
     // It is tempting to think that this should be inspecting "tp baseType Sym"
     // rather than tp. See test case run/t8280 and the commit message which
     // accompanies it for explanation why that isn't done.
@@ -326,6 +330,8 @@ trait Implicits {
    *                          If it's set to NoPosition, then position-based services will use `tree.pos`
    */
   class ImplicitSearch(tree: Tree, pt: Type, isView: Boolean, context0: Context, pos0: Position = NoPosition) extends Typer(context0) with ImplicitsContextErrors {
+    import defs.{ReflectRuntimeUniverse, FunctionClass, ByNameParamClass, ClassTagClass, FullManifestClass, OptManifestClass, FullManifestModule}
+
     val searchId = implicitSearchId()
     private def typingLog(what: String, msg: => String) =
       typingStack.printTyping(tree, f"[search #$searchId] $what $msg")
@@ -1229,6 +1235,7 @@ trait Implicits {
           case ConstantType(value) =>
             manifestOfType(tp1.deconst, FullManifestClass)
           case TypeRef(pre, sym, args) =>
+            import defs._
             if (isPrimitiveValueClass(sym) || isPhantomClass(sym)) {
               findSingletonManifest(sym.name.toString)
             } else if (sym == ObjectClass || sym == AnyRefClass) {
@@ -1272,7 +1279,7 @@ trait Implicits {
             EmptyTree
           }
       }
-
+      import defs._
       if (full) {
         val tagInScope = resolveTypeTag(pos, NoType, tp, concrete = true, allowMaterialization = false)
         if (tagInScope.isEmpty) mot(tp, Nil, Nil)
@@ -1390,6 +1397,7 @@ trait Implicits {
                maybeInvalidConversionError(s"the result type of an implicit conversion must be more specific than ${sym.name}")
               result = SearchFailure
             }
+            import defs._
             prohibit(AnyRefClass)
             if (settings.isScala211) prohibit(AnyValClass)
           case _                 => false
@@ -1452,7 +1460,7 @@ trait Implicits {
     // check the message's syntax: should be a string literal that may contain occurrences of the string "${X}",
     // where `X` refers to a type parameter of `sym`
     def check(sym: Symbol): Option[String] =
-      sym.getAnnotation(ImplicitNotFoundClass).flatMap(_.stringArg(0) match {
+      sym.getAnnotation(definitionsBySym(sym).ImplicitNotFoundClass).flatMap(_.stringArg(0) match {
         case Some(m) => new Message(sym, m).validate
         case None => Some("Missing argument `msg` on implicitNotFound annotation.")
       })

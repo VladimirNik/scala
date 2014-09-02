@@ -7,7 +7,7 @@ trait MacroRuntimes extends JavaReflectionRuntimes {
   self: scala.reflect.internal.tools.nsc.typechecker.Analyzer =>
 
   import global._
-  import definitions._
+//  import definitions._
 
   /** Produces a function that can be used to invoke macro implementation for a given macro definition:
    *    1) Looks up macro implementation symbol in this universe.
@@ -53,7 +53,8 @@ trait MacroRuntimes extends JavaReflectionRuntimes {
     val isBundle = binding.isBundle
     val className = binding.className
     val methName = binding.methName
-
+    val defs = definitionsBySym(macroDef)
+    import defs._
     def resolveRuntime(): MacroRuntime = {
       if (className == Predef_???.owner.javaClassName && methName == Predef_???.name.encoded) {
         args => throw new AbortMacroException(args.c.enclosingPosition, "macro implementation is missing")
