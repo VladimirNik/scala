@@ -466,7 +466,7 @@ trait DocComments { self: SymbolTable =>
         //val (classes, pkgs) = site.ownerChain.span(!_.isPackageClass)
         //val sites = (classes ::: List(pkgs.head, rootMirror.RootClass)))
         //findIn(sites)
-        findIn(site.ownerChain ::: List(rootMirror.EmptyPackage))
+        findIn(site.ownerChain ::: List(reflectMirror(sym).EmptyPackage))
       }
 
       def getType(str: String, variable: String): Type = {
@@ -528,7 +528,7 @@ trait DocComments { self: SymbolTable =>
               val tpe = getType(repl2, alias.name.toString)
               if (tpe != NoType) (tpe, true)
               else {
-                val alias1 = alias.cloneSymbol(rootMirror.RootClass, alias.rawflags, newTypeName(repl2))
+                val alias1 = alias.cloneSymbol(reflectMirror(sym).RootClass, alias.rawflags, newTypeName(repl2))
                 (typeRef(NoPrefix, alias1, Nil), false)
               }
             case None =>

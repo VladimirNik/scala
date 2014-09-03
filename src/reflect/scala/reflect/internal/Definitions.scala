@@ -533,8 +533,8 @@ trait Definitions extends api.StandardDefinitions {
     lazy val NoneModule: ModuleSymbol   = requiredModule[scala.None.type]
     lazy val SomeModule: ModuleSymbol   = requiredModule[scala.Some.type]
 
-    def compilerTypeFromTag(tt: ApiUniverse # WeakTypeTag[_]): Type = tt.in(rootMirror).tpe
-    def compilerSymbolFromTag(tt: ApiUniverse # WeakTypeTag[_]): Symbol = tt.in(rootMirror).tpe.typeSymbol
+    def compilerTypeFromTag(tt: ApiUniverse # WeakTypeTag[_]): Type = tt.in(metaMirror).tpe
+    def compilerSymbolFromTag(tt: ApiUniverse # WeakTypeTag[_]): Symbol = tt.in(metaMirror).tpe.typeSymbol
 
     // The given symbol is a method with the right name and signature to be a runnable java program.
     def isJavaMainMethod(sym: Symbol) = (sym.name == nme.main) && (sym.info match {
