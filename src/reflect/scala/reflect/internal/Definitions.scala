@@ -20,11 +20,11 @@ trait Definitions extends api.StandardDefinitions {
   //TODO-REFLECT: use metaMirror passed to DefinitionsClass
   //import rootMirror.{getModuleByName, getPackage, getClassByName, getRequiredClass, getRequiredModule, getClassIfDefined, getModuleIfDefined, getPackageObject, getPackageIfDefined, getPackageObjectIfDefined, requiredClass, requiredModule}
 
-  //object definitions extends DefinitionsClass
-  lazy val definitions: DefinitionsClass = new DefinitionsClass(rootMirror) {}
+  object definitions extends DefinitionsClass
+//  lazy val definitions: DefinitionsClass = new DefinitionsClass(rootMirror) {}
 
   def definitionsBySym(symbol: Symbol): DefinitionsClass = definitions
-  def definitions(mirror: Mirror): DefinitionsClass = definitions
+  def definitionsByMirror(mirror: Mirror): DefinitionsClass = definitions
 
   /** Since both the value parameter types and the result type may
    *  require access to the type parameter symbols, we model polymorphic

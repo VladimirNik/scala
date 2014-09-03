@@ -56,7 +56,7 @@ trait Namers extends MethodSynthesis {
 
   abstract class Namer(val context: Context) extends MethodSynth with NamerContextErrors { thisNamer =>
     val namerMirror = context.mirror
-    val defs = definitions(namerMirror)
+    val defs = definitionsByMirror(namerMirror)
     import defs._    
 
     //val namerMirror: Mirror = if (useContextMirror) context.mirror else rootMirror

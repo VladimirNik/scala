@@ -35,7 +35,7 @@ trait MethodSynthesis {
   }
 
   class ClassMethodSynthesis(val clazz: Symbol, localTyper: Typer) {
-    val defs = definitions(localTyper.context.mirror)
+    val defs = definitionsByMirror(localTyper.context.mirror)
     import defs._
 
     def mkThis = This(clazz) setPos clazz.pos.focus

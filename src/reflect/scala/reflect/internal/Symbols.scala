@@ -177,7 +177,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
              with Annotatable[Symbol]
              with Attachable {
     lazy val defs = definitionsBySym(initOwner)
-    import defs._
+//    import defs._
 
     // makes sure that all symbols that runtime reflection deals with are synchronized
     private def isSynchronized = this.isInstanceOf[scala.reflect.runtime.SynchronizedSymbols#SynchronizedSymbol]
@@ -290,7 +290,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
 
     /** Static constructor with info set. */
     def newStaticConstructor(pos: Position): MethodSymbol =
-      newConstructor(pos, STATIC) setInfo UnitTpe
+      newConstructor(pos, STATIC) setInfo defs.UnitTpe
 
     /** Instance constructor with info set. */
     def newClassConstructor(pos: Position): MethodSymbol =
@@ -322,7 +322,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       val newName  = nme.moduleVarName(accessor.name.toTermName)
       val newFlags = MODULEVAR | ( if (this.isClass) PrivateLocal | SYNTHETIC else 0 )
       val newInfo  = accessor.tpe.finalResultType
-      val mval     = newVariable(newName, accessor.pos.focus, newFlags.toLong) addAnnotation VolatileAttr
+      val mval     = newVariable(newName, accessor.pos.focus, newFlags.toLong) addAnnotation defs.VolatileAttr
 
       if (this.isClass)
         mval setInfoAndEnter newInfo
@@ -774,7 +774,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
 
     final def isDerivedValueClass =
       isClass && !hasFlag(PACKAGE | TRAIT) &&
-      info.firstParent.typeSymbol == AnyValClass && !isPrimitiveValueClass
+      info.firstParent.typeSymbol == defs.AnyValClass && !isPrimitiveValueClass
 
     final def isMethodWithExtension =
       isMethod && owner.isDerivedValueClass && !isParamAccessor && !isConstructor && !hasFlag(SUPERACCESSOR) && !isMacro
@@ -790,7 +790,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     def expandName(base: Symbol) { }
 
     // In java.lang, Predef, or scala package/package object
-    def isInDefaultNamespace = UnqualifiedOwners(effectiveOwner)
+    def isInDefaultNamespace = defs.UnqualifiedOwners(effectiveOwner)
 
     /** The owner, skipping package objects.
      */
@@ -808,7 +808,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      *  unpleasantries like Predef.String, $iw.$iw.Foo and <empty>.Bippy.
      */
     final def isOmittablePrefix = /*!settings.debug.value &&*/ (
-         UnqualifiedOwners(skipPackageObject)
+         defs.UnqualifiedOwners(skipPackageObject)
       || isEmptyPrefix
     )
     def isEmptyPrefix = (
@@ -833,21 +833,21 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
         )
       }
 
-    def isStrictFP          = hasAnnotation(ScalaStrictFPAttr) || (enclClass hasAnnotation ScalaStrictFPAttr)
-    def isSerializable      = info.baseClasses.exists(p => p == SerializableClass || p == JavaSerializableClass)
-    def hasBridgeAnnotation = hasAnnotation(BridgeClass)
-    def isDeprecated        = hasAnnotation(DeprecatedAttr)
-    def deprecationMessage  = getAnnotation(DeprecatedAttr) flatMap (_ stringArg 0)
-    def deprecationVersion  = getAnnotation(DeprecatedAttr) flatMap (_ stringArg 1)
-    def deprecatedParamName = getAnnotation(DeprecatedNameAttr) flatMap (_ symbolArg 0)
+    def isStrictFP          = hasAnnotation(defs.ScalaStrictFPAttr) || (enclClass hasAnnotation defs.ScalaStrictFPAttr)
+    def isSerializable      = info.baseClasses.exists(p => p == defs.SerializableClass || p == defs.JavaSerializableClass)
+    def hasBridgeAnnotation = hasAnnotation(defs.BridgeClass)
+    def isDeprecated        = hasAnnotation(defs.DeprecatedAttr)
+    def deprecationMessage  = getAnnotation(defs.DeprecatedAttr) flatMap (_ stringArg 0)
+    def deprecationVersion  = getAnnotation(defs.DeprecatedAttr) flatMap (_ stringArg 1)
+    def deprecatedParamName = getAnnotation(defs.DeprecatedNameAttr) flatMap (_ symbolArg 0)
     def hasDeprecatedInheritanceAnnotation
-                            = hasAnnotation(DeprecatedInheritanceAttr)
+                            = hasAnnotation(defs.DeprecatedInheritanceAttr)
     def deprecatedInheritanceMessage
-                            = getAnnotation(DeprecatedInheritanceAttr) flatMap (_ stringArg 0)
+                            = getAnnotation(defs.DeprecatedInheritanceAttr) flatMap (_ stringArg 0)
     def hasDeprecatedOverridingAnnotation
-                            = hasAnnotation(DeprecatedOverridingAttr)
+                            = hasAnnotation(defs.DeprecatedOverridingAttr)
     def deprecatedOverridingMessage
-                            = getAnnotation(DeprecatedOverridingAttr) flatMap (_ stringArg 0)
+                            = getAnnotation(defs.DeprecatedOverridingAttr) flatMap (_ stringArg 0)
 
     // !!! when annotation arguments are not literal strings, but any sort of
     // assembly of strings, there is a fair chance they will turn up here not as
@@ -855,14 +855,14 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     // prevents someone from writing a @migration annotation with a calculated
     // string.  So this needs attention.  For now the fact that migration is
     // private[scala] ought to provide enough protection.
-    def hasMigrationAnnotation = hasAnnotation(MigrationAnnotationClass)
-    def migrationMessage    = getAnnotation(MigrationAnnotationClass) flatMap { _.stringArg(0) }
-    def migrationVersion    = getAnnotation(MigrationAnnotationClass) flatMap { _.stringArg(1) }
-    def elisionLevel        = getAnnotation(ElidableMethodClass) flatMap { _.intArg(0) }
-    def implicitNotFoundMsg = getAnnotation(ImplicitNotFoundClass) flatMap { _.stringArg(0) }
+    def hasMigrationAnnotation = hasAnnotation(defs.MigrationAnnotationClass)
+    def migrationMessage    = getAnnotation(defs.MigrationAnnotationClass) flatMap { _.stringArg(0) }
+    def migrationVersion    = getAnnotation(defs.MigrationAnnotationClass) flatMap { _.stringArg(1) }
+    def elisionLevel        = getAnnotation(defs.ElidableMethodClass) flatMap { _.intArg(0) }
+    def implicitNotFoundMsg = getAnnotation(defs.ImplicitNotFoundClass) flatMap { _.stringArg(0) }
 
-    def isCompileTimeOnly       = hasAnnotation(CompileTimeOnlyAttr)
-    def compileTimeOnlyMessage  = getAnnotation(CompileTimeOnlyAttr) flatMap (_ stringArg 0)
+    def isCompileTimeOnly       = hasAnnotation(defs.CompileTimeOnlyAttr)
+    def compileTimeOnlyMessage  = getAnnotation(defs.CompileTimeOnlyAttr) flatMap (_ stringArg 0)
 
     /** Is this symbol an accessor method for outer? */
     final def isOuterAccessor = hasFlag(STABLE | ARTIFACT) && (unexpandedName == nme.OUTER)
@@ -875,7 +875,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      * Stability and volatility are checked separately to allow volatile paths in patterns that amount to equality checks. SI-6815
      */
     final def isStable        = isTerm && !isMutable && !(hasFlag(BYNAMEPARAM)) && (!isMethod || hasStableFlag)
-    final def hasVolatileType = tpe.isVolatile && !hasAnnotation(uncheckedStableClass)
+    final def hasVolatileType = tpe.isVolatile && !hasAnnotation(defs.uncheckedStableClass)
 
     /** Does this symbol denote the primary constructor of its enclosing class? */
     final def isPrimaryConstructor =
@@ -1718,7 +1718,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     def makeSerializable() {
       info match {
         case ci @ ClassInfoType(_, _, _) =>
-          setInfo(ci.copy(parents = ci.parents :+ SerializableTpe))
+          setInfo(ci.copy(parents = ci.parents :+ defs.SerializableTpe))
         case i =>
           abort("Only ClassInfoTypes can be made serializable: "+ i)
       }
@@ -1817,10 +1817,13 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      *  TODO - what is implied by the fact that AnyVal now has
      *  infinitely many non-bottom subclasses, not only 9?
      */
-    def isBottomSubClass(that: Symbol) = (
-         (this eq NothingClass)
-      || (this eq NullClass) && that.isClass && (that ne NothingClass) && !(that isNonBottomSubClass AnyValClass)
-    )
+    def isBottomSubClass(that: Symbol) = {
+      import defs._
+      (
+           (this eq NothingClass)
+        || (this eq NullClass) && that.isClass && (that ne NothingClass) && !(that isNonBottomSubClass AnyValClass)
+      )
+    }
 
     /** Overridden in NullClass and NothingClass for custom behavior.
      */
@@ -2591,6 +2594,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
 
     /** String representation of symbol's definition following its name */
     final def infoString(tp: Type): String = {
+      import defs._
       def parents = (
         if (settings.debug.value) parentsString(tp.parents)
         else briefParentsString(tp.parents)
@@ -2646,7 +2650,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     private def compose(ss: String*) = ss filter (_ != "") mkString " "
 
     def isSingletonExistential =
-      nme.isSingletonName(name) && (info.bounds.hi.typeSymbol isSubClass SingletonClass)
+      nme.isSingletonName(name) && (info.bounds.hi.typeSymbol isSubClass defs.SingletonClass)
 
     /** String representation of existentially bound variable */
     def existentialToString =

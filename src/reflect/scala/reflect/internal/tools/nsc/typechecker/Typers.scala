@@ -111,7 +111,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
   //TODO-REFLECT pass here correct mirror
   abstract class Typer(context0: Context) extends TyperDiagnostics with Adaptation with Tag with PatternTyper with TyperContextErrors {
     val typerMirror = context0.mirror
-    val defs = definitions(context0.mirror)
+    val defs = definitionsByMirror(context0.mirror)
     import defs._
     //val typerMirror: Mirror = if (useContextMirror) context0.mirror else rootMirror
     

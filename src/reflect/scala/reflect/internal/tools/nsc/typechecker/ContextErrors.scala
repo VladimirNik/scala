@@ -133,7 +133,7 @@ trait ContextErrors {
 
     object TyperErrorGen {
       implicit val contextTyperErrorGen: Context = infer.getContext
-      val defs = definitions(contextTyperErrorGen.mirror)
+      val defs = definitionsByMirror(contextTyperErrorGen.mirror)
       import defs._
 
       def UnstableTreeError(tree: Tree) = {

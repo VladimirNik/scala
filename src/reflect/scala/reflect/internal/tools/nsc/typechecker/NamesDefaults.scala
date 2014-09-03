@@ -111,7 +111,7 @@ trait NamesDefaults { self: Analyzer =>
     import typer._
     import typer.infer._
     val context = typer.context
-    val defs = definitions(context.mirror)
+    val defs = definitionsByMirror(context.mirror)
     import defs._
     import context.unit
 
@@ -480,7 +480,7 @@ trait NamesDefaults { self: Analyzer =>
       val udp = context.undetparams
       context.savingUndeterminedTypeParams(reportAmbiguous = false) {
         val subst = new SubstTypeMap(udp, udp map (_ => WildcardType)) {
-          override def apply(tp: Type): Type = super.apply(definitions(typer.context.mirror).dropByName(tp))
+          override def apply(tp: Type): Type = super.apply(definitionsByMirror(typer.context.mirror).dropByName(tp))
         }
         // This throws an exception which is caught in `tryTypedApply` (as it
         // uses `silent`) - unfortunately, tryTypedApply recovers from the

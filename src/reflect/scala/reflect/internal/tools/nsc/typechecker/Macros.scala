@@ -409,7 +409,7 @@ trait Macros extends MacroRuntimes with Traces with Helpers {
           // wrap argss in c.Expr if necessary (i.e. if corresponding macro impl param is of type c.Expr[T])
           // expand varargs (nb! varargs can apply to any parameter section, not necessarily to the last one)
           val trees = map3(argss, paramss, signature)((args, defParams, implParams) => {
-            val isVarargs = definitions(typer.context.mirror).isVarArgsList(defParams)
+            val isVarargs = definitionsByMirror(typer.context.mirror).isVarArgsList(defParams)
             if (isVarargs) {
               if (defParams.length > args.length + 1) MacroTooFewArgumentsError(expandee)
             } else {

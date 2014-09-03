@@ -119,7 +119,7 @@ trait Implicits {
    *              (implicit search should not try to solve them, just track their constraints)
    */
   def allViewsFrom(tp: Type, context: Context, tpars: List[Symbol]): List[(SearchResult, List[TypeConstraint])] = {
-    val defs = definitions(context.mirror)
+    val defs = definitionsByMirror(context.mirror)
     import defs._
     // my untouchable typevars are better than yours (they can't be constrained by them)
     val tvars = tpars map (TypeVar untouchable _)

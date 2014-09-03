@@ -2124,8 +2124,8 @@ trait Types
    * @M: a higher-kinded type is represented as a TypeRef with sym.typeParams.nonEmpty, but args.isEmpty
    */
   abstract case class TypeRef(pre: Type, sym: Symbol, args: List[Type]) extends UniqueType with TypeRefApi {
-    val defs = definitionsBySym(sym)
-    import defs._
+    lazy val defs = definitionsBySym(sym)
+//    import defs._
     private var trivial: ThreeValue = UNKNOWN
     override def isTrivial: Boolean = {
       if (trivial == UNKNOWN)
@@ -2257,7 +2257,7 @@ trait Types
     private def preString  = if (needsPreString) pre.prefixString else ""
     private def argsString = if (args.isEmpty) "" else args.mkString("[", ",", "]")
 
-    private def refinementDecls = fullyInitializeScope(decls) filter (sym => sym.isPossibleInRefinement && sym.isPublic)
+    private def refinementDecls = defs.fullyInitializeScope(decls) filter (sym => sym.isPossibleInRefinement && sym.isPublic)
     private def refinementString = (
       if (sym.isStructuralRefinement)
         refinementDecls map (_.defString) mkString("{", "; ", "}")
@@ -2265,7 +2265,7 @@ trait Types
     )
     protected def finishPrefix(rest: String) = (
       if (sym.isInitialized && sym.isAnonymousClass && !phase.erasedTypes)
-        parentsString(thisInfo.parents) + refinementString
+        defs.parentsString(thisInfo.parents) + refinementString
       else rest
     )
     private def noArgsString = finishPrefix(preString + sym.nameString)
@@ -2274,35 +2274,38 @@ trait Types
       case arg :: Nil => s"($arg,)"
       case _          => args.mkString("(", ", ", ")")
     }
-    private def customToString = sym match {
-      case RepeatedParamClass | JavaRepeatedParamClass => args.head + "*"
-      case ByNameParamClass   => "=> " + args.head
-      case _                  =>
-        if (isFunctionTypeDirect(this)) {
-          // Aesthetics: printing Function1 as T => R rather than (T) => R
-          // ...but only if it's not a tuple, so ((T1, T2)) => R is distinguishable
-          // from (T1, T2) => R.
-          unspecializedTypeArgs(this) match {
-            // See neg/t588 for an example which arrives here - printing
-            // the type of a Function1 after erasure.
-            case Nil => noArgsString
-            case in :: out :: Nil if !isTupleTypeDirect(in) =>
-              // A => B => C should be (A => B) => C or A => (B => C).
-              // Also if A is byname, then we want (=> A) => B because => is right associative and => A => B
-              // would mean => (A => B) which is a different type
-              val in_s  = if (isFunctionTypeDirect(in) || isByNameParamType(in)) "(" + in + ")" else "" + in
-              val out_s = if (isFunctionTypeDirect(out)) "(" + out + ")" else "" + out
-              in_s + " => " + out_s
-            case xs =>
-              xs.init.mkString("(", ", ", ")") + " => " + xs.last
+    private def customToString = {
+      import defs._
+      sym match {
+        case RepeatedParamClass | JavaRepeatedParamClass => args.head + "*"
+        case ByNameParamClass   => "=> " + args.head
+        case _                  =>
+          if (isFunctionTypeDirect(this)) {
+            // Aesthetics: printing Function1 as T => R rather than (T) => R
+            // ...but only if it's not a tuple, so ((T1, T2)) => R is distinguishable
+            // from (T1, T2) => R.
+            unspecializedTypeArgs(this) match {
+              // See neg/t588 for an example which arrives here - printing
+              // the type of a Function1 after erasure.
+              case Nil => noArgsString
+              case in :: out :: Nil if !isTupleTypeDirect(in) =>
+                // A => B => C should be (A => B) => C or A => (B => C).
+                // Also if A is byname, then we want (=> A) => B because => is right associative and => A => B
+                // would mean => (A => B) which is a different type
+                val in_s  = if (isFunctionTypeDirect(in) || isByNameParamType(in)) "(" + in + ")" else "" + in
+                val out_s = if (isFunctionTypeDirect(out)) "(" + out + ")" else "" + out
+                in_s + " => " + out_s
+              case xs =>
+                xs.init.mkString("(", ", ", ")") + " => " + xs.last
+            }
           }
-        }
-        else if (isTupleTypeDirect(this))
-          tupleTypeString
-        else if (sym.isAliasType && prefixChain.exists(_.termSymbol.isSynthetic) && (this ne dealias))
-          "" + dealias
-        else
-          ""
+          else if (isTupleTypeDirect(this))
+            tupleTypeString
+          else if (sym.isAliasType && prefixChain.exists(_.termSymbol.isSynthetic) && (this ne dealias))
+            "" + dealias
+          else
+            ""
+      }
     }
     override def safeToString = {
       val custom = if (settings.debug) "" else customToString
