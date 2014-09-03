@@ -394,9 +394,7 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
   // *** Mirrors ****
   //TODO-REFLECT: cache to persist definitions for mirrors used during typecheck with rootMirror init
   lazy val mirrorsCache = {
-    val value = WeakHashMap[ClassSymbol, Mirror]()
-    value.update(rootMirror.RootClass, rootMirror)
-    value
+    WeakHashMap[Symbol, Mirror](rootMirror.RootClass -> rootMirror)
   }
 
 //  override lazy val rootMirror = {
@@ -406,7 +404,10 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
 //    value
 //  }
   def addMirror(mirror: Mirror) = mirrorsCache.getOrElseUpdate(mirror.RootClass, mirror)
-  override def reflectMirror(sym: =>ClassSymbol) = mirrorsCache.getOrElse(sym, null) //TODO-REFLECT: change null to rootMirror (as default value)
+  override def reflectMirror(symbol: Symbol) = {
+    val rootSymbol = if (symbol.isRoot) symbol else symbol.enclosingRootClass
+    mirrorsCache.getOrElse(rootSymbol, rootMirror) //TODO-REFLECT: change null to rootMirror (as default value)
+  }
 
   //TODO-REFLECT: required for infos init (in Symbols)
   override def isCompilerUniverse = false
