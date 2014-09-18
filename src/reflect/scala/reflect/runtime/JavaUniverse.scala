@@ -7,6 +7,7 @@ import scala.reflect.internal.tools.nsc.ast.TreeInfo
 import scala.reflect.internal.{SymbolTable => InternalSymbolTable}
 import scala.reflect.runtime.{SymbolTable => RuntimeSymbolTable}
 import scala.reflect.api.{TreeCreator, TypeCreator, Universe}
+import scala.reflect.internal.tools.nsc.RuntimeTypechecker
 
 /** An implementation of [[scala.reflect.api.Universe]] for runtime reflection using JVM classloaders.
  *
@@ -14,7 +15,7 @@ import scala.reflect.api.{TreeCreator, TypeCreator, Universe}
  *
  *  @contentDiagram hideNodes "*Api" "*Extractor"
  */
-class JavaUniverse extends InternalSymbolTable with JavaUniverseForce with ReflectSetup with RuntimeSymbolTable { self =>
+class JavaUniverse extends InternalSymbolTable with JavaUniverseForce with ReflectSetup with RuntimeSymbolTable with RuntimeTypechecker { self =>
 
   override def inform(msg: String): Unit = log(msg)
   def picklerPhase = SomePhase

@@ -8,7 +8,6 @@ package object runtime {
 
   import scala.reflect.internal.tools.nsc.{TypecheckerApi, RuntimeTypechecker}
 
-  //TODO-REFLECT changed to RuntimeTypechecker
   /** The entry point into Scala runtime reflection.
    *
    * To use Scala runtime reflection, simply use or import `scala.reflect.runtime.universe._`

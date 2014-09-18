@@ -373,7 +373,7 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
   override def isReflectTypechecker = true
 
   //typecheck method
-  /*override*/ def typecheck(tree: Tree, mirror: Mirror) = {
+  override def typecheck(tree: Tree, mirror: Mirror) = {
     val newTree = tree.duplicate
     val compUnit = new CompilationUnit(NoSourceFile)
     compUnit.body = newTree
@@ -385,5 +385,5 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
   }
 
   //TODO-REFLECT remove method, added for simplicity
-  /*override*/ def typecheck(tree: Tree, classLoader: ClassLoader): Tree = typecheck(tree, runtimeMirror(classLoader))
+  override def typecheck(tree: Tree, classLoader: ClassLoader): Tree = typecheck(tree, runtimeMirror(classLoader))
 }

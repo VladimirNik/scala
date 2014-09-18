@@ -1,6 +1,7 @@
 package scala
 package reflect
 package runtime
+import scala.reflect.internal.tools.nsc.TypecheckerApi
 
 import scala.ref.WeakReference
 import scala.collection.mutable.WeakHashMap
@@ -22,7 +23,7 @@ import ReflectionUtils._
 import scala.language.existentials
 import scala.runtime.{ScalaRunTime, BoxesRunTime}
 
-private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse with TwoWayCaches { thisUniverse: SymbolTable =>
+private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse with TwoWayCaches with TypecheckerApi { thisUniverse: SymbolTable =>
 
   private lazy val mirrors = new WeakHashMap[ClassLoader, WeakReference[JavaMirror]]()
 
@@ -49,6 +50,8 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
       case _ => createMirror(rootMirror.RootClass, cl)
     }
   }
+
+  def typecheck(tree: Tree, mirror: Mirror): Tree = ???  
 
   /** The API of a mirror for a reflective universe */
   class JavaMirror(owner: Symbol,
@@ -1302,6 +1305,11 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
       case SingleType(_, sym: ModuleSymbol)          => classToJava(sym.moduleClass.asClass)
       case _                                         => throw new NoClassDefFoundError("no Java class corresponding to "+tpe+" found")
     }
+
+    /** Typechecked version of passed tree.
+     *  @param   tree The tree for typechecking
+     */
+    def typecheck(tree: Tree) = JavaMirrors.this.typecheck(tree, this)
   }
 
   /** Assert that packages have package scopes */
