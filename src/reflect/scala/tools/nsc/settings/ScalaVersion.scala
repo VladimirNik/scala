@@ -4,7 +4,7 @@
  */
 // $Id$
 
-package scala.reflect.internal.tools.nsc.settings
+package scala.tools.nsc.settings
 
 /**
  * Represents a single Scala version in a manner that
@@ -88,8 +88,7 @@ object ScalaVersion {
       case _ => s.toInt
     }
 
-    //TODO-REFLECT: remove _root_
-    def isInt(s: String) = _root_.scala.util.Try(toInt(s)).isSuccess
+    def isInt(s: String) = scala.util.Try(toInt(s)).isSuccess
 
     def toBuild(s: String) = s match {
       case null | "FINAL" => Final
@@ -116,8 +115,7 @@ object ScalaVersion {
   /**
    * The version of the compiler running now
    */
-  //TODO-REFLECT: remove _root_
-  val current = apply(_root_.scala.util.Properties.versionNumberString)
+  val current = apply(scala.util.Properties.versionNumberString)
 
   /**
    * The 2.8.0 version.

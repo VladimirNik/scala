@@ -13,8 +13,7 @@ import Predef.{ println => _, _ }
 import interpreter.session._
 import StdReplTags._
 import scala.util.Properties.{ jdkHome, javaVersion, versionString, javaVmName }
-import scala.reflect.internal.tools.nsc.util.{ ClassPath, stringFromWriter }
-import scala.tools.nsc.util.{ Exceptional, stringFromStream }
+import scala.tools.nsc.util.{ ClassPath, Exceptional, stringFromWriter, stringFromStream }
 import scala.reflect.classTag
 import scala.reflect.internal.util.{ BatchSourceFile, ScalaClassLoader }
 import ScalaClassLoader._
@@ -24,8 +23,6 @@ import scala.collection.generic.Clearable
 import scala.concurrent.{ ExecutionContext, Await, Future, future }
 import ExecutionContext.Implicits._
 import java.io.{ BufferedReader, FileReader }
-import scala.reflect.internal.tools.nsc.Properties
-import scala.reflect.internal.tools.util.PathResolver
 
 /** The Scala interactive shell.  It provides a read-eval-print loop
  *  around the Interpreter class.

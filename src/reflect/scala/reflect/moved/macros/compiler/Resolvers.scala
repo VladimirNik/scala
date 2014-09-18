@@ -9,7 +9,6 @@ trait Resolvers {
 
   import global._
   import analyzer._
-  import definitions._
   import treeInfo._
   import gen._
   import runDefinitions._

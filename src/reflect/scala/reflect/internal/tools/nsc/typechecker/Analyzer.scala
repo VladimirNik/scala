@@ -26,5 +26,5 @@ trait Analyzer extends AnyRef
             with ContextErrors
             with StdAttachments
             with AnalyzerPlugins {
-  val global : ReflectGlobal
+  val global : TypecheckerRequirements
 }

@@ -4,20 +4,21 @@
  */
 // $Id$
 
-package scala.reflect.internal.tools.nsc
-package settings
+package scala.tools.nsc.settings
 
-import io.{ AbstractFile, Jar, Path, PlainFile, VirtualDirectory }
+import scala.reflect.internal.tools.nsc.io.{ AbstractFile, Jar, Path, PlainFile, VirtualDirectory }
+import scala.reflect.internal.tools.nsc.io
 import scala.collection.generic.Clearable
 import scala.io.Source
 import scala.reflect.internal.util.StringOps
 import scala.reflect.{ ClassTag, classTag }
 import scala.reflect.internal._
+import scala.tools.nsc.Settings
 
 /** A mutable Settings object.
  */
 class MutableSettings(val errorFn: String => Unit)
-              extends _root_.scala.reflect.internal.settings.MutableSettings
+              extends scala.reflect.internal.settings.MutableSettings
                  with AbsSettings
                  with ScalaSettings
                  with Mutable {
@@ -191,10 +192,8 @@ class MutableSettings(val errorFn: String => Unit)
     getClasspath("boot", loader) foreach { bootclasspath append _ }
   }
 
-  //TODO-REFLECT change package to use nsc constructor:
-  //private[nsc] var explicitParentLoader: Option[ClassLoader] = None
   /** The parent loader to use for the interpreter.*/
-  var explicitParentLoader: Option[ClassLoader] = None
+  private[nsc] var explicitParentLoader: Option[ClassLoader] = None
 
   /** Retrieves the contents of resource "${id}.class.path" from `loader`
   * (wrapped in Some) or None if the resource does not exist.*/
@@ -433,7 +432,7 @@ class MutableSettings(val errorFn: String => Unit)
   }
 
   /** A setting represented by a boolean flag (false, unless set) */
-  class BooleanSetting private[nsc](
+  class BooleanSetting private[nsc] (
     name: String,
     descr: String)
   extends Setting(name, descr) {
@@ -532,7 +531,7 @@ class MutableSettings(val errorFn: String => Unit)
     prependPath: StringSetting,
     appendPath: StringSetting)
   extends StringSetting(name, "path", descr, default) {
-    import scala.reflect.internal.tools.nsc.util.ClassPath.join
+    import scala.tools.nsc.util.ClassPath.join
     def prepend(s: String) = prependPath.value = join(s, prependPath.value)
     def append(s: String) = appendPath.value = join(appendPath.value, s)
 
@@ -545,9 +544,7 @@ class MutableSettings(val errorFn: String => Unit)
 
   /** Set the output directory. */
   class OutputSetting private[nsc](
-    //TODO-REFLECT change package scala.tools.nsc - to make original access
-    //private[nsc] val outputDirs: OutputDirs,
-    val outputDirs: OutputDirs,
+    private[nsc] val outputDirs: OutputDirs,
     default: String)
     extends StringSetting("-d", "directory|jar", "destination for generated classfiles.", default) {
       value = default
@@ -646,9 +643,7 @@ class MutableSettings(val errorFn: String => Unit)
     descr: String,
     default: String
   ) extends Setting(name, mkPhasesHelp(descr, default)) with Clearable {
-	//TODO-REFLECT change package to use previous access mod:
-	//private[nsc] def this(name: String, descr: String) = this(name, descr, "")
-    def this(name: String, descr: String) = this(name, descr, "")
+    private[nsc] def this(name: String, descr: String) = this(name, descr, "")
 
     type T = List[String]
     private[this] var _v: T = Nil

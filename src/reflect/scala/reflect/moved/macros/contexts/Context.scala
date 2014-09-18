@@ -1,6 +1,6 @@
 package scala.reflect.moved.macros.contexts
 
-import scala.reflect.internal.tools.nsc.ReflectGlobal
+import scala.reflect.internal.tools.nsc.TypecheckerRequirements
 import scala.reflect.internal.tools.nsc.ContextAPIImpl
 
 abstract class Context extends scala.reflect.macros.blackbox.Context
@@ -16,7 +16,7 @@ abstract class Context extends scala.reflect.macros.blackbox.Context
                           with Traces
                           with ContextAPIImpl {
 
-  val universe: ReflectGlobal
+  val universe: TypecheckerRequirements
 
   val mirror: universe.Mirror = universe.rootMirror
 

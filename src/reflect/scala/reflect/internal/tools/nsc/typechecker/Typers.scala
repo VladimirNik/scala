@@ -2306,7 +2306,7 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
         val block = treeCopy.Block(block0, pluginsEnterStats(this, block0.stats), block0.expr)
         for (stat <- block.stats) enterLabelDef(stat)
 
-        if (phaseId(currentPeriod) <= currentRun.typerPhase.id) {
+        if (notAfterTyper) {
           // This is very tricky stuff, because we are navigating the Skylla and Charybdis of
           // anonymous classes and what to return from them here. On the one hand, we cannot admit
           // every non-private member of an anonymous class as a part of the structural type of the

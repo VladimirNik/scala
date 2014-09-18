@@ -8,9 +8,9 @@ package tools.nsc
 package ast
 
 import symtab._
-import util.DocStrings._
-import _root_.scala.collection.mutable
-//import scala.reflect.internal.tools.nsc.reporters.Reporter
+import scala.tools.nsc.util.DocStrings._
+import scala.collection.mutable
+//import scala.tools.nsc.reporters.Reporter
 
 /*
  *  @author  Martin Odersky

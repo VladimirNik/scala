@@ -15,7 +15,7 @@ import scala.language.postfixOps
  *  TreeDSL at the moment expects a Global.  Can we get by with SymbolTable?
  */
 abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
-  val global: ReflectGlobal
+  val global: TypecheckerRequirements
 
   import global._
   import definitions._
@@ -150,7 +150,7 @@ abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
     assert(pt eq pt.normalize, tree +" : "+ debugString(pt) +" ~>"+ debugString(pt.normalize))
     atPos(tree.pos) {
       //TODO-REFLECT wrapInApply changed
-      mkAsInstanceOf(tree, pt, any = !phase.next.erasedTypes, wrapInApply = isAfterUncurryPhase) 
+      mkAsInstanceOf(tree, pt, any = !phase.next.erasedTypes, wrapInApply = isAtPhaseAfterUncurryPhase) 
     }
   }
 

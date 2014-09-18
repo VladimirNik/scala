@@ -3,13 +3,13 @@
  * @author  Martin Odersky
  */
 
-package scala.reflect.internal
-package tools.nsc
+package scala.tools.nsc
 package util
 
 import java.net.URL
 import scala.collection.{ mutable, immutable }
-import io.{ File, Directory, Path, Jar, AbstractFile }
+import scala.reflect.internal.tools.nsc.io
+import scala.reflect.internal.tools.nsc.io.{ File, Directory, Path, Jar, AbstractFile }
 import scala.reflect.internal.util.StringOps.splitWhere
 import Jar.isJarOrZip
 import File.pathSeparator
@@ -17,6 +17,8 @@ import scala.collection.convert.WrapAsScala.enumerationAsScalaIterator
 import java.net.MalformedURLException
 import java.util.regex.PatternSyntaxException
 import scala.reflect.runtime.ReflectionUtils
+//TODO-REFLECT see in master how FatalError is accessible
+import scala.reflect.internal.FatalError
 
 /** <p>
  *    This module provides star expansion of '-classpath' option arguments, behaves the same as

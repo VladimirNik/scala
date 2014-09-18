@@ -55,6 +55,26 @@ trait Contexts { self: Analyzer =>
     rootMirror.RootClass.info.decls)
   }
 
+  //TODO-REFLECT: only for test purposes
+  def typecheckerContextBase = {
+    NoContext.make(
+    Template(List(), noSelfType, List()) setSymbol global.NoSymbol setType global.NoType,
+    global.NoSymbol,
+    rootMirror.RootClass.info.decls)
+  }.set(ReportErrors | AmbiguousErrors | MacrosEnabled | ImplicitsEnabled | EnrichmentEnabled)
+
+  def typecheckerContext = {
+    def completeImportsList(mirror: Mirror) = {
+      val JavaLangPackage = mirror.getPackage("java.lang")
+      val JavaLangPackageClass = JavaLangPackage.moduleClass.asClass
+      val ScalaPackage = mirror.getPackage("scala")
+      val ScalaPackageClass = ScalaPackage.moduleClass.asClass
+      val PredefModule = mirror.requiredModule[scala.Predef.type]
+      JavaLangPackage :: ScalaPackage :: PredefModule :: Nil
+    }
+    (typecheckerContextBase /: completeImportsList(rootMirror))((c, sym) => c.make(gen.mkWildcardImport(sym)))
+  }
+
   private lazy val allUsedSelectors =
     mutable.Map[ImportInfo, Set[ImportSelector]]() withDefaultValue Set()
   private lazy val allImportInfos =
@@ -116,6 +136,13 @@ trait Contexts { self: Analyzer =>
     val c = contextWithXML.make(tree, unit = unit)
     if (erasedTypes) c.setThrowErrors() else c.setReportErrors()
     c(EnrichmentEnabled | ImplicitsEnabled) = !erasedTypes
+    c
+  }
+
+  def emptyContext: Context = {
+    val stC = startContext
+    val ris = RootImports.completeList
+    val c = (stC /: ris)((c, sym) => c.make(gen.mkWildcardImport(sym)))
     c
   }
 

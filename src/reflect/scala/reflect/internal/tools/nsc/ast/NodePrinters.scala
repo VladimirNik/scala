@@ -18,7 +18,7 @@ import scala.language.postfixOps
  *  @author  Paul Phillips
  */
 abstract class NodePrinters {
-  val global: ReflectGlobal
+  val global: TypecheckerRequirements
   import global._
 
   object InfoLevel extends Enumeration {

@@ -2,7 +2,7 @@ package scala.reflect
 package moved.reify
 
 //TODO only TypeMismatch
-import scala.reflect.internal.tools.nsc.ReflectGlobal
+import scala.reflect.internal.tools.nsc.TypecheckerRequirements
 import scala.reflect.macros.ReificationException
 import scala.reflect.macros.UnexpectedReificationException
 import scala.reflect.moved.reify.utils.Utils
@@ -19,7 +19,7 @@ abstract class Reifier extends States
                           with Errors
                           with Utils {
 
-  val global: ReflectGlobal
+  val global: TypecheckerRequirements
   import global._
   import definitions._
   private val runDefinitions = currentRun.runDefinitions

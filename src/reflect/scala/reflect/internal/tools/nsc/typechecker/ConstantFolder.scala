@@ -16,7 +16,7 @@ import java.lang.ArithmeticException
  */
 abstract class ConstantFolder {
 
-  val global: ReflectGlobal
+  val global: TypecheckerRequirements
   import global._
 
   /** If tree is a constant operation, replace with result. */
