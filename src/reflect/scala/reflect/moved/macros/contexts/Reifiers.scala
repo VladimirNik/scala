@@ -35,7 +35,7 @@ trait Reifiers {
 
   def unreifyTree(tree: Tree): Tree = {
     assert(ExprSplice != NoSymbol)
-    Select(tree, ExprSplice)
+    Select(tree, definitionsBySym(tree.symbol).ExprSplice)
   }
 
   // fixme: if I put utils here, then "global" from utils' early initialization syntax

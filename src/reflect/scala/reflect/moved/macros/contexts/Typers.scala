@@ -42,7 +42,7 @@ trait Typers {
 
   def inferImplicitView(tree: Tree, from: Type, to: Type, silent: Boolean = true, withMacrosDisabled: Boolean = false, pos: Position = enclosingPosition): Tree = {
     macroLogVerbose("inferring implicit view from %s to %s for %s, macros = %s".format(from, to, tree, !withMacrosDisabled))
-    val viewTpe = universe.appliedType(universe.definitions.FunctionClass(1).toTypeConstructor, List(from, to))
+    val viewTpe = universe.appliedType(universe.definitionsBySym(from.typeSymbol).FunctionClass(1).toTypeConstructor, List(from, to))
     universe.analyzer.inferImplicit(tree, viewTpe, true, callsiteTyper.context, silent, withMacrosDisabled, pos, (pos, msg) => throw TypecheckException(pos, msg))
   }
 

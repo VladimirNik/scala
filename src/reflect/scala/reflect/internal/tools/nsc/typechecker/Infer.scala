@@ -38,7 +38,7 @@ trait Infer extends Checkable {
   //TODO-REFLECT-DEFS - can't use correct definitions
   def formalTypes(formals: List[Type], numArgs: Int, removeByName: Boolean = true, removeRepeated: Boolean = true): List[Type] = {
     val numFormals = formals.length
-    val formals1   = if (removeByName) formals mapConserve definitions.dropByName else formals
+    val formals1   = if (removeByName) formals mapConserve (tp => definitionsBySym(tp.typeSymbol).dropByName(tp)) else formals
     val expandLast = (
          (removeRepeated || numFormals != numArgs)
       && definitions.isVarArgTypes(formals1)

@@ -264,6 +264,7 @@ trait TypeTags { self: Universe =>
    * Type tags corresponding to primitive types and constructor/extractor for WeakTypeTags.
    * @group TypeTags
    */
+  //TODO-REFLECT-DEFS
   object TypeTag {
     val Byte:    TypeTag[scala.Byte]       = new PredefTypeTag[scala.Byte]       (ByteTpe,    _.TypeTag.Byte)
     val Short:   TypeTag[scala.Short]      = new PredefTypeTag[scala.Short]      (ShortTpe,   _.TypeTag.Short)

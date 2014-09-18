@@ -420,8 +420,8 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
     //println("*** Multiverse testing: ***")
     //println(s"isCompilerUniverse: $isCompilerUniverse")
     //println(s"isReflectTypechecer: $isReflectTypechecker")
-    val myDefs = createDefinitions(mirror)
-    addMirror(mirror)
+//    val myDefs = createDefinitions(mirror)
+//    addMirror(mirror)
     
     val mirrorsCount = mirrorsCache.size
     val definitionsCount = definitionsCache.size

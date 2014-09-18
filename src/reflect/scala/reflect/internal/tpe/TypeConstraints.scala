@@ -61,7 +61,7 @@ private[internal] trait TypeConstraints {
   /** @PP: Unable to see why these apparently constant types should need vals
     *  in every TypeConstraint, I lifted them out.
     */
-  //TODO-REFLECT can't add Definitions here
+  //TODO-REFLECT-DEFS can't add Definitions here
   private lazy val numericLoBound = definitions.IntTpe
   private lazy val numericHiBound = intersectionType(List(definitions.ByteTpe, definitions.CharTpe), definitions.ScalaPackageClass)
 
