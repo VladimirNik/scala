@@ -21,7 +21,7 @@ import scala.reflect.internal.transform.Erasure
 import scala.reflect.internal.tools.nsc.transform._
 import scala.reflect.internal.tools.nsc.transform.patmat._
 import scala.reflect.internal.tools.reflect.quasiquotes.Quasiquotes
-import scala.reflect.runtime. {ReflectSetup, JavaUniverse}
+import scala.reflect.runtime. {ReflectSetup}
 import scala.reflect.api.Universe
 import scala.tools.util.PathResolver
 import scala.tools.nsc.Settings
@@ -373,16 +373,44 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
   override def isReflectTypechecker = true
 
   //typecheck method
-  override def typecheck(tree: Tree, mirror: Mirror) = {
-    val newTree = tree.duplicate
-    val compUnit = new CompilationUnit(NoSourceFile)
-    compUnit.body = newTree
-    val context = typecheckerContext
-    val namer = newNamer(context)
-    val newCont = namer.enterSym(newTree)
-    val typer = newTyper(newCont)
-    typer.typed(newTree)
+  override def typecheck(tree: Tree, mirror: Mirror): Tree = {
+    if (mirror == rootMirror) {
+      println("1")
+      val newTree = tree.duplicate
+      println("2")
+      val compUnit = new CompilationUnit(NoSourceFile)
+      println("3")
+      compUnit.body = newTree
+      println("4")
+      val context = typecheckerContext
+      println("5")
+      val namer = newNamer(context)
+      println("6")
+      val newCont = namer.enterSym(newTree)
+      println("7")
+      val typer = newTyper(newCont)
+      println("8")
+      val res = typer.typed(newTree)
+      println("9")
+      res
+    } else {
+      //TODO-REFLECT rules to pass the tree among the universes
+      //we need to pass the tree to created universe
+      //and also transform resulted tree in our universe
+      //the second one part is even harder
+      //+ after AST loading loaded tree should be adopted to current universe
+      //sharing trees/typed trees among the universe
+      //is it important that we get tree from other universe?
+      println("001")
+      val tUniverse = createTypecheckerUniverse(mirror)
+      println("002")
+      val res = tUniverse.rootMirror.typecheck(tree.asInstanceOf[tUniverse.Tree]).asInstanceOf[Tree]
+      println("003")
+      res
+    }
   }
+
+  def createTypecheckerUniverse(mirror: Mirror): scala.reflect.api.JavaUniverse
 
   //TODO-REFLECT remove method, added for simplicity
   override def typecheck(tree: Tree, classLoader: ClassLoader): Tree = typecheck(tree, runtimeMirror(classLoader))

@@ -27,7 +27,8 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
 
   private lazy val mirrors = new WeakHashMap[ClassLoader, WeakReference[JavaMirror]]()
 
-  private def createMirror(owner: Symbol, cl: ClassLoader): Mirror = {
+  //TODO-REFLECT modifier is changed from private to protected
+  protected /*private*/ def createMirror(owner: Symbol, cl: ClassLoader): Mirror = {
     val jm = new JavaMirror(owner, cl)
     mirrors(cl) = new WeakReference(jm)
     jm.init()

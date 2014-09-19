@@ -34,6 +34,12 @@ class JavaUniverse extends InternalSymbolTable with JavaUniverseForce with Refle
 //  def newStrictTreeCopier: TreeCopier = new StrictTreeCopier
 //  def newLazyTreeCopier: TreeCopier = new LazyTreeCopier
 
+  class TypecheckerUniverse(tMirror: =>Mirror) extends JavaUniverse {
+    override lazy val rootMirror = createMirror(NoSymbol, tMirror.classLoader)
+  }
+
+  override def createTypecheckerUniverse(tMirror: Mirror) = new TypecheckerUniverse(tMirror)
+
   def currentFreshNameCreator = globalFreshNameCreator
 
   override lazy val internal: Internal = new SymbolTableInternal {
