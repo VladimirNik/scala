@@ -525,11 +525,15 @@ trait Printers extends api.Printers { self: SymbolTable =>
 
     def print(args: Any*): Unit = args foreach {
       case tree: Tree =>
+        //System.out.println("tree printing...")
+        //System.out.println(s"  tree: ${tree.getClass()}")
         printPosition(tree)
         printTree(tree)
       case name: Name =>
+        //System.out.println("name printing...")
         print(quotedName(name))
       case arg =>
+        //System.out.println("something printing...")
         out.print(if (arg == null) "null" else arg.toString)
     }
   }

@@ -749,22 +749,33 @@ trait Contexts { self: Analyzer =>
 
       (pre == NoPrefix) || {
         val ab = sym.accessBoundary(sym.owner)
-
-        (  (ab.isTerm || ab == rootMirror.RootClass)
-        || (accessWithin(ab) || accessWithinLinked(ab)) &&
-             (  !sym.isLocalToThis
+        
+        val A = ab.isTerm
+        val B = ab == rootMirror.RootClass
+        val C = accessWithin(ab) 
+        val D = accessWithinLinked(ab)
+        val E = (  !sym.isLocalToThis
              || sym.owner.isImplClass // allow private local accesses to impl classes
              || sym.isProtected && isSubThisType(pre, sym.owner)
              || pre =:= sym.owner.thisType
              )
-        || sym.isProtected &&
-             (  superAccess
+        val F = (  superAccess
              || pre.isInstanceOf[ThisType]
              || phase.erasedTypes
              || (sym.overrideChain exists isProtectedAccessOK)
                 // that last condition makes protected access via self types work.
              )
-        )
+        //if (printLog && sym.name.containsName("String")) {
+        if (sym.toString().contains("String") && pre.toString().contains("String")) {
+          println(s"sym.erc == rootMirror.RootClass: ${sym.enclosingRootClass == rootMirror.RootClass}")
+          println(s"******A: $A") //false
+          println(s"******B: $B") //true => false
+          println(s"******C: $C") //false
+          println(s"******D: $D") //false
+          println(s"******E: $E") //true
+          println(s"******F: $F") //false
+        }
+        (  (A || B) || ((C || D) && E) || (sym.isProtected && F) )
         // note: phase.erasedTypes disables last test, because after addinterfaces
         // implementation classes are not in the superclass chain. If we enable the
         // test, bug780 fails.
@@ -987,7 +998,12 @@ trait Contexts { self: Analyzer =>
       importedAccessibleSymbol(imp, name, requireExplicit = false)
 
     private def importedAccessibleSymbol(imp: ImportInfo, name: Name, requireExplicit: Boolean): Symbol =
-      imp.importedSymbol(name, requireExplicit) filter (s => isAccessible(s, imp.qual.tpe, superAccess = false))
+      imp.importedSymbol(name, requireExplicit) filter (s => {
+        if (printLog && name.containsName("String")) {
+          println(s"****** importedAccessibleSymbol is found: $imp")
+        }
+        isAccessible(s, imp.qual.tpe, superAccess = false)
+      })
 
     /** Is `sym` defined in package object of package `pkg`?
      *  Since sym may be defined in some parent of the package object,
@@ -1043,6 +1059,13 @@ trait Contexts { self: Analyzer =>
      *  the search continuing as long as no qualifying name is found.
      */
     def lookupSymbol(name: Name, qualifies: Symbol => Boolean): NameLookup = {
+      val namecon = printLog && name.containsName("String")
+      
+      if (true /* && namecon */) {
+        System.out.println
+        System.out.println("||||||==> lookupSymbol ||||||||")
+        System.out.println(s"||||||  name: $name")
+      }
       var lookupError: NameLookup  = null       // set to non-null if a definite error is encountered
       var inaccessible: NameLookup = null       // records inaccessible symbol for error reporting in case none is found
       var defSym: Symbol           = NoSymbol   // the directly found symbol
@@ -1132,9 +1155,13 @@ trait Contexts { self: Analyzer =>
       def imp1Explicit   = imp1 isExplicitImport name
       def imp2Explicit   = imp2 isExplicitImport name
 
-      def lookupImport(imp: ImportInfo, requireExplicit: Boolean) =
-        importedAccessibleSymbol(imp, name, requireExplicit) filter qualifies
-
+      def lookupImport(imp: ImportInfo, requireExplicit: Boolean) = {
+        if (printLog) println(s"+++++++++++++ start-lookupImport ($imp) +++++++++++++")
+        val rrr = importedAccessibleSymbol(imp, name, requireExplicit) filter qualifies
+        if (printLog) println("+++++++++++++ end-lookupImport +++++++++++++")
+        rrr
+      }
+        
       // Java: A single-type-import declaration d in a compilation unit c of package p
       // that imports a type named n shadows, throughout c, the declarations of:
       //
@@ -1153,6 +1180,15 @@ trait Contexts { self: Analyzer =>
         || (unit.isJava && imp.isExplicitImport(name) && imp.depth == symbolDepth)
       )
 
+      if (printLog) {
+        for (imp <- imports) {
+          System.out.println(s"***import: ${imp} {")
+          System.out.println(s"  eRC == rM.RC: ${imp.tree.symbol.enclosingRootClass == rootMirror.RootClass}")
+          System.out.println(s"  eRC == rM.RC(2): ${imp.qual.tpe.typeSymbol.enclosingRootClass == rootMirror.RootClass}")
+          System.out.println("}")
+        }
+      }
+      
       while (!impSym.exists && imports.nonEmpty && depthOk(imports.head)) {
         impSym = lookupImport(imp1, requireExplicit = false)
         if (!impSym.exists)
@@ -1172,9 +1208,11 @@ trait Contexts { self: Analyzer =>
       }
 
       // At this point only one or the other of defSym and impSym might be set.
-      if (defSym.exists)
+      val r = if (defSym.exists) {
+    	if (printLog) System.out.println("*** if (defSym.exists)")
         finishDefSym(defSym, pre)
-      else if (impSym.exists) {
+      } else if (impSym.exists) {
+    	if (printLog) System.out.println("*** if (impSym.exists)")
         // We continue walking down the imports as long as the tail is non-empty, which gives us:
         //   imports  ==  imp1 :: imp2 :: _
         // And at least one of the following is true:
@@ -1218,7 +1256,17 @@ trait Contexts { self: Analyzer =>
         // optimization: don't write out package prefixes
         finish(resetPos(imp1.qual.duplicate), impSym)
       }
-      else finish(EmptyTree, NoSymbol)
+      else {
+    	if (printLog) System.out.println("*** ...else")
+        finish(EmptyTree, NoSymbol)
+      }
+      if (true /* printLog && namecon */) {
+        System.out.println("||||||<== lookupSymbol |||||||| {")
+        System.out.println(s"  $r")
+        System.out.println("}")
+        System.out.println
+      }
+      r
     }
 
     /**

@@ -34,11 +34,7 @@ class JavaUniverse extends InternalSymbolTable with JavaUniverseForce with Refle
 //  def newStrictTreeCopier: TreeCopier = new StrictTreeCopier
 //  def newLazyTreeCopier: TreeCopier = new LazyTreeCopier
 
-  class TypecheckerUniverse(tMirror: =>Mirror) extends JavaUniverse {
-    override lazy val rootMirror = createMirror(NoSymbol, tMirror.classLoader)
-  }
-
-  override def createTypecheckerUniverse(tMirror: Mirror) = new TypecheckerUniverse(tMirror)
+  override def createTypecheckerUniverse(tMirror: Mirror) = new TypecheckerUniverse(tMirror, rootMirror.classLoader)
 
   def currentFreshNameCreator = globalFreshNameCreator
 
@@ -136,8 +132,20 @@ class JavaUniverse extends InternalSymbolTable with JavaUniverseForce with Refle
   //
   // Therefore, before initializing ScalaPackageClass, we must pre-initialize ObjectClass
   def init() {
+	if (printLog) {
+      println("##########################")
+      println("##### init ###############")
+      println("##########################")
+      println("###=> definitions.init ####")
+	}
     definitions.init()
-
+    if (printLog) {
+      println("##########################")
+      println("##########################")
+      println("###<= definitions.init ####")
+      println("##########################")
+      println("##########################")
+    }
     // workaround for http://groups.google.com/group/scala-internals/browse_thread/thread/97840ba4fd37b52e
     // constructors are by definition single-threaded, so we initialize all lazy vals (and local object) in advance
     // in order to avoid deadlocks later (e.g. one thread holds a global reflection lock and waits for definitions.Something to initialize,
@@ -146,4 +154,10 @@ class JavaUniverse extends InternalSymbolTable with JavaUniverseForce with Refle
     // TODO Convert this into a macro
     force()
   }
+}
+
+class TypecheckerUniverse(tMirror: => JavaUniverse#Mirror, val multClassLoader: ClassLoader /*multMirrors: collection.mutable.Map[ClassLoader, _] */) extends JavaUniverse {
+  override lazy val rootMirror = createMirror(NoSymbol, tMirror.classLoader)
+  //def multLoaders = multMirrors.keySet
+  override val isCompilerUniverse = true
 }

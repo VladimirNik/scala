@@ -162,7 +162,10 @@ trait Types
     override def baseType(clazz: Symbol) = underlying.baseType(clazz)
     override def baseTypeSeq = underlying.baseTypeSeq
     override def baseTypeSeqDepth = underlying.baseTypeSeqDepth
-    override def baseClasses = underlying.baseClasses
+    override def baseClasses = {
+      if (printInTypes) System.out.println("baseClasses->1")
+      underlying.baseClasses
+    }
   }
 
   /** A proxy for a type (identified by field `underlying`) that forwards most
@@ -880,7 +883,10 @@ trait Types
      *  in linearization order, starting with the class itself and ending
      *  in class Any.
      */
-    def baseClasses: List[Symbol] = List()
+    def baseClasses: List[Symbol] = {
+      if (printInTypes) System.out.println("baseClasses->2")
+      List()
+    }
 
     /**
      *  @param sym the class symbol
@@ -1067,7 +1073,10 @@ trait Types
     override def baseType(clazz: Symbol): Type = supertype.baseType(clazz)
     override def baseTypeSeq: BaseTypeSeq = supertype.baseTypeSeq
     override def baseTypeSeqDepth: Depth = supertype.baseTypeSeqDepth
-    override def baseClasses: List[Symbol] = supertype.baseClasses
+    override def baseClasses: List[Symbol] = {
+      if (printInTypes) System.out.println("baseClasses->3")
+      supertype.baseClasses
+    }
   }
 
   /** A base class for types that represent a single value
@@ -1364,15 +1373,21 @@ trait Types
     override def baseTypeSeqDepth: Depth = baseTypeSeq.maxDepth
 
     override def baseClasses: List[Symbol] = {
+      if (printInTypes) System.out.println("baseClasses->4 {")
       val cached = baseClassesCache
-      if (baseClassesPeriod == currentPeriod && cached != null) cached
-      else {
+      val r = if (baseClassesPeriod == currentPeriod && cached != null) {
+        if (printInTypes) System.out.println("    ===> if (baseClassesPeriod == currentPeriod && cached != null) {...")
+        cached
+      } else {
+        if (printInTypes) System.out.println("    ===> else...")
         defineBaseClassesOfCompoundType(this)
         if (baseClassesCache eq null)
           throw new RecoverableCyclicReference(typeSymbol)
 
         baseClassesCache
       }
+      if (printInTypes) System.out.println("4<-{")
+      r
     }
 
     /** The slightly less idiomatic use of Options is due to
@@ -2191,12 +2206,30 @@ trait Types
     //@M! use appliedType on the polytype that represents the bounds (or if aliastype, the rhs)
     def transformInfo(tp: Type): Type = appliedType(asSeenFromOwner(tp), args)
 
-    def thisInfo                  = sym.info
+    def thisInfo                  = {
+      if (printInTypes) {
+        System.out.println(s"    inside thisInfo for <sym: $sym> {")
+        System.out.println(s"      ==> sym.enclosingRootClass == rootMirror.RootClass: ${sym.enclosingRootClass == rootMirror.RootClass}")
+        System.out.println(s"    }")
+      }
+      val si = sym.info
+      si
+    }
     def initializedTypeParams     = sym.info.typeParams
     def typeParamsMatchArgs       = sameLength(initializedTypeParams, args)
     def asSeenFromOwner(tp: Type) = tp.asSeenFrom(pre, sym.owner)
 
-    override def baseClasses      = thisInfo.baseClasses
+    override def baseClasses      = {
+      if (printInTypes) System.out.println("baseClasses->5")
+      val ti = thisInfo
+      if (printInTypes) {
+        System.out.println(s"  ====> this: ${this}")
+        System.out.println(s"  ====> thisInfo: ${ti}")
+        System.out.println(s"  ====> ti == this: ${ti == this}")
+        System.out.println("  ====> before ti.baseClasses")
+      }
+      ti.baseClasses
+    }
     override def baseTypeSeqDepth = baseTypeSeq.maxDepth
     override def prefix           = pre
     override def termSymbol       = super.termSymbol
@@ -2468,7 +2501,10 @@ trait Types
     override def decls: Scope = resultType.decls
     override def baseTypeSeq: BaseTypeSeq = resultType.baseTypeSeq
     override def baseTypeSeqDepth: Depth = resultType.baseTypeSeqDepth
-    override def baseClasses: List[Symbol] = resultType.baseClasses
+    override def baseClasses: List[Symbol] = {
+      if (printInTypes) System.out.println("baseClasses->6")
+      resultType.baseClasses
+    }
     override def baseType(clazz: Symbol): Type = resultType.baseType(clazz)
     override def boundSyms = resultType.boundSyms
     override def safeToString: String = "=> "+ resultType
@@ -2506,7 +2542,10 @@ trait Types
     override def prefix: Type = resultType.prefix
     override def baseTypeSeq: BaseTypeSeq = resultType.baseTypeSeq
     override def baseTypeSeqDepth: Depth = resultType.baseTypeSeqDepth
-    override def baseClasses: List[Symbol] = resultType.baseClasses
+    override def baseClasses: List[Symbol] = {
+      if (printInTypes) System.out.println("baseClasses->7")
+      resultType.baseClasses
+    }
     override def baseType(clazz: Symbol): Type = resultType.baseType(clazz)
     override def narrow: Type = resultType.narrow
 

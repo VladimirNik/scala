@@ -180,7 +180,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     // makes sure that all symbols that runtime reflection deals with are synchronized
     private def isSynchronized = this.isInstanceOf[scala.reflect.runtime.SynchronizedSymbols#SynchronizedSymbol]
     private def isAprioriThreadsafe = isThreadsafe(AllOps)
-    assert(isCompilerUniverse || isSynchronized || isAprioriThreadsafe, s"unsafe symbol $initName (child of $initOwner) in runtime reflection universe")
+    assert(isReflectTypechecker || isCompilerUniverse || isSynchronized || isAprioriThreadsafe, s"unsafe symbol $initName (child of $initOwner) in runtime reflection universe")
 
     type AccessBoundaryType = Symbol
     type AnnotationType     = AnnotationInfo
@@ -1405,29 +1405,63 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      *  ensuring that symbol is initialized (i.e. type is completed).
      */
     def info: Type = try {
+      if (this.name != null && this.name.containsName("ufo")) {
+        System.out.println(s"""&&&==> info invocation""")
+      }
+      var print = false
       var cnt = 0
       while (validTo == NoPeriod) {
         //if (settings.debug.value) System.out.println("completing " + this);//DEBUG
         assert(infos ne null, this.name)
         assert(infos.prev eq null, this.name)
+
         val tp = infos.info
+        if (this.name != null && this.name.containsName("ufo")) {
+          System.out.println(s"&&&&&&&&&&&&&&&&&")
+          System.out.println(s"""&&& cnt: ${cnt}""")
+          System.out.println(s"""&&& infos: ${infos}""")
+          System.out.println(s"""&&& tp: ${tp}""")
+        }
         //if (settings.debug.value) System.out.println("completing " + this.rawname + tp.getClass());//debug
 
         if ((_rawflags & LOCKED) != 0L) { // rolled out once for performance
+          if (this.name != null && this.name.containsName("ufo")) {
+            System.out.println("&&& (_rawflags & LOCKED) != 0L")
+          }
           lock {
             setInfo(ErrorType)
             throw CyclicReference(this, tp)
           }
         } else {
+          if (this.name != null && this.name.containsName("ufo")) {
+            System.out.println("&&& else... (_rawflags |= LOCKED)")
+          }
+                    
           _rawflags |= LOCKED
 //          activeLocks += 1
  //         lockedSyms += this
         }
         val current = phase
         try {
+          if (this.name != null && this.name.containsName("ufo")) {
+            print = true
+            System.out.println(s"""&&& init symbol for valDef: ${this.name}""")
+          }
           assertCorrectThread()
+          if (this.name != null && this.name.containsName("ufo")) {
+            System.out.println(s"&&& after assertCorrectThread()")
+          }
           phase = phaseOf(infos.validFrom)
+          if (this.name != null && this.name.containsName("ufo")) {
+            System.out.println(s"&&& after phase = phaseOf(infos.validFrom)")
+          }
+          printStackTraceRawInfo = true && this.name != null && this.name.containsName("ufo")
           tp.complete(this)
+          printStackTraceRawInfo = false && this.name != null && this.name.containsName("ufo")
+          if (this.name != null && this.name.containsName("ufo")) {
+            System.out.println(s"&&& after tp.complete - tp: ${tp}")
+            System.out.println(s"&&&&&&&&&&&&&&&&&")
+          }
         } finally {
           unlock()
           phase = current
@@ -1437,7 +1471,14 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
         //   one: sourceCompleter to LazyType, two: LazyType to completed type
         if (cnt == 3) abort(s"no progress in completing $this: $tp")
       }
-      rawInfo
+      val ri = rawInfo
+      if (/*print &&*/ this.name != null && this.name.containsName("ufo")) {
+        System.out.println(s"&&& after rawInfo - ri: ${ri}")
+      }
+      if (this.name != null && this.name.containsName("ufo")) {
+        System.out.println(s"""&&&==< end of info invocation""")
+      }
+      ri
     }
     catch {
       case ex: CyclicReference =>
@@ -1489,9 +1530,15 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     final def rawInfoIsNoType: Boolean = {
       hasRawInfo && (infos.info eq NoType)
     }
-
+    //TODO-REFLECT: remove this
+    var printStackTraceRawInfo = false
     /** Return info without checking for initialization or completing */
     def rawInfo: Type = {
+      if (printStackTraceRawInfo) {
+        println("@@@@@@@@@@@@@@@@@@@@@@@")
+        println { val psst = new java.io.StringWriter(); new Exception().printStackTrace(new java.io.PrintWriter(psst)); println(psst.toString) }
+        println("@@@@@@@@@@@@@@@@@@@@@@@")
+      }
       var infos = this.infos
       assert(infos != null)
       val curPeriod = currentPeriod

@@ -24,14 +24,56 @@ import scala.language.existentials
 import scala.runtime.{ScalaRunTime, BoxesRunTime}
 
 private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse with TwoWayCaches with TypecheckerApi { thisUniverse: SymbolTable =>
-
-  private lazy val mirrors = new WeakHashMap[ClassLoader, WeakReference[JavaMirror]]()
+  //TODO-REFLECT private modifier removed: originally was private lazy val mirrors = ...
+  private[runtime] lazy val mirrors = new WeakHashMap[ClassLoader, WeakReference[JavaMirror]]()
 
   //TODO-REFLECT modifier is changed from private to protected
   protected /*private*/ def createMirror(owner: Symbol, cl: ClassLoader): Mirror = {
+    if (printLog) {
+      println
+      println("**************************************")
+      println("**************************************")
+      println("****=> JavaMirrors - createMirror ****")
+      println("**************************************")
+      println("**************************************")
+      println
+      println("======================")
+      println("======================")
+      println("=====> val jm = new JavaMirror...")
+      println("======================")
+      println("======================")
+    }
     val jm = new JavaMirror(owner, cl)
+    if (printLog) {
+      println
+      println("======================")
+      println("======================")
+      println("=====> mirrors(cl) = ...")
+      println("======================")
+      println("======================")
+    }
     mirrors(cl) = new WeakReference(jm)
+    if (printLog) {
+      println
+      println("======================")
+      println("======================")
+      println("=====> jm.init()")
+      println("======================")
+      println("======================")
+    }
     jm.init()
+    if (printLog) {
+      println { val psst = new java.io.StringWriter(); new Exception().printStackTrace(new java.io.PrintWriter(psst)); println(psst.toString) }
+      println("**************************************")
+      println("**************************************")
+      println("****<= JavaMirrors - createMirror ****")
+      println(s"resulted mirror (hash); ${jm.hashCode()}")
+      println(s"resulted mirror: $jm")
+      println(s"cl (hash): ${if (cl != null) cl.hashCode() else cl}")
+      println(s"mirrors: $mirrors")
+      println("**************************************")
+      println("**************************************")
+    }
     jm
   }
 

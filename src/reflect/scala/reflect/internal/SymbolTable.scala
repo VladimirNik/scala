@@ -49,7 +49,8 @@ abstract class SymbolTable extends macros.Universe
                               with FreshNames
                               with Internals
 {
-
+  var printInTypes = false
+  val printLog = false
   lazy val gen = new InternalTreeGen { val global: SymbolTable.this.type = SymbolTable.this }
 
   def log(msg: => AnyRef): Unit
