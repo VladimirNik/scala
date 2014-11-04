@@ -190,7 +190,7 @@ private[reflect] trait SymbolLoaders { self: SymbolTable =>
                   //                  case tu: TypecheckerUniverse if (name.containsName("String") || name.containsName("Object")  || name.containsName("Predef")
                   //                    || name.containsName("Array") || name.containsName("Int") || name.containsName("Byte") || name.containsName("Char")) 
                   case tu: TypecheckerUniverse if (name.toString.contains("String") || name.toString.contains("Object") || name.toString.contains("Predef")
-                    || name.toString.contains("Array") || name.toString.contains("Int") || name.toString.contains("Byte") || name.toString.contains("Char") || name.toString.contains("Any") ) 
+                    || name.toString.contains("Array") || name.toString.contains("Int") || name.toString.contains("Byte") || name.toString.contains("Char") /*|| name.toString.contains("Any")*/ ) 
                     && cloneLoadedSymbols(tu.multClassLoader, cls.getClassLoader()) =>
                     tuv = true
 //                    println("!!!!!! TypecheckerUniverse")

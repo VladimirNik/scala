@@ -2223,6 +2223,10 @@ trait Types
       if (printInTypes) System.out.println("baseClasses->5")
       val ti = thisInfo
       if (printInTypes) {
+        System.out.println(s"  ====> sym: ${sym}")
+        System.out.println(s"  ====> sym.owner: ${sym.owner}")
+        System.out.println(s"  ====> sym.erc == rootMirror.RootClass: ${sym.enclosingRootClass == rootMirror.RootClass}")
+        System.out.println(s"  ====> sym.owner.erc == rootMirror.RootClass: ${sym.owner.enclosingRootClass == rootMirror.RootClass}")
         System.out.println(s"  ====> this: ${this}")
         System.out.println(s"  ====> thisInfo: ${ti}")
         System.out.println(s"  ====> ti == this: ${ti == this}")
