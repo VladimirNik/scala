@@ -158,6 +158,7 @@ class JavaUniverse extends InternalSymbolTable with JavaUniverseForce with Refle
 
 class TypecheckerUniverse(tMirror: => JavaUniverse#Mirror, val multClassLoader: ClassLoader /*multMirrors: collection.mutable.Map[ClassLoader, _] */) extends JavaUniverse {
   override lazy val rootMirror = createMirror(NoSymbol, tMirror.classLoader)
+  override def runtimeMirror(cl: ClassLoader): Mirror = rootMirror
   //def multLoaders = multMirrors.keySet
   override val isCompilerUniverse = true
 }

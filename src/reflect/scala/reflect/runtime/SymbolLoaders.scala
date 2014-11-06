@@ -185,27 +185,30 @@ private[reflect] trait SymbolLoaders { self: SymbolTable =>
                   //cls.contains(current)
                 }
                 var tuv = false
-                val resSymbols @ (resClazz, resModule) = self match {
-                  //TODO-REFLECT override rootClassLoader for TypecheckerUniverse and remove rootMirror overriding
-                  //                  case tu: TypecheckerUniverse if (name.containsName("String") || name.containsName("Object")  || name.containsName("Predef")
-                  //                    || name.containsName("Array") || name.containsName("Int") || name.containsName("Byte") || name.containsName("Char")) 
-                  case tu: TypecheckerUniverse if (name.toString.contains("String") || name.toString.contains("Object") || name.toString.contains("Predef")
-                    || name.toString.contains("Array") || name.toString.contains("Int") || name.toString.contains("Byte") || name.toString.contains("Char") /*|| name.toString.contains("Any")*/ ) 
-                    && cloneLoadedSymbols(tu.multClassLoader, cls.getClassLoader()) =>
-                    tuv = true
-//                    println("!!!!!! TypecheckerUniverse")
-                    if (tuv && clNameCon) {
-                      println
-                      println("*********************************")
-                      println("******* in SymbolLoaders ********")
-                      println("*********************************")
-                    }
-                    val clonedClazz = clazz.cloneSymbol(pkgClass)
-                    val clonedModule = module.cloneSymbol(pkgClass)
-
-                    (clonedClazz, clonedModule)
-                  case _ => (clazz, module)
-                }
+//                val resSymbols @ (resClazz, resModule) = self match {
+//                  //TODO-REFLECT override rootClassLoader for TypecheckerUniverse and remove rootMirror overriding
+//                  //                  case tu: TypecheckerUniverse if (name.containsName("String") || name.containsName("Object")  || name.containsName("Predef")
+//                  //                    || name.containsName("Array") || name.containsName("Int") || name.containsName("Byte") || name.containsName("Char")) 
+//                  case tu: TypecheckerUniverse if (name.toString.contains("String") || name.toString.contains("Object") || name.toString.contains("Predef")
+//                    || name.toString.contains("Array") || name.toString.contains("Int") || name.toString.contains("Byte") || name.toString.contains("Char") /*|| name.toString.contains("Any")*/ ) 
+//                    && cloneLoadedSymbols(tu.multClassLoader, cls.getClassLoader()) =>
+//                    tuv = true
+////                    println("!!!!!! TypecheckerUniverse")
+//                    if (tuv && clNameCon) {
+//                      println
+//                      println("*********************************")
+//                      println("******* in SymbolLoaders ********")
+//                      println("*********************************")
+//                    }
+//                    val clonedClazz = clazz.cloneSymbol(pkgClass)
+//                    val clonedModule = module.cloneSymbol(pkgClass)
+//
+//                    (clonedClazz, clonedModule)
+//                  case _ => (clazz, module)
+//                }
+                
+                val resSymbols @ (resClazz, resModule) = (clazz, module)
+                
                 // currentMirror.mirrorDefining(cls) might side effect by entering symbols into pkgClass.info.decls
                 // therefore, even though in the beginning of this method, super.lookupEntry(name) returned null
                 // entering clazz/module now will result in a double-enter assertion in PackageScope.enter
