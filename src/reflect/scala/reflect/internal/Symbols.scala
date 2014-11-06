@@ -1405,9 +1405,6 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      *  ensuring that symbol is initialized (i.e. type is completed).
      */
     def info: Type = try {
-      if (this.name != null && this.name.containsName("ufo")) {
-        System.out.println(s"""&&&==> info invocation""")
-      }
       var print = false
       var cnt = 0
       while (validTo == NoPeriod) {
@@ -1416,26 +1413,14 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
         assert(infos.prev eq null, this.name)
 
         val tp = infos.info
-        if (this.name != null && this.name.containsName("ufo")) {
-          System.out.println(s"&&&&&&&&&&&&&&&&&")
-          System.out.println(s"""&&& cnt: ${cnt}""")
-          System.out.println(s"""&&& infos: ${infos}""")
-          System.out.println(s"""&&& tp: ${tp}""")
-        }
         //if (settings.debug.value) System.out.println("completing " + this.rawname + tp.getClass());//debug
 
         if ((_rawflags & LOCKED) != 0L) { // rolled out once for performance
-          if (this.name != null && this.name.containsName("ufo")) {
-            System.out.println("&&& (_rawflags & LOCKED) != 0L")
-          }
           lock {
             setInfo(ErrorType)
             throw CyclicReference(this, tp)
           }
         } else {
-          if (this.name != null && this.name.containsName("ufo")) {
-            System.out.println("&&& else... (_rawflags |= LOCKED)")
-          }
                     
           _rawflags |= LOCKED
 //          activeLocks += 1
@@ -1443,25 +1428,9 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
         }
         val current = phase
         try {
-          if (this.name != null && this.name.containsName("ufo")) {
-            print = true
-            System.out.println(s"""&&& init symbol for valDef: ${this.name}""")
-          }
           assertCorrectThread()
-          if (this.name != null && this.name.containsName("ufo")) {
-            System.out.println(s"&&& after assertCorrectThread()")
-          }
           phase = phaseOf(infos.validFrom)
-          if (this.name != null && this.name.containsName("ufo")) {
-            System.out.println(s"&&& after phase = phaseOf(infos.validFrom)")
-          }
-          printStackTraceRawInfo = true && this.name != null && this.name.containsName("ufo")
           tp.complete(this)
-          printStackTraceRawInfo = false && this.name != null && this.name.containsName("ufo")
-          if (this.name != null && this.name.containsName("ufo")) {
-            System.out.println(s"&&& after tp.complete - tp: ${tp}")
-            System.out.println(s"&&&&&&&&&&&&&&&&&")
-          }
         } finally {
           unlock()
           phase = current
@@ -1472,12 +1441,6 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
         if (cnt == 3) abort(s"no progress in completing $this: $tp")
       }
       val ri = rawInfo
-      if (/*print &&*/ this.name != null && this.name.containsName("ufo")) {
-        System.out.println(s"&&& after rawInfo - ri: ${ri}")
-      }
-      if (this.name != null && this.name.containsName("ufo")) {
-        System.out.println(s"""&&&==< end of info invocation""")
-      }
       ri
     }
     catch {
@@ -1530,15 +1493,8 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     final def rawInfoIsNoType: Boolean = {
       hasRawInfo && (infos.info eq NoType)
     }
-    //TODO-REFLECT: remove this
-    var printStackTraceRawInfo = false
     /** Return info without checking for initialization or completing */
     def rawInfo: Type = {
-      if (printStackTraceRawInfo) {
-        println("@@@@@@@@@@@@@@@@@@@@@@@")
-        println { val psst = new java.io.StringWriter(); new Exception().printStackTrace(new java.io.PrintWriter(psst)); println(psst.toString) }
-        println("@@@@@@@@@@@@@@@@@@@@@@@")
-      }
       var infos = this.infos
       assert(infos != null)
       val curPeriod = currentPeriod

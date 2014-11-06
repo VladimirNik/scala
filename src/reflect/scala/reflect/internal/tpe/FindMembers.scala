@@ -72,28 +72,15 @@ trait FindMembers {
       //val namecon = printLog && name.containsName("String")
       val namecon = name.toString.contains("<init>")
       if (namecon) {
-        println(s"********* FindMembers: $tpe {")
-        println(s"  bcs: $bcs")
         if (!bcs.isEmpty) {
           val currentBaseClass = bcs.head
-          println(s"  currentBaseClass: ${currentBaseClass}")
-          println(s"  currentBaseClass.eRC == rm.RC: ${currentBaseClass.enclosingRootClass == rootMirror.RootClass}")
-          //bcs(0).eRC == rm.RC //true - it's correct
-          //TODO-REFLECT here currentBaseClass.info.decls - problem is somewhere here
           val info = currentBaseClass.info
-          println(s"  ... val decls = ...")
           val decls = info.decls
-          println(s"  ... val lk = ...")
-          println(s"  lookuping name: $name")
           val lk = decls.lookupEntry(name)
-          println(s"  ... if (lk != ...)")
           if (lk != null) {
             val entrySym = lk.sym
-            println(s"  entrySym: $entrySym")
-            println(s"  entrySym.eRC == rm.RC: ${entrySym.enclosingRootClass == rootMirror.RootClass}")
           }
         }
-        println("}")
       }
 
       // Have we seen a candidate deferred member?

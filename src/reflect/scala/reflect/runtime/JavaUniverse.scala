@@ -34,7 +34,7 @@ class JavaUniverse extends InternalSymbolTable with JavaUniverseForce with Refle
 //  def newStrictTreeCopier: TreeCopier = new StrictTreeCopier
 //  def newLazyTreeCopier: TreeCopier = new LazyTreeCopier
 
-  override def createTypecheckerUniverse(tMirror: Mirror) = new TypecheckerUniverse(tMirror, rootMirror.classLoader)
+  override def createTypecheckerUniverse(tMirror: Mirror) = new TypecheckerUniverse(tMirror)
 
   def currentFreshNameCreator = globalFreshNameCreator
 
@@ -156,7 +156,7 @@ class JavaUniverse extends InternalSymbolTable with JavaUniverseForce with Refle
   }
 }
 
-class TypecheckerUniverse(tMirror: => JavaUniverse#Mirror, val multClassLoader: ClassLoader /*multMirrors: collection.mutable.Map[ClassLoader, _] */) extends JavaUniverse {
+class TypecheckerUniverse(tMirror: => JavaUniverse#Mirror) extends JavaUniverse {
   override lazy val rootMirror = createMirror(NoSymbol, tMirror.classLoader)
   override def runtimeMirror(cl: ClassLoader): Mirror = rootMirror
   //def multLoaders = multMirrors.keySet

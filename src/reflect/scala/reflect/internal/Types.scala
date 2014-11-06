@@ -163,7 +163,6 @@ trait Types
     override def baseTypeSeq = underlying.baseTypeSeq
     override def baseTypeSeqDepth = underlying.baseTypeSeqDepth
     override def baseClasses = {
-      if (printInTypes) System.out.println("baseClasses->1")
       underlying.baseClasses
     }
   }
@@ -884,7 +883,6 @@ trait Types
      *  in class Any.
      */
     def baseClasses: List[Symbol] = {
-      if (printInTypes) System.out.println("baseClasses->2")
       List()
     }
 
@@ -1074,7 +1072,6 @@ trait Types
     override def baseTypeSeq: BaseTypeSeq = supertype.baseTypeSeq
     override def baseTypeSeqDepth: Depth = supertype.baseTypeSeqDepth
     override def baseClasses: List[Symbol] = {
-      if (printInTypes) System.out.println("baseClasses->3")
       supertype.baseClasses
     }
   }
@@ -1373,20 +1370,16 @@ trait Types
     override def baseTypeSeqDepth: Depth = baseTypeSeq.maxDepth
 
     override def baseClasses: List[Symbol] = {
-      if (printInTypes) System.out.println("baseClasses->4 {")
       val cached = baseClassesCache
       val r = if (baseClassesPeriod == currentPeriod && cached != null) {
-        if (printInTypes) System.out.println("    ===> if (baseClassesPeriod == currentPeriod && cached != null) {...")
         cached
       } else {
-        if (printInTypes) System.out.println("    ===> else...")
         defineBaseClassesOfCompoundType(this)
         if (baseClassesCache eq null)
           throw new RecoverableCyclicReference(typeSymbol)
 
         baseClassesCache
       }
-      if (printInTypes) System.out.println("4<-{")
       r
     }
 
@@ -2207,11 +2200,6 @@ trait Types
     def transformInfo(tp: Type): Type = appliedType(asSeenFromOwner(tp), args)
 
     def thisInfo                  = {
-      if (printInTypes) {
-        System.out.println(s"    inside thisInfo for <sym: $sym> {")
-        System.out.println(s"      ==> sym.enclosingRootClass == rootMirror.RootClass: ${sym.enclosingRootClass == rootMirror.RootClass}")
-        System.out.println(s"    }")
-      }
       val si = sym.info
       si
     }
@@ -2220,18 +2208,7 @@ trait Types
     def asSeenFromOwner(tp: Type) = tp.asSeenFrom(pre, sym.owner)
 
     override def baseClasses      = {
-      if (printInTypes) System.out.println("baseClasses->5")
       val ti = thisInfo
-      if (printInTypes) {
-        System.out.println(s"  ====> sym: ${sym}")
-        System.out.println(s"  ====> sym.owner: ${sym.owner}")
-        System.out.println(s"  ====> sym.erc == rootMirror.RootClass: ${sym.enclosingRootClass == rootMirror.RootClass}")
-        System.out.println(s"  ====> sym.owner.erc == rootMirror.RootClass: ${sym.owner.enclosingRootClass == rootMirror.RootClass}")
-        System.out.println(s"  ====> this: ${this}")
-        System.out.println(s"  ====> thisInfo: ${ti}")
-        System.out.println(s"  ====> ti == this: ${ti == this}")
-        System.out.println("  ====> before ti.baseClasses")
-      }
       ti.baseClasses
     }
     override def baseTypeSeqDepth = baseTypeSeq.maxDepth
@@ -2506,7 +2483,6 @@ trait Types
     override def baseTypeSeq: BaseTypeSeq = resultType.baseTypeSeq
     override def baseTypeSeqDepth: Depth = resultType.baseTypeSeqDepth
     override def baseClasses: List[Symbol] = {
-      if (printInTypes) System.out.println("baseClasses->6")
       resultType.baseClasses
     }
     override def baseType(clazz: Symbol): Type = resultType.baseType(clazz)
@@ -2547,7 +2523,6 @@ trait Types
     override def baseTypeSeq: BaseTypeSeq = resultType.baseTypeSeq
     override def baseTypeSeqDepth: Depth = resultType.baseTypeSeqDepth
     override def baseClasses: List[Symbol] = {
-      if (printInTypes) System.out.println("baseClasses->7")
       resultType.baseClasses
     }
     override def baseType(clazz: Symbol): Type = resultType.baseType(clazz)

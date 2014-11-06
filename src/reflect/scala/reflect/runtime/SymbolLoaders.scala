@@ -118,42 +118,15 @@ private[reflect] trait SymbolLoaders { self: SymbolTable =>
     override def syncLockSynchronized[T](body: => T): T = gilSynchronized(body)
     private val negatives = new mutable.HashSet[Name]
     override def lookupEntry(name: Name): ScopeEntry = syncLockSynchronized {
-//      println(s"===> looking for entry: " + name)
       val namecon = printLog && name.containsName("String")
       val clNameCon = printLog && name.containsName("String")
       val printForConstr = name.toString.contains("<init>")
-      if (namecon) {
-        println
-        println(s"===> lookupEntry (${rootMirror.hashCode()}) {")
-        println(s"  pkgClass: $pkgClass")
-        println(s"  mirrorThatLoaded(pkgClass).hashCode: ${mirrorThatLoaded(pkgClass).hashCode()}")
-        println("}")
-      }
       val e = super.lookupEntry(name)
-      if (self.isInstanceOf[TypecheckerUniverse] && printForConstr) {
-        println(s"===> looking for Constr: $name")
-        if (e != null) println(s"  clonedClazz.enclosingRootClass == rootMirror.RootClass: ${e.sym.enclosingRootClass == rootMirror.RootClass}") else println("  null")
-        println(s"<=== looking for Constr: $name")
-      }
-      if (self.isInstanceOf[TypecheckerUniverse] && clNameCon) {
-        println(s"===> looking for String: $name")
-        if (e != null) println(s"  clonedClazz.enclosingRootClass == rootMirror.RootClass: ${e.sym.enclosingRootClass == rootMirror.RootClass}") else println("  null")
-        println(s"<=== looking for String: $name")
-      }
       val r = if (e != null) {
-        if (namecon) println("--- if-1")
         e
       } else if (scalacShouldntLoadClass(name) || (negatives contains name)) {
-        if (namecon) {
-          println("--- else-1: {")
-          println(s"  scalacShouldntLoadClass(name): ${scalacShouldntLoadClass(name)}")
-          println(s"  negatives contains name: ${negatives contains name}")
-          println(s"  negatives: $negatives")
-          println("}")
-        }
         null
       } else {
-        if (namecon) println("--- else-2")
         val path =
           if (pkgClass.isEmptyPackageClass) name.toString
           else pkgClass.fullName + "." + name
@@ -180,32 +153,10 @@ private[reflect] trait SymbolLoaders { self: SymbolTable =>
                 //2) check if class is already loaded (Class.forName(...) - we shouldn't get new mirror) - maybe we need new class Loader
                 //3) check if java.String is loaded by boot classloader
                 def cloneLoadedSymbols(multCls: ClassLoader, current: ClassLoader) = {
-//                  println("=== in cloneLoadedSymbols ===")
                   current == multCls
                   //cls.contains(current)
                 }
                 var tuv = false
-//                val resSymbols @ (resClazz, resModule) = self match {
-//                  //TODO-REFLECT override rootClassLoader for TypecheckerUniverse and remove rootMirror overriding
-//                  //                  case tu: TypecheckerUniverse if (name.containsName("String") || name.containsName("Object")  || name.containsName("Predef")
-//                  //                    || name.containsName("Array") || name.containsName("Int") || name.containsName("Byte") || name.containsName("Char")) 
-//                  case tu: TypecheckerUniverse if (name.toString.contains("String") || name.toString.contains("Object") || name.toString.contains("Predef")
-//                    || name.toString.contains("Array") || name.toString.contains("Int") || name.toString.contains("Byte") || name.toString.contains("Char") /*|| name.toString.contains("Any")*/ ) 
-//                    && cloneLoadedSymbols(tu.multClassLoader, cls.getClassLoader()) =>
-//                    tuv = true
-////                    println("!!!!!! TypecheckerUniverse")
-//                    if (tuv && clNameCon) {
-//                      println
-//                      println("*********************************")
-//                      println("******* in SymbolLoaders ********")
-//                      println("*********************************")
-//                    }
-//                    val clonedClazz = clazz.cloneSymbol(pkgClass)
-//                    val clonedModule = module.cloneSymbol(pkgClass)
-//
-//                    (clonedClazz, clonedModule)
-//                  case _ => (clazz, module)
-//                }
                 
                 val resSymbols @ (resClazz, resModule) = (clazz, module)
                 
@@ -224,41 +175,15 @@ private[reflect] trait SymbolLoaders { self: SymbolTable =>
                 // therefore we use enterIfNew rather than just enter
                 enterIfNew(resClazz)
                 enterIfNew(resModule)
-                if (tuv && clNameCon) {
-//                  val test = super.lookupEntry(name)
-//                  println(s"test: $test")
-                  println(s"rootMirror.hashCode: ${rootMirror.hashCode}")
-                  println(s"clonedClazz.enclosingRootClass == rootMirror.RootClass: ${resClazz.enclosingRootClass == rootMirror.RootClass}")
-                  println(s"clonedClazz.owner.enclosingRootClass: ${resClazz.owner.enclosingRootClass == rootMirror.RootClass}")
-                  println("*********************************")
-                  println
-                } else if (clNameCon) {
-                  println("Exceptional situation...")
-                }
                 resSymbols
               }
             debugInfo(s"created $module/${module.moduleClass} in $pkgClass")
-            if (namecon) {
-              println("--- else-2 {")
-              println(s"  loadingMirror.hashCode():  ${loadingMirror.hashCode()}")
-              println(s"  currentMirror.hashCode():  ${currentMirror.hashCode()}")
-              println("}")
-            }
             lookupEntry(name)
           case none =>
             debugInfo("*** not found : "+path)
             negatives += name
             null
         }
-      }
-      if (namecon) {
-        println(s"<=== final lookupEntry (${rootMirror.hashCode()}): $r")
-        if (r != null && r.sym != null) {
-          print("{")
-          print(s"  r.sym.eRC == rM.RC: ${r.sym.enclosingRootClass == rootMirror.RootClass}")
-          println("  }")
-        }
-        println
       }
       r
     }

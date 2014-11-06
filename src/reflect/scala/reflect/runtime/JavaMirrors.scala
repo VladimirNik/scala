@@ -29,38 +29,8 @@ private[scala] trait JavaMirrors extends internal.SymbolTable with api.JavaUnive
 
   //TODO-REFLECT modifier is changed from private to protected
   protected /*private*/ def createMirror(owner: Symbol, cl: ClassLoader): Mirror = {
-    if (printLog) {
-      println
-      println("**************************************")
-      println("**************************************")
-      println("****=> JavaMirrors - createMirror ****")
-      println("**************************************")
-      println("**************************************")
-      println
-      println("======================")
-      println("======================")
-      println("=====> val jm = new JavaMirror...")
-      println("======================")
-      println("======================")
-    }
     val jm = new JavaMirror(owner, cl)
-    if (printLog) {
-      println
-      println("======================")
-      println("======================")
-      println("=====> mirrors(cl) = ...")
-      println("======================")
-      println("======================")
-    }
     mirrors(cl) = new WeakReference(jm)
-    if (printLog) {
-      println
-      println("======================")
-      println("======================")
-      println("=====> jm.init()")
-      println("======================")
-      println("======================")
-    }
     jm.init()
     if (printLog) {
       println { val psst = new java.io.StringWriter(); new Exception().printStackTrace(new java.io.PrintWriter(psst)); println(psst.toString) }

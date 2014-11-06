@@ -374,8 +374,12 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
 
   //typecheck method
   override def typecheck(tree: Tree, mirror: Mirror): Tree = {
+    println(" ===> typecheck invocation <===")
     val newTree = tree.duplicate
     if (mirror == rootMirror) {
+      println("   ===> mirror == rootMirror <===")
+      println(s"      ===> mirror.hashCode: ${mirror.hashCode} <===")
+      println(s"      ===> mirror.classLoader.hashCode: ${mirror.classLoader.hashCode()}")
       val compUnit = new CompilationUnit(NoSourceFile)
       compUnit.body = newTree
       if (printLog) {
@@ -430,6 +434,7 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
       val res = typer.typed(newTree)
       res
     } else {
+      println("   ===> mirror != rootMirror <===")
       //TODO-REFLECT rules to pass the tree among the universes
       //we need to pass the tree to created universe
       //and also transform resulted tree in our universe
@@ -447,6 +452,8 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
         println
       }
       val tUniverse = createTypecheckerUniverse(mirror)
+      println(s"    ===> tUniverse.rootMirror.hashCode: ${tUniverse.rootMirror.hashCode()} <===")
+      println(s"    ===> tUniverse.rootMirror.classLoader.hashCode: ${tUniverse.rootMirror.classLoader.hashCode()} <===")
       if (printLog) {
         println()
         println("$$$$$$$$$$$$$$$$$$$$$$$")

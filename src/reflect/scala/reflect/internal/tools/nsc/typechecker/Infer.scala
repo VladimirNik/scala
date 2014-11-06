@@ -252,14 +252,6 @@ trait Infer extends Checkable {
       val patternOfTree = "new java.lang.String"
       val sr = show(site)
       val printInside = patternOfTree == sr
-      if (printInside) {
-        println(s"                             ======> ..::checkAccessible {")
-        println(s"                                sym: $sym")
-        println(s"                                showRaw(tree): ${showRaw(tree)}")
-        println(s"                                pre: $pre")
-        println(s"                                showRaw(site): ${showRaw(site)}")
-        println(s"                             }")
-      }
       def malformed(ex: MalformedType, instance: Type): Type = {
         val what    = if (ex.msg contains "malformed type") "is malformed" else s"contains a ${ex.msg}"
         val message = s"\n because its instance type $instance $what"
@@ -268,19 +260,7 @@ trait Infer extends Checkable {
         ErrorType
       }
       def accessible = sym filter (alt => {
-        if (printInside) {
-          println(s"                                 ======> ..::checkAccessible::accessible {")
-          println(s"                                    alt: ${alt}")
-          println(s"                                    alt.typeSignature: ${alt.typeSignature}")
-          println(s"                                    pre: $pre")
-          println(s"                                    showRaw(site): ${showRaw(site)}")
-          println(s"                                    sym.enclRC == rootMirror.RootClass: ${sym.enclosingRootClass == rootMirror.RootClass}")
-          println(s"                                 }")
-        }
         val r = context.isAccessible(alt, pre, site.isInstanceOf[Super])
-        if (printInside) {
-          println(s"                                 <====== ..::accessible $r")
-        }
         r
       }) match {
         case NoSymbol if sym.isJavaDefined && context.unit.isJava => sym // don't try to second guess Java; see #4402
@@ -294,11 +274,6 @@ trait Infer extends Checkable {
         tree setSymbol sym setType ErrorType
       else {
         val accs = accessible
-        if (printInside) {
-          println(s"                             ======> ..::makeAccessible::checkAccessible::accs: $accs")
-          println(s"                             ======> ..::makeAccessible::checkAccessible::pre: $pre")
-          println(s"                             ======> ..::makeAccessible::checkAccessible::site.isInstanceOf: ${site.isInstanceOf[Super]}")
-        }
         accs match {
           case NoSymbol => checkAccessibleError(tree, sym, pre, site)
           case sym if context.owner.isTermMacro && (sym hasFlag LOCKED) => throw CyclicReference(sym, CheckAccessibleMacroCycle)

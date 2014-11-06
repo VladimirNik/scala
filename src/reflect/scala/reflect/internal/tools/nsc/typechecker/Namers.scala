@@ -776,16 +776,8 @@ trait Namers extends MethodSynthesis {
       // on these flag checks so it can't hurt.
       def needsCycleCheck = sym.isNonClassType && !sym.isParameter && !sym.isExistential
       logAndValidate(sym) {
-        if (sym.name != null && sym.name.containsName("ufo")) {
-          System.out.println("   ===>&&&monoTypeCompleter&&&")
-        }
         //TODO-REFLECT - check errors here
         val tp = typeSig(tree)
-        if (sym.name != null && sym.name.containsName("ufo")) {
-          System.out.println("   ===&&&inside monoTypeCompleter&&& {")
-          System.out.println(s"      tp: ${tp}")
-          System.out.println("   }")
-        }
 
         findCyclicalLowerBound(tp) andAlso { sym =>
           if (needsCycleCheck) {
@@ -804,11 +796,6 @@ trait Namers extends MethodSynthesis {
           log(s"Needs cycle check: ${sym.debugLocationString}")
           if (!typer.checkNonCyclic(tree.pos, tp))
             sym setInfo ErrorType
-        }
-        if (sym.name != null && sym.name.containsName("ufo")) {
-          System.out.println("   <===&&&monoTypeCompleter&&& {")
-          System.out.println(s"      tp: $tp")
-          System.out.println("   }")
         }
       }
     }
@@ -889,14 +876,8 @@ trait Namers extends MethodSynthesis {
       val printInValDefSig = tree.name != null && tree.name.containsName("ufo")
       val rhsTpe = tree match {
         case ddef: DefDef if tree.symbol.isTermMacro =>
-          if (printInValDefSig) {
-            System.out.println("                     ======>###assignTypeToTree::case ddef: DefDef###")
-          }
           defnTyper.computeMacroDefType(ddef, pt)
         case _ =>
-          if (printInValDefSig) {
-            System.out.println("                     ======>###assignTypeToTree::case _###")
-          }
           //TODO-REFLECT - see it
           defnTyper.computeType(tree.rhs, pt)
       }
@@ -1389,43 +1370,16 @@ trait Namers extends MethodSynthesis {
     }
 
     private def valDefSig(vdef: ValDef) = {
-      val printInValDefSig = vdef.name != null && vdef.name.containsName("ufo")
-      if (printInValDefSig) {
-        System.out.println("            ======>###typeSig::getSig::valDefSig###")
-      }
       val ValDef(_, _, tpt, rhs) = vdef
-      if (printInValDefSig) {
-        System.out.println("            ======>###typeSig::getSig::valDefSig### {")
-        System.out.println(s"               tpt: $tpt")
-        System.out.println("            }")
-      }
       val result = if (tpt.isEmpty) {
-        if (printInValDefSig) {
-          System.out.println("               ======>###typeSig::getSig::valDefSig::if (tpt.isEmpty) {...###")
-        }
         if (rhs.isEmpty) {
-          if (printInValDefSig) {
-            System.out.println("                  ======>###typeSig::getSig::valDefSig::if (rhs.isEmpty) {...###")
-          }
           MissingParameterOrValTypeError(tpt)
           ErrorType
         } else {
-          if (printInValDefSig) {
-            System.out.println("                  ======>###typeSig::getSig::valDefSig::if (rhs.isEmpty) {(else)...###")
-          }
-          //TODO-REFLECT - we are here!
           assignTypeToTree(vdef, typer, WildcardType)
         }
       } else {
-        if (printInValDefSig) {
-          System.out.println("               ======>###typeSig::getSig::valDefSig::if (tpt.isEmpty) {(else)###")
-        }
         typer.typedType(tpt).tpe
-      }
-      if (printInValDefSig) {
-        System.out.println("            ======>###typeSig::getSig::valDefSig### {")
-        System.out.println(s"               result: $result")
-        System.out.println("            }")
       }
       pluginsTypeSig(result, typer, vdef, if (tpt.isEmpty) WildcardType else result)
 
@@ -1540,16 +1494,8 @@ trait Namers extends MethodSynthesis {
         // typeSig might be called multiple times, e.g. on a ValDef: val, getter, setter
         // parse the annotations only once.
         if (!annotated.isInitialized) {
-          if (printBeforeTypeSig && annotated.name != null && annotated.name.containsName("ufo")) {
-            System.out.println("         =========>###typeSig::annotate::!annotated.isInitialized### {")
-            System.out.println(s"           annotated: ${annotated}")
-            System.out.println("         }")
-          }
           tree match {
             case defn: MemberDef =>
-              if (printBeforeTypeSig && annotated.name != null && annotated.name.containsName("ufo")) {
-                System.out.println("            =========>###typeSig::annotate::case defn: MemberDef ###")
-              }
               val ainfosanns = defn.mods.annotations filterNot (_ eq null)
               val ainfos = ainfosanns map { ann =>
                 val ctx = typer.context
@@ -1559,10 +1505,6 @@ trait Namers extends MethodSynthesis {
                 AnnotationInfo lazily {
                   enteringTyper(newTyper(annCtx) typedAnnotation ann)
                 }
-              }
-              if (printBeforeTypeSig && annotated.name != null && annotated.name.containsName("ufo")) {
-                System.out.println(s"               =========>###typeSig::annotate::ainfosanns:: $ainfosanns ###")
-                System.out.println(s"               =========>###typeSig::annotate::ainfos:: $ainfos ###")
               }
               if (ainfos.nonEmpty) {
                 annotated setAnnotations ainfos
@@ -1575,25 +1517,10 @@ trait Namers extends MethodSynthesis {
       }
 
       val sym: Symbol = tree.symbol
-      if (sym.name != null && sym.name.containsName("ufo")) {
-        System.out.println("      ======>###typeSig### {")
-        System.out.println(s"        sym: ${sym}")
-        System.out.println("      }")
-      }
 
       // TODO: meta-annotations to indicate where module annotations should go (module vs moduleClass)
       annotate(sym)
-      if (printBeforeTypeSig && sym.name != null && sym.name.containsName("ufo")) {
-        System.out.println("      ======###typeSig (after annotate(sym)) ### {")
-        System.out.println(s"        sym: ${sym}")
-        System.out.println("      }")
-      }
       if (sym.isModule) {
-        if (printBeforeTypeSig && sym.name != null && sym.name.containsName("ufo")) {
-          System.out.println("      ======###typeSig (after if (sym.isModule) ...) ### {")
-          System.out.println(s"        sym: ${sym}")
-          System.out.println("      }")
-        }
         annotate(sym.moduleClass)
       }
 
@@ -1608,15 +1535,7 @@ trait Namers extends MethodSynthesis {
           createNamer(tree).methodSig(ddef)
 
         case vdef: ValDef =>
-          if (sym.name != null && sym.name.containsName("ufo")) {
-            System.out.println("         ======>###typeSig::getSig::ValDef###")
-          }
           val n = createNamer(tree)
-//          if (sym.name != null && sym.name.containsName("ufo")) {
-//            System.out.println("         ======>###typeSig::getSig::ValDef### {")
-//            System.out.println(s"            n: $n")
-//            System.out.println("         }")
-//          }
           n.valDefSig(vdef)
 
         case tdef: TypeDef =>
