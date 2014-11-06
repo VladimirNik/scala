@@ -374,24 +374,15 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
 
   //typecheck method
   override def typecheck(tree: Tree, mirror: Mirror): Tree = {
+    val newTree = tree.duplicate
     if (mirror == rootMirror) {
-      println("1")
-      val newTree = tree.duplicate
-      println("2")
       val compUnit = new CompilationUnit(NoSourceFile)
-      println("3")
       compUnit.body = newTree
-      println("4")
       val context = typecheckerContext
-      println("5")
       val namer = newNamer(context)
-      println("6")
       val newCont = namer.enterSym(newTree)
-      println("7")
       val typer = newTyper(newCont)
-      println("8")
       val res = typer.typed(newTree)
-      println("9")
       res
     } else {
       //TODO-REFLECT rules to pass the tree among the universes
@@ -401,11 +392,10 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
       //+ after AST loading loaded tree should be adopted to current universe
       //sharing trees/typed trees among the universe
       //is it important that we get tree from other universe?
-      println("001")
       val tUniverse = createTypecheckerUniverse(mirror)
-      println("002")
-      val res = tUniverse.rootMirror.typecheck(tree.asInstanceOf[tUniverse.Tree]).asInstanceOf[Tree]
-      println("003")
+      val importer = tUniverse.internal.createImporter(this)
+      val impTree = importer.importTree(newTree)
+      val res = tUniverse.rootMirror.typecheck(impTree).asInstanceOf[Tree]
       res
     }
   }
