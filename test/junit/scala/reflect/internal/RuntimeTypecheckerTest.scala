@@ -9,10 +9,11 @@ import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 
 @RunWith(classOf[JUnit4])
-class ReflectGlobalTest extends BaseTypedTests
+class RuntimeTypecheckerTest extends BaseTypedTests
 
-object ReflectGlobalHelper {
+object RuntimeTypecheckerHelper {
   val toolbox = cm.mkToolBox()
+  val mirror = toolbox.mirror
 
   import scala.reflect.internal.Chars._
   private def normalizeEOL(resultCode: String) =
@@ -51,14 +52,14 @@ object ReflectGlobalHelper {
     
     val parsedTree = toolboxTree(toolbox.parse(wrapCode(code)))
     val typedToolboxTree = toolboxTree(toolbox.typecheck(parsedTree))
-    val typecheckedTree = rootMirror.typecheck(parsedTree)
+    val typecheckedTree = mirror.typecheck(parsedTree)
     assertEquals("using toolbox and typecheckTree" + LF, show(typedToolboxTree), normalizeEOL(show(typecheckedTree)))
   }
 
   implicit class StrContextStripMarginOps(val stringContext: StringContext) extends util.StripMarginInterpolator
 }
 
-import ReflectGlobalHelper._
+import RuntimeTypecheckerHelper._
 
 trait BaseTypedTests {
   @Test def testName1 = assertTypedTree("class X")
