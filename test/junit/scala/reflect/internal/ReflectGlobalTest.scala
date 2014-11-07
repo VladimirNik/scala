@@ -19,7 +19,7 @@ object ReflectGlobalHelper {
     resultCode.lines mkString s"$LF"
 
   def assertTypedTree(code: String, wrap: Boolean = false, printRoot: Boolean = false) = {
-    def toolboxTree(tree: => Tree) = try{
+    def toolboxTree(tree: => Tree) = try {
         tree
       } catch {
         case e:scala.tools.reflect.ToolBoxError => throw new Exception(e.getMessage + ": " + code)
@@ -40,10 +40,6 @@ object ReflectGlobalHelper {
       if (wrap) context.trim() else source.trim
     }
 
-//    val parsedTree = toolboxTree(toolbox.parse(wrapCode(code)))
-//    val typedToolboxTree = toolboxTree(toolbox.typecheck(parsedTree))
-//    val typecheckedTree = typecheckTree(parsedTree)
-//
 //    val showRawToolbox = normalizeEOL(showRaw(typedToolboxTree, printKinds = true))
 //    val showRawTypechecked = normalizeEOL(showRaw(typecheckedTree, printKinds = true))
 //    
@@ -55,19 +51,9 @@ object ReflectGlobalHelper {
     
     val parsedTree = toolboxTree(toolbox.parse(wrapCode(code)))
     val typedToolboxTree = toolboxTree(toolbox.typecheck(parsedTree))
-    val typecheckedTree = typecheckTree(parsedTree)
+    val typecheckedTree = rootMirror.typecheck(parsedTree)
     assertEquals("using toolbox and typecheckTree" + LF, show(typedToolboxTree), normalizeEOL(show(typecheckedTree)))
   }
-
-//  def assertTreeCode(tree: Tree)(code: String) = {
-//    assertEquals("using quasiquote or given tree"+LF, code.trim, normalizeEOL(showCode(tree)))
-//  }
-
-//  def assertPrintedCode(source: String, checkTypedTree: Boolean = true, wrapCode: Boolean = false) = {
-//    if (checkTypedTree)
-//      assertResultCode(source)(source, source, wrapCode)
-//    else assertResultCode(source)(parsedCode = source, wrap = wrapCode)
-//  }
 
   implicit class StrContextStripMarginOps(val stringContext: StringContext) extends util.StripMarginInterpolator
 }
