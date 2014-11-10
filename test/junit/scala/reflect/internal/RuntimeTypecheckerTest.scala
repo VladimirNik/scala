@@ -29,11 +29,11 @@ object RuntimeTypecheckerHelper {
 
     def wrapCode(source: String) = {
       val context = sm"""
-      |trait PrintersContext {
+      |trait TypecheckerContext {
       |  class baz extends scala.annotation.StaticAnnotation;
       |  class foo1[A, B] extends scala.annotation.StaticAnnotation;
       |  class foo2[A, B](a: scala.Int)(b: scala.Int) extends scala.annotation.StaticAnnotation;
-      |  class foo3[Af, Bf](a: scala.Int)(b: scala.Float, c: PrintersContext.this.foo1[Af, Bf]) extends scala.annotation.StaticAnnotation;
+      |  class foo3[Af, Bf](a: scala.Int)(b: scala.Float, c: TypecheckerContext.this.foo1[Af, Bf]) extends scala.annotation.StaticAnnotation;
       |  trait A1;
       |  trait B1;
       |${source.trim.lines map {"  " + _} mkString s"$LF"}
@@ -55,7 +55,13 @@ object RuntimeTypecheckerHelper {
     val typedToolboxTree = toolboxTree(toolbox.typecheck(parsedTree))
     val typecheckedTree = mirror.typecheck(parsedTree)
 
-    val showTypedToolboxTree = show(typedToolboxTree)
+    val showTypedToolboxTree = {
+      val r = show(typedToolboxTree)
+      //TODO-REFLECT - rewrite it
+      if (r.contains("error")) 
+        "error"
+      else r
+    }
     val showTypecheckedTree = normalizeEOL(show(typecheckedTree))
     
     println(s"showTypedToolboxTree: $showTypedToolboxTree")
@@ -288,10 +294,7 @@ trait ClassTypedTests {
 
   @Test def testClassWithParams3 = assertTypedTree("class X(implicit x: Int, s: String)")
 
-  //TODO-REFLECT - Failed
-  //Annotations processing is not implemented
-  //@Test def testClassWithParams4 = assertTypedTree("class X(implicit @unchecked x: Int, s: String)")
-  @Test def testClassWithParams4 = assertTypedTree("class X(implicit x: Int, s: String)")
+  @Test def testClassWithParams4 = assertTypedTree("class X(implicit @unchecked x: Int, s: String)")
 
   @Test def testClassWithParams5 = assertTypedTree(sm"""
     |{
@@ -496,7 +499,8 @@ trait ClassTypedTests {
     |  new X(5)
     |}""")
 
-    //TODO-REFLECT - Failed - the biggest problem
+    //TODO-REFLECT - Failed
+    //if we try to typecheck as is - it returns only one class without the object:
     /*
  expected:<def test: [X forSome { type X <: Product with Serializable{def a: Int; def a_=(x$1: Int): Unit; def y: String; def copy(a: Int): X; def copy$default$1: Int @scala.annotation.unchecked.uncheckedVariance} } = {
   case class X extends AnyRef with Product with Serializable {
@@ -582,13 +586,22 @@ trait ClassTypedTests {
 }>
 * 
 */
-//  @Test def testLocalCaseClass = assertTypedTree(sm"""
+//TODO-REFLECT - Failed - class with X name is already in rootMirror.RootClass.info.decls - can't be used inside block
+//  @Test def testLocalCaseClass1 = assertTypedTree(sm"""
 //    |def test = {
 //    |  case class X(var a: scala.Int) {
 //    |    def y = "test"
 //    |  };
 //    |  new X(5)
 //    |}""")
+
+  @Test def testLocalCaseClass2 = assertTypedTree(sm"""
+    |{
+    |  case class LLL(var a: scala.Int) {
+    |    def y = "test"
+    |  };
+    |  new LLL(5)
+    |}""")
 
   @Test def testSuperInClass = assertTypedTree(sm"""
     |{
@@ -928,64 +941,42 @@ trait ValAndDefTypedTests {
 
   @Test def testDefWithTypeParams2 = assertTypedTree("def foo[A, B <: scala.AnyVal] = ()")
 
-  //TODO-REFLECT - Failure (Errors)
-  //annotations can't be typed
-//  @Test def testDefWithAnn1 = assertTypedTree("@annot def foo = null")
-//
-//  @Test def testDefWithAnn2 = assertTypedTree("@a(x) def foo = null")
-//
-//  @Test def testDefWithAnn3 = assertTypedTree("@Foo[A, B] def foo = null")
-//
-//  @Test def testDefWithAnn4 = assertTypedTree("@Foo(a)(b)(x, y) def foo = null")
-//
-//  @Test def testDefWithAnn5 = assertTypedTree("@Foo[A, B](a)(b) @Bar def foo(x: Int) = null")
-//
-//  @Test def testDefWithAnn6 = assertTypedTree("@test1(new test2()) def foo = 42")
-//
-//  @Test def testDefWithAnn7 = assertTypedTree("@`t*` def foo = 42")
-//
-//  @Test def testDefWithAnn8 = assertTypedTree("@throws(classOf[Exception]) def foo = throw new Exception()")
-//
-//  @Test def testAnnotated1 = assertTypedTree(
-//    code = "def foo = 42: @baz")(
-//    parsedCode = "def foo = 42: @baz",
-//    typedCode = "def foo = (42: @baz)",
-//    wrap = true)
-//
-//  @Test def testAnnotated2 = assertTypedTree(
-//    code = "def foo = 42: @foo2[A1, B1](4)(2)")(
-//    parsedCode = "def foo = 42: @foo2[A1, B1](4)(2)",
-//    typedCode = "def foo = (42: @foo2[A1, B1](4)(2))",
-//    wrap = true)
-//
-//  @Test def testAnnotated3 = assertTypedTree(
-//    code = "def foo = (42: @foo1[A1, B1]): @foo2[A1, B1](4)(2)")(
-//    parsedCode = "def foo = (42: @foo1[A1, B1]): @foo2[A1, B1](4)(2)",
-//    typedCode = "def foo = ((42: @foo1[A1, B1]): @foo2[A1, B1](4)(2))",
-//    wrap = true)
-//
-//  @Test def testAnnotated4 = assertTypedTree(
-//    code = "def foo = 42: @foo3[A1, B1](4)(2.0F, new foo1[A1, B1]())")(
-//    parsedCode = "def foo = 42: @foo3[A1, B1](4)(2.0F, new foo1[A1, B1]())",
-//    typedCode = "def foo = (42: @foo3[A1, B1](4)(2.0F, new foo1[A1, B1]()))",
-//    wrap = true)
-//
-//  @Test def testAnnotated5 = assertTypedTree(sm"""
-//    |{
-//    |  val x = 5;
-//    |  (x: @unchecked) match {
-//    |    case ((_): scala.Int) => true
-//    |    case _ => false
-//    |  }
-//    |}""")
-//
-//  @Test def testAnnotated8 = assertTypedTree(sm"""
-//    |{
-//    |  val x = 5;
-//    |  ((x: @unchecked): @foo3(4)(2.0F, new foo1[A1, B1]())) match {
-//    |    case _ => true
-//    |  }
-//    |}""")
+  @Test def testDefWithAnn1 = assertTypedTree("@baz def foo = null", wrap = true)
+
+  @Test def testDefWithAnn2 = assertTypedTree("@foo1[Int, String] def foo = null", wrap = true)
+
+  @Test def testDefWithAnn3 = assertTypedTree("@foo2[String, Int](5)(4) def foo = null", wrap = true)
+
+  @Test def testDefWithAnn4 = assertTypedTree("@foo2[String, Int](5)(4) @baz def foo(x: Int) = null", wrap = true)
+
+  @Test def testDefWithAnn5 = assertTypedTree("@foo3[A1, B1](4)(2.0F, new foo1[A1, B1]()) def foo = 42", wrap = true)
+
+  @Test def testDefWithAnn6 = assertTypedTree("@throws(classOf[Exception]) def foo = throw new Exception()", wrap = true)
+
+  @Test def testAnnotated1 = assertTypedTree("def foo = 42: @baz", wrap = true)
+
+  @Test def testAnnotated2 = assertTypedTree("def foo = 42: @foo2[A1, B1](4)(2)", wrap = true)
+
+  @Test def testAnnotated3 = assertTypedTree("def foo = (42: @foo1[A1, B1]): @foo2[A1, B1](4)(2)", wrap = true)
+
+  @Test def testAnnotated4 = assertTypedTree("def foo = 42: @foo3[A1, B1](4)(2.0F, new foo1[A1, B1]())", wrap = true)
+
+  @Test def testAnnotated5 = assertTypedTree(sm"""
+    |{
+    |  val x = 5;
+    |  (x: @unchecked) match {
+    |    case ((_): scala.Int) => true
+    |    case _ => false
+    |  }
+    |}""", wrap = true)
+
+  @Test def testAnnotated8 = assertTypedTree(sm"""
+    |{
+    |  val x = 5;
+    |  ((x: @unchecked): @foo3(4)(2.0F, new foo1[A1, B1]())) match {
+    |    case _ => true
+    |  }
+    |}""", wrap = true)
 }
 
 trait PackageTypedTests {

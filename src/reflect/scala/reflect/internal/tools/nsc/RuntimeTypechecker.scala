@@ -322,8 +322,10 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
   //TODO-REFLECT fix it to Multiverse support
   def RootClass: ClassSymbol = rootMirror.RootClass
 
-  //TODO-REFLECT maybe we don't require such method here
-  def enteringTyper[T](op: => T): T = ???
+  //TODO-REFLECT in runtime we haven't got phase management, so we assume that during runtime typechecking we are at typer phase
+  //TODO-REFLECT is it correct?
+  def enteringTyper[T](op: => T): T = op
+
   lazy val loaders: ReflectSymbolLoaders = ???
 
   def isBeforeErasure = true
@@ -379,9 +381,41 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
       val compUnit = new CompilationUnit(NoSourceFile)
       compUnit.body = newTree
       val context = typecheckerContext
+      println(s"=====> context(0): $context")
+      println(s"=====> scope(0): ${context.scope}")
+      println(s"=====> typecheckerContextBase(0): ${typecheckerContextBase}")
+      println(s"=====> typecheckerContextBase.scope(0): ${typecheckerContextBase.scope}")
+      println(s"=====> NoContext(0): ${NoContext}")
+      println(s"=====> NoContext.scope(0): ${NoContext.scope}")
+      println(s"=====> rootMirror.RootClass.info.decls(0): ${rootMirror.RootClass.info.decls}")
+      println
       val namer = newNamer(context)
+      println(s"=====> context(1): $context")
+      println(s"=====> scope(1): ${context.scope}")
+      println(s"=====> typecheckerContextBase(1): ${typecheckerContextBase}")
+      println(s"=====> typecheckerContextBase.scope(1): ${typecheckerContextBase.scope}")
+      println(s"=====> NoContext(1): ${NoContext}")
+      println(s"=====> NoContext.scope(1): ${NoContext.scope}")
+      println(s"=====> rootMirror.RootClass.info.decls(1): ${rootMirror.RootClass.info.decls}")
+      println
       val newCont = namer.enterSym(newTree)
+      println(s"=====> context(2): $context")
+      println(s"=====> scope(2): ${context.scope}")
+      println(s"=====> typecheckerContextBase(2): ${typecheckerContextBase}")
+      println(s"=====> typecheckerContextBase.scope(2): ${typecheckerContextBase.scope}")
+      println(s"=====> NoContext(2): ${NoContext}")
+      println(s"=====> NoContext.scope(2): ${NoContext.scope}")
+      println(s"=====> rootMirror.RootClass.info.decls(2): ${rootMirror.RootClass.info.decls}")
+      println
       val typer = newTyper(newCont)
+      println(s"=====> context(3): $context")
+      println(s"=====> scope(3): ${context.scope}")
+      println(s"=====> typecheckerContextBase(3): ${typecheckerContextBase}")
+      println(s"=====> typecheckerContextBase.scope(3): ${typecheckerContextBase.scope}")
+      println(s"=====> NoContext(3): ${NoContext}")
+      println(s"=====> NoContext.scope(3): ${NoContext.scope}")
+      println(s"=====> rootMirror.RootClass.info.decls(3): ${rootMirror.RootClass.info.decls}")
+      println
       val res = typer.typed(newTree)
       res
     } else {
