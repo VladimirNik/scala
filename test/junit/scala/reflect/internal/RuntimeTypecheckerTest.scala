@@ -92,9 +92,9 @@ trait BaseTypedTests {
 
   @Test def testName4 = assertTypedTree("class `a*`")
 
-  @Test def testName5 = assertTypedTree("val :::: = 1")
+  @Test def testName5 = assertTypedTree("val :::: = 1", wrap = true)
 
-  @Test def testName6 = assertTypedTree("val `::::t` = 1")
+  @Test def testName6 = assertTypedTree("val `::::t` = 1", wrap = true)
 
   @Test def testName7 = assertTypedTree("""class \/""")
 
@@ -110,7 +110,7 @@ trait BaseTypedTests {
 
   @Test def testName13 = assertTypedTree("""class a_a""")
 
-  @Test def testName14 = assertTypedTree("val x$11 = 5")
+  @Test def testName14 = assertTypedTree("val x$11 = 5", wrap = true)
 
   @Test def testName15 = assertTypedTree("class `[]`")
 
@@ -130,7 +130,7 @@ trait BaseTypedTests {
     |  a: Int
     |else
     |  (a.toString): String
-    """)
+    """, wrap = true)
 
   @Test def testIfExpr2 = assertTypedTree(sm"""
     |class A {
@@ -161,10 +161,10 @@ trait BaseTypedTests {
     |}""")
 
   //val x = true && true && false.!
-  @Test def testBooleanExpr1 = assertTypedTree("val x = true.&&(true).&&(false.`unary_!`)")
+  @Test def testBooleanExpr1 = assertTypedTree("val x = true.&&(true).&&(false.`unary_!`)", wrap = true)
 
   //val x = true && !(true && false)
-  @Test def testBooleanExpr2 = assertTypedTree("val x = true.&&(true.&&(false).`unary_!`)")
+  @Test def testBooleanExpr2 = assertTypedTree("val x = true.&&(true.&&(false).`unary_!`)", wrap = true)
 
   @Test def testNewExpr1 = assertTypedTree(
     code = sm"""
@@ -191,14 +191,14 @@ trait BaseTypedTests {
     |  class foo(x: scala.Int);
     |  val x = 5;
     |  new foo(x)
-    |}""")
+    |}""", wrap = true)
 
   @Test def testNewExpr5 = assertTypedTree(sm"""
     |{
     |  class foo[t](x: scala.Int);
     |  val x = 5;
     |  new foo[scala.Predef.String](x)
-    |}""")
+    |}""", wrap = true)
 
   //new foo[t](x) { () }
   @Test def testNewExpr6 = assertTypedTree(
@@ -259,15 +259,15 @@ trait BaseTypedTests {
     "List(1, 2, 3).map((i: Int) => i - 1)")
 
   @Test def testFunc2 = assertTypedTree(
-    "val sum: Seq[Int] => Int = _ reduceLeft (_+_)")
+    "val sum: Seq[Int] => Int = _ reduceLeft (_+_)", wrap = true)
 
   @Test def testFunc3 = assertTypedTree(
     "List(1, 2, 3) map (_ - 1)")
 
   @Test def testFunc4 = assertTypedTree(
-    "val x: String => Int = ((str: String) => 1)")
+    "val x: String => Int = ((str: String) => 1)", wrap = true)
 
-  @Test def testAssign1 = assertTypedTree("{ class F { var v = 1 }; val f = new F; (f.v = 5).toString }")
+  @Test def testAssign1 = assertTypedTree("{ class F { var v = 1 }; val f = new F; (f.v = 5).toString }", wrap = true)
 
   @Test def testImport1 = assertTypedTree("{ import scala.collection.mutable }")
 
@@ -885,11 +885,11 @@ trait TraitTypedTests {
 }
 
 trait ValAndDefTypedTests {
-  @Test def testVal1 = assertTypedTree("val a: scala.Unit = ()")
+  @Test def testVal1 = assertTypedTree("val a: scala.Unit = ()", wrap = true)
 
-  @Test def testVal2 = assertTypedTree("val * : scala.Unit = ()")
+  @Test def testVal2 = assertTypedTree("val * : scala.Unit = ()", wrap = true)
 
-  @Test def testVal3 = assertTypedTree("val a_ : scala.Unit = ()")
+  @Test def testVal3 = assertTypedTree("val a_ : scala.Unit = ()", wrap = true)
 
   @Test def testDef1 = assertTypedTree("def a = ()")
 

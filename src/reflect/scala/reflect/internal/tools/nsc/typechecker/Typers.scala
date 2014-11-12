@@ -4002,6 +4002,14 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
     }
 
     def typed1(tree: Tree, mode: Mode, pt: Type): Tree = {
+//      println()
+//      println("=== typed invocation (before) ===")
+//      println(s"show(tree): ${show(tree)}")
+//      println(s"showRaw(tree): ${showRaw(tree)}")
+//      println(s"context: ${context}")
+//      println(s"context.scope: ${context.scope}")
+//      println("=========")
+//      println()
       // Lookup in the given class using the root mirror.
       def lookupInOwner(owner: Symbol, name: Name): Symbol =
         if (mode.inQualMode) rootMirror.missingHook(owner, name) else NoSymbol
@@ -5264,11 +5272,20 @@ trait Typers extends Adaptations with Tags with TypersTracking with PatternTyper
       }
 
       // begin typed1
-      tree match {
+      val r = tree match {
         case tree: TypTree   => typedTypTree(tree)
         case tree: MemberDef => typedMemberDef(tree)
         case _               => typedInAnyMode(tree)
       }
+//      println()
+//      println("=== typed invocation (after) ===")
+//      println(s"show(tree): ${show(tree)}")
+//      println(s"showRaw(tree): ${showRaw(tree)}")
+//      println(s"context: ${context}")
+//      println(s"context.scope: ${context.scope}")
+//      println("=========")
+//      println()
+      r
     }
 
     def typed(tree: Tree, mode: Mode, pt: Type): Tree = {
