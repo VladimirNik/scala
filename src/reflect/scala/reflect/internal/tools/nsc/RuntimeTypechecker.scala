@@ -357,10 +357,12 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
       else if (sym.isTopLevel && sym.isEarlyInitialized) true
       else if (!sym.isTopLevel) compiles(sym.enclosingTopLevelClass)
       else if (sym.isModuleClass) compiles(sym.sourceModule)
-      else false
+      else true //TODO-REFLECT fixed to true in case of fixing problem with case class typechecking
+      //original was false  
+      //example of code snippet: class X { case class Y(); }
 
-    //TODO-REFLECT move to TypecheckerRequirements
-    def canRedefine(sym: Symbol): Boolean = !compiles(sym)
+    //TODO-REFLECT - fix changes move to TypecheckerRequirements
+    def canRedefine(sym: Symbol): Boolean = true //!compiles(sym)
     var reportedFeature: Set[Symbol] = Set[Symbol]() //???
 
     lazy val erasurePhase: Phase = ???
@@ -377,65 +379,54 @@ trait RuntimeTypechecker extends TypecheckerRequirements {
 
   //typecheck method
   override def typecheck(tree: Tree, mirror: Mirror): Tree = {
-    val newTree = tree.duplicate
-    if (mirror == rootMirror) {
-      val compUnit = new CompilationUnit(NoSourceFile)
-      compUnit.body = newTree
-      val context = typecheckerContext.make(EmptyTree, rootMirror.RootClass)
-//      println(s"=====> context(0): $context")
-//      println(s"=====> scope(0): ${context.scope}")
-//      println(s"=====> typecheckerContextBase(0): ${typecheckerContextBase}")
-//      println(s"=====> typecheckerContextBase.scope(0): ${typecheckerContextBase.scope}")
-//      println(s"=====> NoContext(0): ${NoContext}")
-//      println(s"=====> NoContext.scope(0): ${NoContext.scope}")
-//      println(s"=====> rootMirror.RootClass.info.decls(0): ${rootMirror.RootClass.info.decls}")
-//      println
-      val namer = newNamer(context)
-//      println(s"=====> context(1): $context")
-//      println(s"=====> scope(1): ${context.scope}")
-//      println(s"=====> typecheckerContextBase(1): ${typecheckerContextBase}")
-//      println(s"=====> typecheckerContextBase.scope(1): ${typecheckerContextBase.scope}")
-//      println(s"=====> NoContext(1): ${NoContext}")
-//      println(s"=====> NoContext.scope(1): ${NoContext.scope}")
-//      println(s"=====> rootMirror.RootClass.info.decls(1): ${rootMirror.RootClass.info.decls}")
-//      println
-      val newCont = namer.enterSym(newTree)
-//      println(s"=====> context(2): $context")
-//      println(s"=====> scope(2): ${context.scope}")
-//      println(s"=====> typecheckerContextBase(2): ${typecheckerContextBase}")
-//      println(s"=====> typecheckerContextBase.scope(2): ${typecheckerContextBase.scope}")
-//      println(s"=====> NoContext(2): ${NoContext}")
-//      println(s"=====> NoContext.scope(2): ${NoContext.scope}")
-//      println(s"=====> rootMirror.RootClass.info.decls(2): ${rootMirror.RootClass.info.decls}")
-//      println
-      val typer = newTyper(newCont)
-//      println(s"=====> context(3): $context")
-//      println(s"=====> scope(3): ${context.scope}")
-//      println(s"=====> typecheckerContextBase(3): ${typecheckerContextBase}")
-//      println(s"=====> typecheckerContextBase.scope(3): ${typecheckerContextBase.scope}")
-//      println(s"=====> NoContext(3): ${NoContext}")
-//      println(s"=====> NoContext.scope(3): ${NoContext.scope}")
-//      println(s"=====> rootMirror.RootClass.info.decls(3): ${rootMirror.RootClass.info.decls}")
-//      println
-      val res = typer.typed(newTree, Mode.EXPRmode)
-      res
-    } else {
-      //TODO-REFLECT rules to pass the tree among the universes
-      //we need to pass the tree to created universe
-      //and also transform resulted tree in our universe
-      //the second one part is even harder
-      //+ after AST loading loaded tree should be adopted to current universe
-      //sharing trees/typed trees among the universe
-      //is it important that we get tree from other universe?
-      val tUniverse = createTypecheckerUniverse(mirror)
-      val importer = tUniverse.internal.createImporter(this)
-      val impTree = importer.importTree(newTree)
-      val res = tUniverse.rootMirror.typecheck(impTree).asInstanceOf[Tree]
-      res
-    }
+    val u = createTypecheckerUniverse(mirror)
+    
+    val ownerClass = u.rootMirror.RootClass
+//    u.currentRun.symSource(ownerClass)  = NoAbstractFile
+    
+    //TODO-REFLECT - can't do it!!!
+//    val run = new u.Run{}
+//    run.symSource(ownerClass) = NoAbstractFile // need to set file to something different from null, so that currentRun.defines works
+//    phase = run.typerPhase // need to set a phase to something <= typerPhase, otherwise implicits in typedSelect will be disabled
+    
+    val importer = u.mkImporter(this)
+    val expr = importer.importTree(tree)
+    
+    val compUnit = new CompilationUnit(NoSourceFile)
+    //compUnit.body = expr
+    val context = u.analyzer.typecheckerContext.make(u.EmptyTree, ownerClass)
+    val namer = u.analyzer.newNamer(context)
+    val newCont = namer.enterSym(expr)
+    val typer = u.analyzer.newTyper(newCont)
+    val res = typer.typed(expr /*, Mode.EXPRmode*/ )
+//    res.asInstanceOf[Tree]
+    val exporter = importer.reverse
+    exporter.importTree(res)
   }
 
-  def createTypecheckerUniverse(mirror: Mirror): scala.reflect.api.JavaUniverse
+//  override def typecheck(tree: Tree, mirror: Mirror): Tree = {
+//    val newTree = tree.duplicate
+//    if (mirror == rootMirror) {
+//      val compUnit = new CompilationUnit(NoSourceFile)
+//      compUnit.body = newTree
+//      val context = typecheckerContext.make(EmptyTree, rootMirror.RootClass)
+//      val namer = newNamer(context)
+//      val newCont = namer.enterSym(newTree)
+//      val typer = newTyper(newCont)
+//      val res = typer.typed(newTree, Mode.EXPRmode)
+//      res
+//    } else {
+//      val tUniverse = createTypecheckerUniverse(mirror)
+//      val importer = tUniverse.internal.createImporter(this)
+//      val impTree = importer.importTree(newTree)
+//    tUniverse.rootMirror.typecheck(impTree).asInstanceOf[Tree]
+////      val res = tUniverse.rootMirror.typecheck(impTree)
+////      val exporter = importer.reverse
+////      exporter.importTree(res)
+//    }
+//  }
+
+  def createTypecheckerUniverse(mirror: Mirror): scala.reflect.runtime.JavaUniverse
 
   //TODO-REFLECT remove method, added for simplicity
   override def typecheck(tree: Tree, classLoader: ClassLoader): Tree = typecheck(tree, runtimeMirror(classLoader))
