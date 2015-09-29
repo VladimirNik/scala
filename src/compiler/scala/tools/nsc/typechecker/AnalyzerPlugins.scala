@@ -280,7 +280,7 @@ trait AnalyzerPlugins { self: Analyzer =>
   trait BackendPlugin {
     def isActive(): Boolean = true
 
-    def pluginsSymbolAttribute(sym: ClassSymbol): Option[CustomAttr] = None
+    def pluginsCustomAttributes(sym: ClassSymbol): List[CustomAttr] = Nil
   }
 
   /** A list of registered analyzer plugins */
@@ -465,14 +465,15 @@ trait AnalyzerPlugins { self: Analyzer =>
   }
 
   /** @see BackendPlugin.pluginsSymbolAttribute */
-  def pluginsSymbolAttributes(sym: ClassSymbol): List[CustomAttr] =
+  def pluginsCustomAttributes(sym: ClassSymbol): List[CustomAttr] =
     if (backendPlugins.isEmpty) Nil
     else {
-      for {
-        plugin <- backendPlugins
-        if plugin.isActive()
-        symAttrOpt = plugin.pluginsSymbolAttribute(sym)
-        if symAttrOpt.isDefined
-      } yield symAttrOpt.get
+      backendPlugins filter (_.isActive()) map (_.pluginsCustomAttributes(sym)) flatten
+//      (for {
+//        plugin <- backendPlugins
+//        if plugin.isActive()
+//        symAttrs = plugin.pluginsSymbolAttributes(sym)
+//        if symAttrs.nonEmpty
+//      } yield symAttrs) flatten
     }
 }

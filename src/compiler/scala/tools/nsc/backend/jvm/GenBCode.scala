@@ -200,9 +200,8 @@ abstract class GenBCode extends BCodeSyncAndTry {
           } else null
 
           if (claszSymbol.isClass) {
-            analyzer.pluginsSymbolAttributes(claszSymbol.asInstanceOf[ClassSymbol]) foreach {
-              (attr) =>
-                (if (mirrorC ne null) mirrorC else plainC).visitAttribute(attr)  
+            analyzer.pluginsCustomAttributes(claszSymbol.asInstanceOf[ClassSymbol]) foreach {
+              (if (mirrorC ne null) mirrorC else plainC).visitAttribute(_)  
             }
           }
 
