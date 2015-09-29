@@ -276,7 +276,12 @@ trait AnalyzerPlugins { self: Analyzer =>
     def pluginsEnterStats(typer: Typer, stats: List[Tree]): List[Tree] = stats
   }
 
+  import scala.tools.asm.CustomAttr
+  trait BackendPlugin {
+    def isActive(): Boolean = true
 
+    def pluginsSymbolAttribute(sym: ClassSymbol): Option[CustomAttr] = None
+  }
 
   /** A list of registered analyzer plugins */
   private var analyzerPlugins: List[AnalyzerPlugin] = Nil
@@ -449,4 +454,25 @@ trait AnalyzerPlugins { self: Analyzer =>
     else macroPlugins.foldLeft(stats)((current, plugin) =>
       if (!plugin.isActive()) current else plugin.pluginsEnterStats(typer, current))
   }
+
+  /** A list of registered backend plugins */
+  private var backendPlugins: List[BackendPlugin] = Nil
+
+  /** Registers a new backend plugin */
+  def addBackendPlugin(plugin: BackendPlugin) {
+    if (!backendPlugins.contains(plugin))
+      backendPlugins = plugin :: backendPlugins
+  }
+
+  /** @see BackendPlugin.pluginsSymbolAttribute */
+  def pluginsSymbolAttributes(sym: ClassSymbol): List[CustomAttr] =
+    if (backendPlugins.isEmpty) Nil
+    else {
+      for {
+        plugin <- backendPlugins
+        if plugin.isActive()
+        symAttrOpt = plugin.pluginsSymbolAttribute(sym)
+        if symAttrOpt.isDefined
+      } yield symAttrOpt.get
+    }
 }

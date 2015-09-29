@@ -1219,6 +1219,18 @@ abstract class GenASM extends SubComponent with BytecodeWriters { self =>
 
   case class BlockInteval(start: BasicBlock, end: BasicBlock)
 
+  private def runBackendPlugins(sym: Symbol, jclass: asm.ClassVisitor, isJMirrorBuilder: Boolean = false) = {
+    def isTopLevelStaticModule =
+      isStaticModule(sym) && isTopLevelModule(sym) && sym.companionClass == NoSymbol
+
+      if (sym.isClass && !(isJMirrorBuilder ^ isTopLevelStaticModule)) {
+        analyzer.pluginsSymbolAttributes(sym.asInstanceOf[ClassSymbol]) foreach {
+          (attr) =>
+            jclass.visitAttribute(attr)  
+        }
+      }
+  }
+
   /** builder of plain classes */
   class JPlainBuilder(bytecodeWriter: BytecodeWriter, needsOutfile: Boolean)
     extends JCommonBuilder(bytecodeWriter, needsOutfile)
@@ -1293,6 +1305,8 @@ abstract class GenASM extends SubComponent with BytecodeWriters { self =>
 
       if (!settings.YskipInlineInfoAttribute.value)
         jclass.visitAttribute(InlineInfoAttribute(buildInlineInfoFromClassSymbol(c.symbol, javaName, javaType(_).getDescriptor)))
+
+      runBackendPlugins(c.symbol, jclass)
 
       // typestate: entering mode with valid call sequences:
       //   ( visitInnerClass | visitField | visitMethod )* visitEnd
@@ -2826,6 +2840,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters { self =>
       val ssa = getAnnotPickle(mirrorName, modsym.companionSymbol)
       mirrorClass.visitAttribute(if(ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
       emitAnnotations(mirrorClass, modsym.annotations ++ ssa)
+      runBackendPlugins(modsym, mirrorClass, isJMirrorBuilder = true)
 
       // typestate: entering mode with valid call sequences:
       //   ( visitInnerClass | visitField | visitMethod )* visitEnd
