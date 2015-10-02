@@ -468,12 +468,6 @@ trait AnalyzerPlugins { self: Analyzer =>
   def pluginsCustomAttributes(sym: ClassSymbol): List[CustomAttr] =
     if (backendPlugins.isEmpty) Nil
     else {
-      backendPlugins filter (_.isActive()) map (_.pluginsCustomAttributes(sym)) flatten
-//      (for {
-//        plugin <- backendPlugins
-//        if plugin.isActive()
-//        symAttrs = plugin.pluginsSymbolAttributes(sym)
-//        if symAttrs.nonEmpty
-//      } yield symAttrs) flatten
+      (backendPlugins filter (_.isActive()) map (_.pluginsCustomAttributes(sym))).flatten
     }
 }
