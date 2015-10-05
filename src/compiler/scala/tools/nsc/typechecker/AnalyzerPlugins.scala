@@ -6,6 +6,8 @@
 package scala.tools.nsc
 package typechecker
 
+import scala.tools.asm.CustomAttr
+
 /**
  *  @author Lukas Rytz
  *  @version 1.0
@@ -276,10 +278,17 @@ trait AnalyzerPlugins { self: Analyzer =>
     def pluginsEnterStats(typer: Typer, stats: List[Tree]): List[Tree] = stats
   }
 
-  import scala.tools.asm.CustomAttr
   trait BackendPlugin {
+    /**
+     * Selectively activate this backend plugin
+     */
     def isActive(): Boolean = true
 
+    /**
+     * Prepares a list of attributes for being attached to node representing sym
+     *
+     * Attachment of custom attributes occurs during the work of GenASM/GenBCode
+     */
     def pluginsCustomAttributes(sym: ClassSymbol): List[CustomAttr] = Nil
   }
 
@@ -464,7 +473,7 @@ trait AnalyzerPlugins { self: Analyzer =>
       backendPlugins = plugin :: backendPlugins
   }
 
-  /** @see BackendPlugin.pluginsSymbolAttribute */
+  /** @see BackendPlugin.pluginsCustomAttributes */
   def pluginsCustomAttributes(sym: ClassSymbol): List[CustomAttr] =
     if (backendPlugins.isEmpty) Nil
     else {
